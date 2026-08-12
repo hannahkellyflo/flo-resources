@@ -147,13 +147,121 @@ def wire_public_interest(data: dict) -> None:
     print(f"  public interest: {len(recs)} records -> {n} bucketed")
 
 
+# ── CAMPUS + EXAMS (Airtable, LIVE) ──────────────────────────────────────────
+# Same table tbl3TysOhuqGmnTp6. Public filter (Hannah 2026-08-12):
+#   campus: status == Approved AND Recruiting-For in the current cycles
+#           {1L Summer 2027, 2L Summer 2028, 2L Summer 2027} (Class of 2028 & 2029);
+#           drops old "1L Summer 2026" and "Other".
+#   exams:  status == Approved, one row per school (school-level exam/grade facts).
+CAMPUS_TABLE = "tbl3TysOhuqGmnTp6"
+STATUS_F = "fldxmMbFRt7ZmP1Zn"
+CAMPUS_CYCLES = {"1L Summer 2027", "2L Summer 2028", "2L Summer 2027"}
+
+CAMPUS_F = {"school": "fldMX6usDsVcPL5mv", "program": "fldia9d25thQk2XZD",
+            "sector": "fldTUQOTFLVQMqvlJ", "recruiting": "fldeM4oZQubYnfDkj",
+            "progDates": "fld0ptuFrxywALle1", "regLink": "fldO18qW51Y8Pp7u3",
+            "regDates": "fldPvaLGnarml45Ut", "virtual": "fldZO9ShTm1e2gpQT",
+            "format": "fld3vosa24Mywu4QK", "contactName": "fldpDGxas6jiDS9A4",
+            "contactEmail": "fldigmcw7jmnWVbXD", "bidding": "flddvClqs4cWWO13W",
+            "initRelease": "fldGgxzEt1DUDxfO5", "finalRelease": "fldcj7lfD7OQG8WMU",
+            "addlInfo": "fldzRMQiWHC8HQCno", "updated": "fldKmUHPxskiftnIh"}
+EXAMS_F = {"school": "fldMX6usDsVcPL5mv", "grades1": "fldHVmAIeSG6VonqF",
+           "grades2": "fldhnelSoLqhY6qno", "gradesNotes": "fld1VKn9gTsmjionb",
+           "exams1": "fldiIpsyrAnauwtzU", "exams2": "fldN0a2xtUQcUxt2L",
+           "examsNotes": "fldjtEPxSqwFzkAQa"}
+
+
+def _sel(v):   # singleSelect: REST -> str, MCP -> {"name":..}
+    return v.get("name", "") if isinstance(v, dict) else (v or "")
+
+
+def _multi(v):  # multipleSelects: REST -> [str], MCP -> [{"name":..}]
+    if not isinstance(v, list):
+        return _sel(v)
+    return ", ".join(x.get("name", "") if isinstance(x, dict) else str(x) for x in v)
+
+
+def _txt(v):
+    return v.strip() if isinstance(v, str) else (v or "")
+
+
+def fmt_mdy(iso) -> str:
+    """date/lastModifiedTime -> 'M/D/YYYY'; empty -> ''."""
+    if not iso:
+        return ""
+    try:
+        d = datetime.date.fromisoformat(str(iso)[:10])
+        return f"{d.month}/{d.day}/{d.year}"
+    except ValueError:
+        return str(iso)
+
+
+def campus_record(f: dict) -> dict:
+    reg, email = f.get(CAMPUS_F["regLink"]), f.get(CAMPUS_F["contactEmail"])
+    return {
+        "Law School": _txt(f.get(CAMPUS_F["school"])),
+        "Program": _txt(f.get(CAMPUS_F["program"])),
+        "Sector": _multi(f.get(CAMPUS_F["sector"])),
+        "Recruiting For": _multi(f.get(CAMPUS_F["recruiting"])),
+        "Program Dates": _txt(f.get(CAMPUS_F["progDates"])),
+        "Employer Registration Link": {"text": reg, "href": reg} if reg else "",
+        "Employer Registration Dates": _txt(f.get(CAMPUS_F["regDates"])),
+        "Virtual vs. In-Person": _sel(f.get(CAMPUS_F["virtual"])),
+        "Format": _multi(f.get(CAMPUS_F["format"])),
+        "Program Contact - Name": _txt(f.get(CAMPUS_F["contactName"])),
+        "Program Contact - Email": {"text": email, "href": f"mailto:{email}"} if email else "",
+        "Student Bidding / Application Dates": _txt(f.get(CAMPUS_F["bidding"])),
+        "Initial Employer Schedule Release Date": fmt_mdy(f.get(CAMPUS_F["initRelease"])),
+        "Final Schedule Release Date": fmt_mdy(f.get(CAMPUS_F["finalRelease"])),
+        "Additional Info": _txt(f.get(CAMPUS_F["addlInfo"])),
+        "Last updated": fmt_mdy(f.get(CAMPUS_F["updated"])),
+    }
+
+
+def exams_record(f: dict) -> dict:
+    return {
+        "Law School": _txt(f.get(EXAMS_F["school"])),
+        "First Semester Grades Available": _txt(f.get(EXAMS_F["grades1"])),
+        "Second Semester Grades Available": _txt(f.get(EXAMS_F["grades2"])),
+        "Career Services Notes on Grades": _txt(f.get(EXAMS_F["gradesNotes"])),
+        "First Semester Exam Dates": _txt(f.get(EXAMS_F["exams1"])),
+        "Second Semester Exam Dates": _txt(f.get(EXAMS_F["exams2"])),
+        "Career Services Notes on Exams": _txt(f.get(EXAMS_F["examsNotes"])),
+    }
+
+
+def wire_campus_exams(data: dict) -> None:
+    recs = airtable_records(CAMPUS_TABLE, sorted({*CAMPUS_F.values(), *EXAMS_F.values(), STATUS_F}))
+    campus, exams = [], {}   # exams: school -> (updated, record), latest wins
+    for r in recs:
+        f = r.get("fields", {})
+        if _sel(f.get(STATUS_F)) != "Approved":
+            continue
+        rvals = f.get(CAMPUS_F["recruiting"]) or []
+        rnames = [x.get("name", "") if isinstance(x, dict) else str(x) for x in rvals] \
+            if isinstance(rvals, list) else [_sel(rvals)]
+        if any(v in CAMPUS_CYCLES for v in rnames) and f.get(CAMPUS_F["school"]) and f.get(CAMPUS_F["program"]):
+            campus.append(campus_record(f))
+        school = f.get(EXAMS_F["school"])
+        has_exam = any(f.get(EXAMS_F[k]) for k in
+                       ("grades1", "grades2", "gradesNotes", "exams1", "exams2", "examsNotes"))
+        if school and has_exam:
+            upd = f.get(CAMPUS_F["updated"]) or ""
+            if school not in exams or upd > exams[school][0]:
+                exams[school] = (upd, exams_record(f))
+    campus.sort(key=lambda r: (r["Law School"], r["Program"]))
+    data["tables"]["campus"] = campus
+    data["tables"]["exams"] = [rec for _, (_, rec) in sorted(exams.items())]
+    print(f"  campus/exams: {len(recs)} records -> {len(campus)} campus (Approved, current cycle), "
+          f"{len(data['tables']['exams'])} exams schools")
+
+
 # ── TODO: other live sections (wire incrementally) ───────────────────────────
-# campus/exams  -> Airtable tbl3TysOhuqGmnTp6 (currently empty -> render blank, correct)
 # entry3l       -> Metabase #5413 grad-target 2027 + Airtable page pagf1mxzXOqa5fjDz
 # lateral / pc  -> Metabase #5413 hiring-type filters
 # charts.*      -> Metabase aggregations (see specs 01-08 / memory); judgment-heavy
 #                  ones (practice-from-title, funnel, headcount) stay on snapshot until validated
-WIRED = [wire_public_interest]
+WIRED = [wire_public_interest, wire_campus_exams]
 
 
 def main() -> None:
