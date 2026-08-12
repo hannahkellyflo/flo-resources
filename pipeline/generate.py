@@ -339,11 +339,37 @@ def wire_pc(data: dict) -> None:
     print(f"  post-judicial-clerkship: {len(rows)} listings")
 
 
+# ── 3L ENTRY-LEVEL (Metabase db 2, LIVE) ─────────────────────────────────────
+# grad-target year 2027 (FORWARD_JOB_GRAD_DATE_TARGET_RULE) is a noisy proxy — it
+# also matches summer/intern/vacation-scheme/OCI/lateral roles carrying a stray 2027
+# target, so a heavy title-noise exclusion is required (grad-target alone over-counts ~3x).
+# Airtable "3L Hiring" page is empty today, so this is Metabase-only.
+ENTRY3L_WHERE = r"""
+  EXISTS (SELECT 1 FROM FORWARD_JOB_GRAD_DATE_TARGET_RULE r
+          WHERE r.JOB_ID = j.ID AND r.IS_NOT_DELETED = 1
+            AND r.RULE_TYPE = 'INDIVIDUAL_YEARS' AND YEAR(r.MIN_GRAD_DATE) = 2027)
+  AND LOWER(j.TITLE) NOT REGEXP 'summer|intern|extern|clerk|test|vacation|fellowship|networking|\boci\b|resume|general submission|general consideration|\blateral\b|managing counsel|training contract|sign.?up|\bselsc\b|\b1l\b|\b2l\b'"""
+
+
+def wire_entry3l(data: dict) -> None:
+    rows = metabase_sql(MB_DB, _JOB_SELECT % ENTRY3L_WHERE)
+    data["tables"]["entry3l"] = [{
+        "Employer": r.get("firm") or "—",
+        "3L Position": r.get("position") or "—",
+        "3L Job Listing": {"text": "View listing",
+                           "href": f"https://florecruit.com/v2/app/forward/jobs/{r.get('job_id')}"},
+        "Offices": r.get("offices") or "—",
+        "Practices, If Specified": "",       # not reliably derivable -> muted em-dash
+        "Bar Admission, If Required": "",
+        "Last Updated": fmt_date(r.get("updated_at")),
+    } for r in rows]
+    print(f"  entry3l: {len(rows)} 3L entry-level listings")
+
+
 # ── TODO: other live sections (wire incrementally) ───────────────────────────
-# entry3l       -> Metabase #5413 grad-target 2027 (noise-excluded) + Airtable page
 # charts.*      -> Metabase aggregations (see specs 01-08 / memory); judgment-heavy
 #                  ones (practice-from-title, funnel, headcount) stay on snapshot until validated
-WIRED = [wire_public_interest, wire_campus_exams, wire_lateral, wire_pc]
+WIRED = [wire_public_interest, wire_campus_exams, wire_lateral, wire_pc, wire_entry3l]
 
 
 def main() -> None:
