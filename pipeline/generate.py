@@ -13,7 +13,7 @@ Secrets (GitHub Actions env):
 
 Run:  METABASE_API_KEY=… AIRTABLE_TOKEN=… python3 generate.py
 """
-import json, os, re, urllib.request, urllib.parse, pathlib, datetime
+import json, os, re, html, urllib.request, urllib.parse, pathlib, datetime
 
 PIPE = pathlib.Path(__file__).parent
 DATA_JSON = PIPE / "data.json"
@@ -256,12 +256,94 @@ def wire_campus_exams(data: dict) -> None:
           f"{len(data['tables']['exams'])} exams schools")
 
 
+# ── LATERAL NON-PARTNER + POST-JUDICIAL-CLERKSHIP (Metabase db 2, LIVE) ───────
+# Base = #5413 filters: published + not-deleted + ATS/null job type + LAW_FIRM +
+# demo orgs excluded. Offices via JOB_OFFICE->ORG_OFFICE->STATIC_LIST_OPTION.
+MB_DB = 2
+DEMO_REGEXP = (r"demo\b|\btest|sandbox|\bexample|\bacme\b|\bsample\b|"
+               r"playground|employer|flo recruit|flo-recruit|hartwell cross")
+
+_JOB_SELECT = """
+SELECT j.ID AS job_id, o.NAME AS firm, j.TITLE AS position,
+  j.DESCRIPTION AS descr, j.OPEN_DATE AS open_date, j.UPDATED_AT AS updated_at,
+  GROUP_CONCAT(DISTINCT ht.NAME) AS hiring_types,
+  (SELECT GROUP_CONCAT(DISTINCT loc.OPTION SEPARATOR '; ')
+     FROM JOB_OFFICE jo JOIN ORG_OFFICE ofc ON ofc.ID = jo.OFFICE_ID
+     JOIN STATIC_LIST_OPTION loc ON loc.ID = ofc.OFFICE_LOCATION_ID
+     WHERE jo.JOB_ID = j.ID) AS offices
+FROM JOB j
+JOIN ORG o ON o.ID = j.ORG_ID
+LEFT JOIN JOB_HIRING_TYPE jht ON jht.JOB_ID = j.ID
+LEFT JOIN HIRING_TYPE ht ON ht.ID = jht.HIRING_TYPE_ID
+WHERE j.FORWARD_PUBLISHING_STATUS = 'PUBLISHED' AND j.DELETED_AT IS NULL
+  AND (j.JOB_TYPE = 'ATS' OR j.JOB_TYPE IS NULL) AND j.JOB_CLASSIFICATION = 'LAW_FIRM'
+  AND LOWER(o.NAME) NOT REGEXP '%s'
+  AND (%s)
+GROUP BY j.ID, o.NAME, j.TITLE, j.DESCRIPTION, j.OPEN_DATE, j.UPDATED_AT
+ORDER BY j.OPEN_DATE DESC;""" % (DEMO_REGEXP, "%s")
+
+LATERAL_WHERE = """
+  EXISTS (SELECT 1 FROM JOB_HIRING_TYPE j2 JOIN HIRING_TYPE h2 ON h2.ID=j2.HIRING_TYPE_ID
+          WHERE j2.JOB_ID=j.ID AND h2.NAME IN ('Lateral Associate','Lateral Counsel','Staff Attorney'))
+  AND NOT EXISTS (SELECT 1 FROM JOB_HIRING_TYPE j3 JOIN HIRING_TYPE h3 ON h3.ID=j3.HIRING_TYPE_ID
+                  WHERE j3.JOB_ID=j.ID AND h3.NAME='Lateral Partner')"""
+
+PC_WHERE = """
+  EXISTS (SELECT 1 FROM JOB_HIRING_TYPE j2 JOIN HIRING_TYPE h2 ON h2.ID=j2.HIRING_TYPE_ID
+          WHERE j2.JOB_ID=j.ID AND h2.NAME='Judicial Clerk')
+  OR LOWER(j.TITLE) REGEXP 'post[- ]clerkship'"""
+
+
+def strip_html(s) -> str:
+    if not s:
+        return "—"
+    s = re.sub(r"<[^>]+>", " ", s)
+    s = html.unescape(s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s or "—"
+
+
+def job_record(row: dict, type_val: str) -> dict:
+    jid = row.get("job_id")
+    return {
+        "Law Firm": row.get("firm") or "—",
+        "Job Listing": {"text": "View listing",
+                        "href": f"https://florecruit.com/v2/app/forward/jobs/{jid}"},
+        "Position": row.get("position") or "—",
+        "Offices": row.get("offices") or "—",
+        "Job Description": strip_html(row.get("descr")),
+        "Open Date": fmt_date(row.get("open_date")),
+        "Type": type_val,
+        "Last Updated": fmt_date(row.get("updated_at")),
+    }
+
+
+def wire_lateral(data: dict) -> None:
+    rows = metabase_sql(MB_DB, _JOB_SELECT % LATERAL_WHERE)
+
+    def typ(hts):
+        s = hts or ""
+        return ("Associate" if "Lateral Associate" in s else
+                "Counsel" if "Lateral Counsel" in s else
+                "Staff Attorney" if "Staff Attorney" in s else "Associate")
+    data["tables"]["lateral"] = [job_record(r, typ(r.get("hiring_types"))) for r in rows]
+    print(f"  lateral: {len(rows)} non-partner listings")
+
+
+def wire_pc(data: dict) -> None:
+    rows = metabase_sql(MB_DB, _JOB_SELECT % PC_WHERE)
+    data["tables"]["pc"] = [
+        job_record(r, "Judicial Clerk" if "Judicial Clerk" in (r.get("hiring_types") or "")
+                   else "Post-Judicial Clerkship")
+        for r in rows]
+    print(f"  post-judicial-clerkship: {len(rows)} listings")
+
+
 # ── TODO: other live sections (wire incrementally) ───────────────────────────
-# entry3l       -> Metabase #5413 grad-target 2027 + Airtable page pagf1mxzXOqa5fjDz
-# lateral / pc  -> Metabase #5413 hiring-type filters
+# entry3l       -> Metabase #5413 grad-target 2027 (noise-excluded) + Airtable page
 # charts.*      -> Metabase aggregations (see specs 01-08 / memory); judgment-heavy
 #                  ones (practice-from-title, funnel, headcount) stay on snapshot until validated
-WIRED = [wire_public_interest, wire_campus_exams]
+WIRED = [wire_public_interest, wire_campus_exams, wire_lateral, wire_pc]
 
 
 def main() -> None:
