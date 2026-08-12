@@ -91,7 +91,12 @@ PI_F = {"org": "fldKjqVMve8XOBQNs", "title": "fldsjcEMbh9O0LAg9", "apply": "fld9
 
 
 def pi_bucket(grad_cells) -> str:
-    years = [int(c["name"]) for c in (grad_cells or []) if c.get("name", "").isdigit()]
+    # multipleSelects: REST returns ["2026", ...]; MCP returns [{"name":"2026"}, ...]
+    years = []
+    for c in (grad_cells or []):
+        name = c.get("name", "") if isinstance(c, dict) else str(c)
+        if name.isdigit():
+            years.append(int(name))
     if not years:
         return "attorney"          # no signal -> treat as experienced/attorney
     lo = min(years)
@@ -118,7 +123,7 @@ def wire_public_interest(data: dict) -> None:
     recs = airtable_records(PI_TABLE, list(PI_F.values()))
     buckets = {b: {"open": [], "past": []} for b in ("summer", "extern", "attorney")}
     for r in recs:
-        f = r["cellValuesByFieldId"]
+        f = r.get("fields", {})   # REST API keys fields under "fields" (by field id via returnFieldsByFieldId)
         rec = pi_record(f)
         rec["Posted Date"] = fmt_date(r.get("createdTime"))
         # open vs past by close date (past kept only for 30 days after close)
