@@ -260,8 +260,11 @@ def wire_campus_exams(data: dict) -> None:
 # Base = #5413 filters: published + not-deleted + ATS/null job type + LAW_FIRM +
 # demo orgs excluded. Offices via JOB_OFFICE->ORG_OFFICE->STATIC_LIST_OPTION.
 MB_DB = 2
-DEMO_REGEXP = (r"demo\b|\btest|sandbox|\bexample|\bacme\b|\bsample\b|"
-               r"playground|employer|flo recruit|flo-recruit|hartwell cross")
+# NOTE: \\b (two backslashes) is REQUIRED — MySQL's string-literal parser consumes one
+# backslash, so the SQL text needs \\b for REGEXP to see a \b word boundary. Verified:
+# 'example company' REGEXP '\\bexample' = 1, but REGEXP '\bexample' = 0.
+DEMO_REGEXP = (r"demo\\b|\\btest|sandbox|\\bexample|\\bacme\\b|\\bsample\\b|playground|"
+               r"employer|flo recruit|flo-recruit|flo firm|dupes|hartwell cross")
 
 _JOB_SELECT = """
 SELECT j.ID AS job_id, o.NAME AS firm, j.TITLE AS position,
@@ -348,7 +351,7 @@ ENTRY3L_WHERE = r"""
   EXISTS (SELECT 1 FROM FORWARD_JOB_GRAD_DATE_TARGET_RULE r
           WHERE r.JOB_ID = j.ID AND r.IS_NOT_DELETED = 1
             AND r.RULE_TYPE = 'INDIVIDUAL_YEARS' AND YEAR(r.MIN_GRAD_DATE) = 2027)
-  AND LOWER(j.TITLE) NOT REGEXP 'summer|intern|extern|clerk|test|vacation|fellowship|networking|\boci\b|resume|general submission|general consideration|\blateral\b|managing counsel|training contract|sign.?up|\bselsc\b|\b1l\b|\b2l\b'"""
+  AND LOWER(j.TITLE) NOT REGEXP 'summer|intern|extern|clerk|test|vacation|fellowship|networking|\\boci\\b|resume|general submission|general consideration|\\blateral\\b|managing counsel|training contract|sign.?up|\\bselsc\\b|\\b1l\\b|\\b2l\\b'"""
 
 
 def wire_entry3l(data: dict) -> None:
