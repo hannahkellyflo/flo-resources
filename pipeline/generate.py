@@ -22,8 +22,8 @@ METABASE_URL = "https://flo-recruit.metabaseapp.com"
 AIRTABLE_BASE = "appi5xzw51C2e58PR"
 TODAY = datetime.date.today()
 
-MB_KEY = os.environ.get("METABASE_API_KEY", "")
-AT_TOKEN = os.environ.get("AIRTABLE_TOKEN", "")
+MB_KEY = os.environ.get("METABASE_API_KEY", "").strip()
+AT_TOKEN = os.environ.get("AIRTABLE_TOKEN", "").strip()
 
 
 # ── HTTP helpers ──────────────────────────────────────────────────────────────
