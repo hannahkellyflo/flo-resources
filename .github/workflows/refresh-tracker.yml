@@ -25,7 +25,7 @@ jobs:
       - name: Regenerate data.json from live sources
         working-directory: pipeline
         env:
-          METABASE_API_KEY: ${{ secrets.METABASE_API_KEY }}
+          METABASE_API_KEY: ${{ secrets.METABASE_API }}
           AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
         run: python3 generate.py
 
