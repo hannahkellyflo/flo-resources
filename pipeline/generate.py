@@ -548,12 +548,43 @@ GROUP BY gyear, yr, mo""" % (DEMO_REGEXP, THREEL_NOISE))
     print(f"  3L charts: timeline")
 
 
+# Post-clerkship market = firm-hosted judicial-clerk RECEPTIONS (EVENTS) + registrations
+# (RATTENDEES.EID→EVENTS.ID). Cycle Sep→Aug. Validated cycle totals 11/265, 15/375,
+# 24/799, 26/1112 vs snapshot 11/265, 16/378, 24/799, 26/1113.
+PC_EVENTS_WHERE = """
+FROM EVENTS e JOIN ORG o ON o.ID = e.OID
+LEFT JOIN RATTENDEES ra ON ra.EID = e.ID
+WHERE LOWER(e.NAME) REGEXP 'clerk' AND LOWER(e.NAME) REGEXP 'reception'
+  AND LOWER(e.NAME) NOT REGEXP 'interview|mock|test|1l|diversity|summer'
+  AND o.UNIVERSITY = 0
+  AND LOWER(o.NAME) NOT REGEXP '%s'
+  AND e.DATE >= '2022-09-01'""" % DEMO_REGEXP
+
+
+def wire_postclerk_charts(data: dict) -> None:
+    rows = metabase_sql(MB_DB, f"""
+SELECT YEAR(e.DATE) AS yr, MONTH(e.DATE) AS mo,
+  COUNT(DISTINCT e.ID) AS events, COUNT(ra.ID) AS regs
+{PC_EVENTS_WHERE}
+GROUP BY yr, mo""")
+    ev = {(int(r["yr"]), int(r["mo"])): int(r["events"]) for r in rows}
+    rg = {(int(r["yr"]), int(r["mo"])): int(r["regs"]) for r in rows}
+    ch = data["charts"]["postClerk"]
+    ch["events"] = {f"{cy}-{cy+1}": cycle_series(ev, cy, 9) for cy in range(2022, 2027)}
+    ch["registrations"] = {f"{cy}-{cy+1}": cycle_series(rg, cy, 9) for cy in range(2022, 2027)}
+    # registrationsAnnual stays on snapshot (the '2026-27 est.' dashed projection is a
+    # product call — replace with a real bar once that cycle has volume).
+    print(f"  post-clerkship charts: events + registrations")
+
+
 # ── TODO: remaining chart segments (wire incrementally) ──────────────────────
-# postClerk.events/registrations      -> EVENTS + RATTENDEES monthly
-# lawStudent.*                        -> dashboard-661 aggregations (+ headcount split)
-# *.practice*/market*/grad*/source + *.totalByWindow bars -> judgment-heavy, on snapshot
+# lawStudent.*  -> dashboard-661 aggregations (appsubs/postings/net/accounts clean;
+#                  outreach/lf need the <500/500+ pendo headcount split)
+# *.practice*/market*/grad*/source + *.totalByWindow bars + postClerk.registrationsAnnual
+#   -> judgment-heavy / product calls, stay on snapshot
 WIRED = [wire_public_interest, wire_campus_exams, wire_lateral, wire_pc, wire_entry3l,
-         wire_summer_split, wire_lateral_charts, wire_partner_charts, wire_threeL_charts]
+         wire_summer_split, wire_lateral_charts, wire_partner_charts, wire_threeL_charts,
+         wire_postclerk_charts]
 
 
 def main() -> None:
