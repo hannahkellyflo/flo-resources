@@ -374,13 +374,21 @@ def wire_entry3l(data: dict) -> None:
 
 # ── 1L / 2L SUMMER SPLIT (Metabase db 2, LIVE) ───────────────────────────────
 # Law-student set (Law Student tag OR summer-ish title, minus lateral/partner/
-# paralegal/staff/3L guard). Level split by title token: 1L table = has '1l' OR no
-# token; 2L table = has '2l' OR no token; no-token roles appear in BOTH (Hannah).
-# No cycle window (Hannah 2026-08-12: show all). open = open now & deadline not passed;
-# upcoming = open date in the future. Firm Profile -> '—' (no slug in Metabase, Hannah).
+# paralegal/staff/3L guard). Level split by GRAD-TARGET YEAR (Hannah 2026-08-12):
+# Summer 2027 is two different classes — 1L table = Class of 2029 (grad-target 2029),
+# 2L table = Class of 2028 (grad-target 2028). This is the reliable structured signal
+# (every open summer role carries a grad-target rule); title-token split was wrong
+# (dumped generic "Summer Associate" roles into both, inflating the 1L table). The 1L
+# table is small until 1L recruiting opens (~Dec); the 2L table is the large one.
+# open = open now & deadline not passed; upcoming = open date in the future.
+# Firm Profile -> '—' (no slug in Metabase, Hannah).
 SUMMER_SQL = """
 SELECT j.ID AS job_id, o.NAME AS firm, j.TITLE AS position,
   j.OPEN_DATE AS open_date, j.CLOSE_DATE AS close_date,
+  EXISTS (SELECT 1 FROM FORWARD_JOB_GRAD_DATE_TARGET_RULE r WHERE r.JOB_ID=j.ID
+          AND r.IS_NOT_DELETED=1 AND r.RULE_TYPE='INDIVIDUAL_YEARS' AND YEAR(r.MIN_GRAD_DATE)=2029) AS g1L,
+  EXISTS (SELECT 1 FROM FORWARD_JOB_GRAD_DATE_TARGET_RULE r WHERE r.JOB_ID=j.ID
+          AND r.IS_NOT_DELETED=1 AND r.RULE_TYPE='INDIVIDUAL_YEARS' AND YEAR(r.MIN_GRAD_DATE)=2028) AS g2L,
   (SELECT GROUP_CONCAT(DISTINCT loc.OPTION SEPARATOR '; ')
      FROM JOB_OFFICE jo JOIN ORG_OFFICE ofc ON ofc.ID = jo.OFFICE_ID
      JOIN STATIC_LIST_OPTION loc ON loc.ID = ofc.OFFICE_LOCATION_ID
@@ -427,9 +435,13 @@ def wire_summer_split(data: dict) -> None:
     out = {"1L": {"open": [], "upcoming": []}, "2L": {"open": [], "upcoming": []}}
     now = datetime.datetime.now(datetime.timezone.utc)
     for r in rows:
-        t = (r.get("position") or "").lower()
-        has1, has2 = re.search(r"\b1l\b", t) is not None, re.search(r"\b2l\b", t) is not None
-        levels = [lv for lv, keep in (("1L", has1 or not has2), ("2L", has2 or not has1)) if keep]
+        levels = []
+        if int(r.get("g1L") or 0):
+            levels.append("1L")           # Class of 2029
+        if int(r.get("g2L") or 0):
+            levels.append("2L")           # Class of 2028
+        if not levels:
+            continue                       # targets neither 2028 nor 2029 -> not a 1L/2L Summer 2027 role
         od = r.get("open_date")
         upcoming = bool(od) and str(od)[:10] > now.date().isoformat()
         if not upcoming and _close_passed(r.get("close_date")):
