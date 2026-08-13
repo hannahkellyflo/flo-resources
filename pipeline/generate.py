@@ -780,15 +780,121 @@ GROUP BY yr, mo""")
     print(f"  lawStudent charts: postings + appsubs + net_all + ls_all + accounts + outreach + lf")
 
 
-# ── TODO: remaining chart segments (wire incrementally) ──────────────────────
-# lawStudent: appsubs (FORWARD applications), accounts (grad-cohort cumulative), net_all
-#   (school networking events UNIVERSITY=1), ls_all (interview volume, timeslot join)
-# outreach_500plus/u500 + lf_500plus/u500 -> <500/500+ pendo headcount split (deferred)
-# *.practice*/market*/grad*/source + *.totalByWindow bars + postClerk.registrationsAnnual
-#   -> judgment-heavy / product calls, stay on snapshot
+# ── OVERVIEW STAT TILES (runs last — derives from already-wired DATA.tables + a few flow
+# queries). 1L-2L card = combined 1L(grad 2029)+2L(grad 2028), "opened" by OPEN_DATE with
+# YoY deltas (same-day window). Categorical lateral tiles stay on snapshot (from breakdowns).
+LAWFIRM_STATS_SQL = ("""
+SELECT
+  SUM(j.OPEN_DATE >= DATE_FORMAT(NOW(),'%%Y-%%m-01')) AS m_cur,
+  SUM(j.OPEN_DATE >= DATE_FORMAT(DATE_SUB(NOW(),INTERVAL 1 YEAR),'%%Y-%%m-01')
+      AND j.OPEN_DATE <= DATE_SUB(NOW(),INTERVAL 1 YEAR)) AS m_prev,
+  SUM(j.OPEN_DATE >= '2026-06-01') AS s_cur,
+  SUM(j.OPEN_DATE >= '2025-06-01' AND j.OPEN_DATE <= DATE_SUB(NOW(),INTERVAL 1 YEAR)) AS s_prev
+FROM JOB j JOIN ORG o ON o.ID = j.ORG_ID
+WHERE j.DELETED_AT IS NULL AND (j.JOB_TYPE IN ('ATS','MANUAL_ENTRY') OR j.JOB_TYPE IS NULL)
+  AND j.JOB_CLASSIFICATION='LAW_FIRM' AND LOWER(o.NAME) NOT REGEXP '%s'
+  AND (EXISTS (SELECT 1 FROM JOB_HIRING_TYPE jh JOIN HIRING_TYPE h ON h.ID=jh.HIRING_TYPE_ID WHERE jh.JOB_ID=j.ID AND h.NAME='Law Student')
+       OR LOWER(j.TITLE) REGEXP 'summer associate|summer program|\\\\b1l\\\\b|\\\\b2l\\\\b|summer law|summer clerk|summer intern|summer fellow|summer scholar')
+  AND LOWER(j.TITLE) NOT REGEXP 'lateral|partner|paralegal|staff attorney|\\\\b3l\\\\b'
+  AND EXISTS (SELECT 1 FROM FORWARD_JOB_GRAD_DATE_TARGET_RULE r WHERE r.JOB_ID=j.ID
+              AND r.IS_NOT_DELETED=1 AND r.RULE_TYPE='INDIVIDUAL_YEARS' AND YEAR(r.MIN_GRAD_DATE) IN (2028,2029))
+""" % DEMO_REGEXP)
+
+PARTNER_12MO_SQL = f"""
+SELECT COUNT(DISTINCT j.ID) AS n
+FROM JOB j JOIN ORG o ON o.ID = j.ORG_ID
+WHERE j.DELETED_AT IS NULL AND (j.JOB_TYPE IN ('ATS','MANUAL_ENTRY') OR j.JOB_TYPE IS NULL)
+  AND j.JOB_CLASSIFICATION='LAW_FIRM' AND LOWER(o.NAME) NOT REGEXP '{DEMO_REGEXP}'
+  AND EXISTS (SELECT 1 FROM JOB_HIRING_TYPE j2 JOIN HIRING_TYPE h2 ON h2.ID=j2.HIRING_TYPE_ID
+              WHERE j2.JOB_ID=j.ID AND h2.NAME='Lateral Partner')
+  AND j.OPEN_DATE >= DATE_SUB(NOW(), INTERVAL 12 MONTH)"""
+
+RECEPTIONS_SQL = f"""
+SELECT COUNT(DISTINCT e.ID) AS n
+FROM EVENTS e JOIN ORG o ON o.ID = e.OID
+WHERE LOWER(e.NAME) REGEXP 'clerk' AND LOWER(e.NAME) REGEXP 'reception'
+  AND LOWER(e.NAME) NOT REGEXP 'interview|mock|test|1l|diversity|summer'
+  AND o.UNIVERSITY = 0 AND LOWER(o.NAME) NOT REGEXP '{DEMO_REGEXP}' AND e.DATE > CURDATE()"""
+
+
+def _parse_mdy(s):
+    try:
+        return datetime.datetime.strptime(str(s).strip(), "%b %d, %Y").date()
+    except (ValueError, TypeError):
+        return None
+
+
+def _opened_this_month(recs, key="Application Open Date"):
+    return sum(1 for r in recs if (d := _parse_mdy(r.get(key))) and (d.year, d.month) == (TODAY.year, TODAY.month))
+
+
+def wire_overview_stats(data: dict) -> None:
+    t, ov = data["tables"], data["overview"]
+
+    def pi(open_key, third_kind):
+        recs = t.get(open_key, [])
+        n = len(recs)
+        if third_kind == "paid":
+            paid = sum(1 for r in recs if str(r.get("Compensation", "")).strip() not in ("", "—"))
+            third = {"label": "Paid", "value": f"{round(100 * paid / n)}%" if n else "0%"}
+        else:
+            third = {"label": "Government", "value": str(sum(1 for r in recs if r.get("Government") is True))}
+        return [{"label": "Listed", "value": str(n)},
+                {"label": "Opened this month", "value": str(_opened_this_month(recs))}, third]
+
+    ov["piCardStats"] = {"summer": pi("piSummerOpen", "paid"), "extern": pi("piExternOpen", "gov"),
+                         "attorney": pi("piAttorneyOpen", "gov")}
+    for sub, k in (("pisummer", "summer"), ("piextern", "extern"), ("piattorney", "attorney")):
+        ov["headerStats"][sub] = [{**s, "delta": "", "hasDelta": False} for s in ov["piCardStats"][k]]
+
+    ov["headerStats"]["entrylevel3l"] = [{"label": "Currently open", "value": str(len(t.get("entry3l", []))),
+                                          "delta": "", "hasDelta": False}]
+
+    npc = len(t.get("pc", []))
+    recept = int(metabase_sql(MB_DB, RECEPTIONS_SQL)[0]["n"])
+    ov["headerStats"]["judicial"] = [{"label": "Open now", "value": str(npc), "delta": "", "hasDelta": False},
+                                     {"label": "Upcoming receptions", "value": str(recept), "delta": "", "hasDelta": False}]
+    ov["pcStats"] = [{"label": "Open now", "value": str(npc)}, {"label": "Upcoming opens", "value": "0"},
+                     {"label": "Upcoming receptions", "value": str(recept)}]
+
+    p12 = int(metabase_sql(MB_DB, PARTNER_12MO_SQL)[0]["n"])
+    ov["headerStats"]["lateralpartner"] = [{"label": "Opened past 12 mo", "value": str(p12), "delta": "", "hasDelta": False}]
+
+    lf = metabase_sql(MB_DB, LAWFIRM_STATS_SQL)[0]
+
+    def dlt(cur, prev):
+        return (f"{round((cur - prev) / prev * 100)}%", True) if prev else ("", False)
+    mc, mp = int(lf["m_cur"]), int(lf["m_prev"])
+    sc, sp = int(lf["s_cur"]), int(lf["s_prev"])
+    md, mh = dlt(mc, mp)
+    sd, sh = dlt(sc, sp)
+    ov["headerStats"]["lawfirm"] = [{"label": "Opened this month", "value": str(mc), "delta": md, "hasDelta": mh},
+                                    {"label": "Opened this season", "value": str(sc), "delta": sd, "hasDelta": sh}]
+    ov["cards"]["lawfirm"]["stats"] = [
+        {"value": str(mc), "delta": md, "vs": f"vs. {mp} this time last year"},
+        {"value": str(sc), "delta": sd, "vs": f"vs. {sp} by this date last year"}]
+
+    total = (len(t.get("lateral", [])) + npc + len(t.get("entry3l", []))
+             + len(t.get("summer1L", {}).get("open", [])) + len(t.get("summer2L", {}).get("open", []))
+             + sum(len(t.get(k, [])) for k in ("piSummerOpen", "piExternOpen", "piAttorneyOpen"))
+             + len(t.get("campus", [])))
+    ov["statStrip"][1]["value"] = f"{total // 10 * 10}+"
+    ups = []
+    for lv in ("summer1L", "summer2L"):
+        for r in t.get(lv, {}).get("upcoming", []):
+            v = next((r[c] for c in r if "Application Open Date" in c), "")
+            try:
+                ups.append(datetime.datetime.strptime(str(v).replace("Opens ", "").strip(), "%m/%d/%Y").date())
+            except ValueError:
+                pass
+    if ups:
+        ov["statStrip"][2]["value"] = min(ups).strftime("%b %-d")
+    print(f"  overview stats: 1L-2L {mc}/{sc}, 3L {len(t.get('entry3l', []))}, pc {npc}, partner12mo {p12}, openings {total}")
+
+
 WIRED = [wire_public_interest, wire_campus_exams, wire_lateral, wire_pc, wire_entry3l,
          wire_summer_split, wire_lateral_charts, wire_partner_charts, wire_threeL_charts,
-         wire_postclerk_charts, wire_lawstudent_charts]
+         wire_postclerk_charts, wire_lawstudent_charts, wire_overview_stats]
 
 
 def main() -> None:
