@@ -600,6 +600,51 @@ FROM JOB j JOIN ORG o ON o.ID=j.ORG_ID WHERE {cond}""")
     return {"open": arr("o"), "3mo": arr("w3"), "12mo": arr("w12")}
 
 
+# Candidate-source funnel (Q10231 base + our funnel/fold/demo layer). Warehouse db 67.
+# Smart status classification: "reached offer" excludes "no offer"/"before offer";
+# "reached interview" excludes "no interview"/"not interviewed"/"before interview"/
+# "no screen/interview" (so "Rejected AFTER Interview" counts, "No Interview" doesn't).
+_OFFER_COND = ("((LOWER(job_app_status) LIKE '%offer%' AND LOWER(job_app_status) NOT LIKE '%no offer%' "
+               "AND LOWER(job_app_status) NOT LIKE '%before offer%') OR LOWER(job_app_status) LIKE '%hired%')")
+_INTERVIEW_COND = (f"({_OFFER_COND} "
+                   "OR (LOWER(job_app_status) LIKE '%interview%' AND LOWER(job_app_status) NOT LIKE '%no interview%' "
+                   "AND LOWER(job_app_status) NOT LIKE '%not interview%' AND LOWER(job_app_status) NOT LIKE '%before interview%' "
+                   "AND LOWER(job_app_status) NOT LIKE '%no screen/interview%') "
+                   "OR LOWER(job_app_status) LIKE '%callback%' "
+                   "OR (LOWER(job_app_status) LIKE '%screening%' AND LOWER(job_app_status) NOT LIKE '%no screening%') "
+                   "OR LOWER(job_app_status) LIKE '%full round%' OR LOWER(job_app_status) LIKE '%round interview%')")
+_SRC_FOLD = ("""CASE WHEN source='Write-in' THEN 'Write-in' WHEN source='Agency' THEN 'Agency'
+  WHEN source IN ('Referral','Employee Referral') THEN 'Referral'
+  WHEN source='Direct Outreach' THEN 'Direct Outreach'
+  WHEN source='Advertisement/Job Board' THEN 'Advertisement/Job Board'
+  WHEN source='None' THEN 'None' ELSE 'Other' END""")
+SRC_DEMO = ("4,48,55,84,93,189,190,238,251,323,324,346,357,409,451,452,464,477,482,484,486,520,522,523,"
+            "525,526,538,543,549,550,569,585,586,594,669,673,675,679,682,684,685,699,764,767,790,798,828,"
+            "834,840,891,982,1003,1104,1268,1270,1276,1280,1338,1381,1387,1388,1391,1396,1411,1443,1464,"
+            "1476,1503,1506,1512,1517,1541,1607,1649,1659,1699,1734,1825,1885,1948,1949,1967,1970,1979,"
+            "1991,2074,2098,2106,2188,2196,2224,2247,2256,2259,2319,2330,2353,2370,2405,2406,2561,2580,"
+            "2582,2586,2590,2593,2597,2630,2643,2664,2665,2673,2678,2679,2686,2694,2700,2717,2727,2737,2738")
+
+
+def _source_funnel(jobtypes):
+    jt = ",".join(f"'{t}'" for t in jobtypes)
+    rows = metabase_sql(67, f"""
+SELECT {_SRC_FOLD} AS cat, COUNT(DISTINCT candidate_id) AS applied,
+  COUNT(DISTINCT CASE WHEN {_INTERVIEW_COND} THEN candidate_id END) AS interview,
+  COUNT(DISTINCT CASE WHEN {_OFFER_COND} THEN candidate_id END) AS offer
+FROM flocustomer.job_applications
+WHERE is_deleted IS FALSE AND job_type IN ({jt}) AND date_applied >= '2025-01-01'
+  AND org_id NOT IN ({SRC_DEMO}) GROUP BY cat""")
+    return {r["cat"]: {"applied": int(r["applied"]), "interview": int(r["interview"]), "offer": int(r["offer"])} for r in rows}
+
+
+def _apply_source(existing, funnel):
+    for e in existing:
+        if e.get("label") in funnel:
+            e["v"] = funnel[e["label"]]
+    return existing
+
+
 def wire_lateral_charts(data: dict) -> None:
     tl = metabase_sql(MB_DB, f"""
 SELECT YEAR(j.OPEN_DATE) AS yr, MONTH(j.OPEN_DATE) AS mo, COUNT(DISTINCT j.ID) AS n
@@ -611,7 +656,8 @@ GROUP BY yr, mo""")
     ch["marketByWindow"] = _windows(metabase_sql(MB_DB, _market_sql(LAT_COND)), "city")
     ch["gradByWindow"] = _windows(metabase_sql(MB_DB, _grad_sql(LAT_COND)), "gy", as_int=True, by_label=True)
     ch["practiceByWindow"] = _practice_windows(LAT_COND)
-    print(f"  lateral charts: timeline + totals + market + grad + practice")
+    ch["source"] = _apply_source(ch["source"], _source_funnel(("Lateral Associate", "Lateral Counsel", "Staff Attorney")))
+    print(f"  lateral charts: timeline + totals + market + grad + practice + source")
 
 
 def cycle_series(by: dict, cycle_start_year: int, axis_start=6) -> list:
@@ -676,7 +722,8 @@ GROUP BY yr, mo""")
     data["charts"]["partner"]["timeline"] = {"2025": monthly12(tl, 2025), "2026": monthly12(tl, 2026)}
     data["charts"]["partner"]["market"] = _market_single(PARTNER_TAG_COND)
     data["charts"]["partner"]["practice"] = _practice_windows(PARTNER_TAG_COND)["12mo"]
-    print(f"  partner charts: timeline + market + practice")
+    data["charts"]["partner"]["source"] = _apply_source(data["charts"]["partner"]["source"], _source_funnel(("Lateral Partner",)))
+    print(f"  partner charts: timeline + market + practice + source")
 
 
 def wire_threeL_charts(data: dict) -> None:
