@@ -523,8 +523,11 @@ def _windows(rows, labelkey, as_int=False, by_label=False):
     def lab(r):
         return int(r[labelkey]) if as_int else str(r[labelkey])
 
+    def ok(r):
+        return as_int or str(r[labelkey]).strip() not in ("--", "")
+
     def arr(k):
-        a = [[lab(r), int(r[k])] for r in rows if int(r[k]) > 0]
+        a = [[lab(r), int(r[k])] for r in rows if int(r[k]) > 0 and ok(r)]
         a.sort(key=(lambda x: x[0]) if by_label else (lambda x: -x[1]))
         return a
     return {"open": arr("o"), "3mo": arr("w3"), "12mo": arr("w12")}
@@ -594,7 +597,7 @@ JOIN JOB_OFFICE jo ON jo.JOB_ID=j.ID JOIN ORG_OFFICE ofc ON ofc.ID=jo.OFFICE_ID
 JOIN STATIC_LIST_OPTION loc ON loc.ID=ofc.OFFICE_LOCATION_ID
 WHERE {cond} AND (j.FORWARD_PUBLISHING_STATUS='PUBLISHED' OR j.OPEN_DATE>=DATE_SUB(NOW(),INTERVAL 12 MONTH))
 GROUP BY loc.OPTION HAVING n>0 ORDER BY n DESC""")
-    return [[str(r["city"]), int(r["n"])] for r in rows]
+    return [[str(r["city"]), int(r["n"])] for r in rows if str(r["city"]).strip() not in ("--", "")]
 
 
 def wire_partner_charts(data: dict) -> None:
