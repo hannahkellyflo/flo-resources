@@ -440,11 +440,61 @@ def wire_summer_split(data: dict) -> None:
           f"2L {len(out['2L']['open'])} open/{len(out['2L']['upcoming'])} upcoming")
 
 
-# ── TODO: other live sections (wire incrementally) ───────────────────────────
-# charts.*      -> Metabase aggregations (see specs 01-08 / memory); judgment-heavy
-#                  ones (practice-from-title, funnel, headcount) stay on snapshot until validated
+# ── MARKET CHARTS (Metabase db 2, LIVE) ──────────────────────────────────────
+# Wiring the CLEAN aggregations (timelines + window totals). The judgment-heavy chart
+# data stays on snapshot until validated: *.practiceByWindow/practice (title-derived),
+# *.marketByWindow/market (office-city), *.gradByWindow, *.source (candidate funnel),
+# and lawStudent headcount-split series.
+LATERAL_BASE = """
+FROM JOB j JOIN ORG o ON o.ID = j.ORG_ID
+WHERE j.DELETED_AT IS NULL
+  AND (j.JOB_TYPE = 'ATS' OR j.JOB_TYPE IS NULL) AND j.JOB_CLASSIFICATION = 'LAW_FIRM'
+  AND LOWER(o.NAME) NOT REGEXP '%s'
+  AND EXISTS (SELECT 1 FROM JOB_HIRING_TYPE j2 JOIN HIRING_TYPE h2 ON h2.ID=j2.HIRING_TYPE_ID
+              WHERE j2.JOB_ID=j.ID AND h2.NAME IN ('Lateral Associate','Lateral Counsel','Staff Attorney'))
+  AND NOT EXISTS (SELECT 1 FROM JOB_HIRING_TYPE j3 JOIN HIRING_TYPE h3 ON h3.ID=j3.HIRING_TYPE_ID
+                  WHERE j3.JOB_ID=j.ID AND h3.NAME='Lateral Partner')""" % DEMO_REGEXP
+
+
+def monthly12(rows, year: int, yr_key="yr", mo_key="mo", n_key="n") -> list:
+    """12-element Jan..Dec array of counts for `year`; the current partial month and
+    all future months are null (avoids a misleading dip at the in-progress month)."""
+    by = {int(r[mo_key]): int(r[n_key]) for r in rows if int(r[yr_key]) == year}
+    out = []
+    for m in range(1, 13):
+        complete = year < TODAY.year or (year == TODAY.year and m < TODAY.month)
+        out.append(by.get(m, 0) if complete else None)
+    return out
+
+
+def _job_window_totals(base_where: str) -> dict:
+    """open (published now) ⊆ 3mo ⊆ 12mo (published OR OPEN_DATE within the window)."""
+    r = metabase_sql(MB_DB, f"""
+SELECT SUM(CASE WHEN j.FORWARD_PUBLISHING_STATUS='PUBLISHED' THEN 1 ELSE 0 END) AS open_now,
+  SUM(CASE WHEN j.FORWARD_PUBLISHING_STATUS='PUBLISHED' OR j.OPEN_DATE >= DATE_SUB(NOW(), INTERVAL 3 MONTH) THEN 1 ELSE 0 END) AS w3,
+  SUM(CASE WHEN j.FORWARD_PUBLISHING_STATUS='PUBLISHED' OR j.OPEN_DATE >= DATE_SUB(NOW(), INTERVAL 12 MONTH) THEN 1 ELSE 0 END) AS w12
+{base_where}""")[0]
+    return {"open": int(r["open_now"]), "3mo": int(r["w3"]), "12mo": int(r["w12"])}
+
+
+def wire_lateral_charts(data: dict) -> None:
+    tl = metabase_sql(MB_DB, f"""
+SELECT YEAR(j.OPEN_DATE) AS yr, MONTH(j.OPEN_DATE) AS mo, COUNT(DISTINCT j.ID) AS n
+{LATERAL_BASE} AND YEAR(j.OPEN_DATE) IN (2025, 2026)
+GROUP BY yr, mo""")
+    ch = data["charts"]["lateral"]
+    ch["timeline"] = {"2025": monthly12(tl, 2025), "2026": monthly12(tl, 2026)}
+    ch["totalByWindow"] = _job_window_totals(LATERAL_BASE)
+    print(f"  lateral charts: timeline + totals {ch['totalByWindow']}")
+
+
+# ── TODO: remaining chart segments (wire incrementally) ──────────────────────
+# partner.timeline / threeL.timeline  -> same JOB monthly pattern (different filter)
+# postClerk.events/registrations      -> EVENTS + RATTENDEES monthly
+# lawStudent.*                        -> dashboard-661 aggregations (+ headcount split)
+# *.practice*/market*/grad*/source    -> judgment-heavy, stay on snapshot
 WIRED = [wire_public_interest, wire_campus_exams, wire_lateral, wire_pc, wire_entry3l,
-         wire_summer_split]
+         wire_summer_split, wire_lateral_charts]
 
 
 def main() -> None:
