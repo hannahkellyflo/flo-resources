@@ -572,6 +572,30 @@ THREEL_NOISE = (r"summer|intern|extern|clerk|test|vacation|fellowship|networking
                 r"general submission|general consideration|\\blateral\\b|managing counsel|"
                 r"training contract|sign.?up|\\bselsc\\b|\\b1l\\b|\\b2l\\b")
 
+# Breakdown conditions for 3L (grad-target 2027 + noise) and partner (tag-only, trailing
+# 12mo per memory). PARTNER breakdowns are single arrays (not windowed).
+THREEL_COND = f"""j.DELETED_AT IS NULL AND (j.JOB_TYPE IN ('ATS','MANUAL_ENTRY') OR j.JOB_TYPE IS NULL)
+  AND j.JOB_CLASSIFICATION='LAW_FIRM' AND LOWER(o.NAME) NOT REGEXP '{DEMO_REGEXP}'
+  AND EXISTS (SELECT 1 FROM FORWARD_JOB_GRAD_DATE_TARGET_RULE r2 WHERE r2.JOB_ID=j.ID
+              AND r2.IS_NOT_DELETED=1 AND r2.RULE_TYPE='INDIVIDUAL_YEARS' AND YEAR(r2.MIN_GRAD_DATE)=2027)
+  AND LOWER(j.TITLE) NOT REGEXP '{THREEL_NOISE}'"""
+PARTNER_TAG_COND = f"""j.DELETED_AT IS NULL AND j.JOB_CLASSIFICATION='LAW_FIRM'
+  AND LOWER(o.NAME) NOT REGEXP '{DEMO_REGEXP}'
+  AND EXISTS (SELECT 1 FROM JOB_HIRING_TYPE j2 JOIN HIRING_TYPE h2 ON h2.ID=j2.HIRING_TYPE_ID
+              WHERE j2.JOB_ID=j.ID AND h2.NAME='Lateral Partner')"""
+
+
+def _market_single(cond):
+    """Single [[city,count]] array (trailing 12mo), for partner (non-windowed breakdowns)."""
+    rows = metabase_sql(MB_DB, f"""
+SELECT loc.OPTION AS city, COUNT(DISTINCT j.ID) AS n
+FROM JOB j JOIN ORG o ON o.ID=j.ORG_ID
+JOIN JOB_OFFICE jo ON jo.JOB_ID=j.ID JOIN ORG_OFFICE ofc ON ofc.ID=jo.OFFICE_ID
+JOIN STATIC_LIST_OPTION loc ON loc.ID=ofc.OFFICE_LOCATION_ID
+WHERE {cond} AND (j.FORWARD_PUBLISHING_STATUS='PUBLISHED' OR j.OPEN_DATE>=DATE_SUB(NOW(),INTERVAL 12 MONTH))
+GROUP BY loc.OPTION HAVING n>0 ORDER BY n DESC""")
+    return [[str(r["city"]), int(r["n"])] for r in rows]
+
 
 def wire_partner_charts(data: dict) -> None:
     tl = metabase_sql(MB_DB, f"""
@@ -579,7 +603,8 @@ SELECT YEAR(j.OPEN_DATE) AS yr, MONTH(j.OPEN_DATE) AS mo, COUNT(DISTINCT j.ID) A
 {PARTNER_WHERE} AND YEAR(j.OPEN_DATE) IN (2025, 2026)
 GROUP BY yr, mo""")
     data["charts"]["partner"]["timeline"] = {"2025": monthly12(tl, 2025), "2026": monthly12(tl, 2026)}
-    print(f"  partner charts: timeline")
+    data["charts"]["partner"]["market"] = _market_single(PARTNER_TAG_COND)
+    print(f"  partner charts: timeline + market")
 
 
 def wire_threeL_charts(data: dict) -> None:
@@ -600,7 +625,8 @@ GROUP BY gyear, yr, mo""" % (DEMO_REGEXP, THREEL_NOISE))
         "2026": cycle_series(by[2026], 2025),   # Class of 2026 cycle: Jun 2025 – May 2026
         "2027": cycle_series(by[2027], 2026),   # Class of 2027 cycle: Jun 2026 – May 2027
     }
-    print(f"  3L charts: timeline")
+    data["charts"]["threeL"]["marketByWindow"] = _windows(metabase_sql(MB_DB, _market_sql(THREEL_COND)), "city")
+    print(f"  3L charts: timeline + market")
 
 
 # Post-clerkship market = firm-hosted judicial-clerk RECEPTIONS (EVENTS) + registrations
