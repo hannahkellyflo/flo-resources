@@ -1045,21 +1045,17 @@ def wire_overview_stats(data: dict) -> None:
     p12 = int(metabase_sql(MB_DB, PARTNER_12MO_SQL)[0]["n"])
     ov["headerStats"]["lateralpartner"] = [{"label": "Opened past 12 mo", "value": str(p12), "delta": "", "hasDelta": False}]
 
-    lf = metabase_sql(MB_DB, LAWFIRM_STATS_SQL)[0]
-
-    def dlt(cur, prev):
-        # suppress the YoY % when the prior-year baseline is too small to be meaningful
-        # (early-cycle same-window counts of 1-2 produce absurd percentages)
-        return (f"{round((cur - prev) / prev * 100)}%", True) if prev >= 5 else ("", False)
-    mc, mp = int(lf["m_cur"]), int(lf["m_prev"])
-    sc, sp = int(lf["s_cur"]), int(lf["s_prev"])
-    md, mh = dlt(mc, mp)
-    sd, sh = dlt(sc, sp)
-    ov["headerStats"]["lawfirm"] = [{"label": "Opened this month", "value": str(mc), "delta": md, "hasDelta": mh},
-                                    {"label": "Opened this season", "value": str(sc), "delta": sd, "hasDelta": sh}]
+    # 1L-2L Summer card: surface the Class of 2028 (2L) listing count and the
+    # Class of 2029 (1L) upcoming count, straight from the built tables.
+    s2 = t.get("summer2L", {})
+    s1 = t.get("summer1L", {})
+    c2028 = len(s2.get("open", [])) + len(s2.get("upcoming", []))
+    c2029up = len(s1.get("upcoming", []))
+    ov["headerStats"]["lawfirm"] = [{"label": "Class of 2028 listings", "value": str(c2028), "delta": "", "hasDelta": False},
+                                    {"label": "Class of 2029 upcoming", "value": str(c2029up), "delta": "", "hasDelta": False}]
     ov["cards"]["lawfirm"]["stats"] = [
-        {"value": str(mc), "delta": md, "vs": f"vs. {mp} this time last year"},
-        {"value": str(sc), "delta": sd, "vs": f"vs. {sp} by this date last year"}]
+        {"value": str(c2028), "delta": "", "vs": "2L Summer 2027 roles open"},
+        {"value": str(c2029up), "delta": "", "vs": "1L Summer 2027 roles opening soon"}]
 
     total = (len(t.get("lateral", [])) + npc + len(t.get("entry3l", []))
              + len(t.get("summer1L", {}).get("open", [])) + len(t.get("summer2L", {}).get("open", []))
@@ -1076,7 +1072,7 @@ def wire_overview_stats(data: dict) -> None:
                 pass
     if ups:
         ov["statStrip"][2]["value"] = min(ups).strftime("%b %-d")
-    print(f"  overview stats: 1L-2L {mc}/{sc}, 3L {len(t.get('entry3l', []))}, pc {npc}, partner12mo {p12}, openings {total}")
+    print(f"  overview stats: 2028 listings {c2028}, 2029 upcoming {c2029up}, 3L {len(t.get('entry3l', []))}, pc {npc}, partner12mo {p12}, openings {total}")
 
 
 WIRED = [wire_public_interest, wire_campus_exams, wire_lateral, wire_pc, wire_entry3l,
