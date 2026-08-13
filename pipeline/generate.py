@@ -493,6 +493,43 @@ SELECT SUM(CASE WHEN j.FORWARD_PUBLISHING_STATUS='PUBLISHED' THEN 1 ELSE 0 END) 
     return {"open": int(r["open_now"]), "3mo": int(r["w3"]), "12mo": int(r["w12"])}
 
 
+# Breakdown windows (open ⊆ 3mo ⊆ 12mo): open=published now; 3mo/12mo = published OR
+# OPEN_DATE within the window. Reusable across lateral/partner/3L market + grad panels.
+_WIN_CASE = ("""COUNT(DISTINCT CASE WHEN j.FORWARD_PUBLISHING_STATUS='PUBLISHED' THEN j.ID END) AS o,
+  COUNT(DISTINCT CASE WHEN j.FORWARD_PUBLISHING_STATUS='PUBLISHED' OR j.OPEN_DATE>=DATE_SUB(NOW(),INTERVAL 3 MONTH) THEN j.ID END) AS w3,
+  COUNT(DISTINCT CASE WHEN j.FORWARD_PUBLISHING_STATUS='PUBLISHED' OR j.OPEN_DATE>=DATE_SUB(NOW(),INTERVAL 12 MONTH) THEN j.ID END) AS w12""")
+LAT_COND = f"""j.DELETED_AT IS NULL AND j.JOB_CLASSIFICATION='LAW_FIRM'
+  AND LOWER(o.NAME) NOT REGEXP '{DEMO_REGEXP}'
+  AND EXISTS (SELECT 1 FROM JOB_HIRING_TYPE j2 JOIN HIRING_TYPE h2 ON h2.ID=j2.HIRING_TYPE_ID WHERE j2.JOB_ID=j.ID AND h2.NAME IN ('Lateral Associate','Lateral Counsel','Staff Attorney'))
+  AND NOT EXISTS (SELECT 1 FROM JOB_HIRING_TYPE j3 JOIN HIRING_TYPE h3 ON h3.ID=j3.HIRING_TYPE_ID WHERE j3.JOB_ID=j.ID AND h3.NAME='Lateral Partner')"""
+
+
+def _market_sql(cond):
+    return f"""SELECT loc.OPTION AS city, {_WIN_CASE}
+FROM JOB j JOIN ORG o ON o.ID=j.ORG_ID
+JOIN JOB_OFFICE jo ON jo.JOB_ID=j.ID JOIN ORG_OFFICE ofc ON ofc.ID=jo.OFFICE_ID
+JOIN STATIC_LIST_OPTION loc ON loc.ID=ofc.OFFICE_LOCATION_ID
+WHERE {cond} GROUP BY loc.OPTION HAVING w12 > 0"""
+
+
+def _grad_sql(cond):
+    return f"""SELECT YEAR(r.MIN_GRAD_DATE) AS gy, {_WIN_CASE}
+FROM JOB j JOIN ORG o ON o.ID=j.ORG_ID
+JOIN FORWARD_JOB_GRAD_DATE_TARGET_RULE r ON r.JOB_ID=j.ID AND r.IS_NOT_DELETED=1 AND r.RULE_TYPE='INDIVIDUAL_YEARS'
+WHERE {cond} AND YEAR(r.MIN_GRAD_DATE) BETWEEN 2011 AND 2026 GROUP BY gy"""
+
+
+def _windows(rows, labelkey, as_int=False, by_label=False):
+    def lab(r):
+        return int(r[labelkey]) if as_int else str(r[labelkey])
+
+    def arr(k):
+        a = [[lab(r), int(r[k])] for r in rows if int(r[k]) > 0]
+        a.sort(key=(lambda x: x[0]) if by_label else (lambda x: -x[1]))
+        return a
+    return {"open": arr("o"), "3mo": arr("w3"), "12mo": arr("w12")}
+
+
 def wire_lateral_charts(data: dict) -> None:
     tl = metabase_sql(MB_DB, f"""
 SELECT YEAR(j.OPEN_DATE) AS yr, MONTH(j.OPEN_DATE) AS mo, COUNT(DISTINCT j.ID) AS n
@@ -501,7 +538,9 @@ GROUP BY yr, mo""")
     ch = data["charts"]["lateral"]
     ch["timeline"] = {"2025": monthly12(tl, 2025), "2026": monthly12(tl, 2026)}
     ch["totalByWindow"] = _job_window_totals(LATERAL_BASE)
-    print(f"  lateral charts: timeline + totals {ch['totalByWindow']}")
+    ch["marketByWindow"] = _windows(metabase_sql(MB_DB, _market_sql(LAT_COND)), "city")
+    ch["gradByWindow"] = _windows(metabase_sql(MB_DB, _grad_sql(LAT_COND)), "gy", as_int=True, by_label=True)
+    print(f"  lateral charts: timeline + totals + market + grad")
 
 
 def cycle_series(by: dict, cycle_start_year: int, axis_start=6) -> list:
