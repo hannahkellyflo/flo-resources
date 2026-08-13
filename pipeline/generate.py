@@ -369,10 +369,82 @@ def wire_entry3l(data: dict) -> None:
     print(f"  entry3l: {len(rows)} 3L entry-level listings")
 
 
+# ── 1L / 2L SUMMER SPLIT (Metabase db 2, LIVE) ───────────────────────────────
+# Law-student set (Law Student tag OR summer-ish title, minus lateral/partner/
+# paralegal/staff/3L guard). Level split by title token: 1L table = has '1l' OR no
+# token; 2L table = has '2l' OR no token; no-token roles appear in BOTH (Hannah).
+# No cycle window (Hannah 2026-08-12: show all). open = open now & deadline not passed;
+# upcoming = open date in the future. Firm Profile -> '—' (no slug in Metabase, Hannah).
+SUMMER_SQL = """
+SELECT j.ID AS job_id, o.NAME AS firm, j.TITLE AS position,
+  j.OPEN_DATE AS open_date, j.CLOSE_DATE AS close_date,
+  (SELECT GROUP_CONCAT(DISTINCT loc.OPTION SEPARATOR '; ')
+     FROM JOB_OFFICE jo JOIN ORG_OFFICE ofc ON ofc.ID = jo.OFFICE_ID
+     JOIN STATIC_LIST_OPTION loc ON loc.ID = ofc.OFFICE_LOCATION_ID
+     WHERE jo.JOB_ID = j.ID) AS offices
+FROM JOB j JOIN ORG o ON o.ID = j.ORG_ID
+WHERE j.FORWARD_PUBLISHING_STATUS = 'PUBLISHED' AND j.DELETED_AT IS NULL
+  AND (j.JOB_TYPE = 'ATS' OR j.JOB_TYPE IS NULL) AND j.JOB_CLASSIFICATION = 'LAW_FIRM'
+  AND LOWER(o.NAME) NOT REGEXP '%s'
+  AND (EXISTS (SELECT 1 FROM JOB_HIRING_TYPE jh JOIN HIRING_TYPE h ON h.ID=jh.HIRING_TYPE_ID
+               WHERE jh.JOB_ID=j.ID AND h.NAME='Law Student')
+       OR LOWER(j.TITLE) REGEXP 'summer associate|summer program|\\\\b1l\\\\b|\\\\b2l\\\\b|summer law|summer clerk|summer intern|summer fellow|summer scholar')
+  AND LOWER(j.TITLE) NOT REGEXP 'lateral|partner|paralegal|staff attorney|\\\\b3l\\\\b'
+ORDER BY j.OPEN_DATE DESC;""" % DEMO_REGEXP
+
+
+def _close_passed(close) -> bool:
+    if not close:
+        return False
+    try:
+        return datetime.date.fromisoformat(str(close)[:10]) < TODAY
+    except ValueError:
+        return False
+
+
+def _summer_record(r: dict, lvl: str, upcoming: bool) -> dict:
+    jid = r.get("job_id")
+    od = fmt_mdy(r.get("open_date"))
+    return {
+        f"{lvl} Application Open Date": (f"Opens {od}" if upcoming else od) or "—",
+        "Employer": r.get("firm") or "—",
+        f"{lvl} Job Listing": ("Not yet open" if upcoming else
+                               {"text": "Apply", "href": f"https://florecruit.com/v2/app/forward/jobs/{jid}"}),
+        "Firm Profile": "—",
+        f"{lvl} Position": r.get("position") or "—",
+        "Office Location": r.get("offices") or "—",
+        "Scholarship": "—",
+        "Application Close Date": fmt_mdy(r.get("close_date")) or "—",
+    }
+
+
+def wire_summer_split(data: dict) -> None:
+    rows = metabase_sql(MB_DB, SUMMER_SQL)
+    out = {"1L": {"open": [], "upcoming": []}, "2L": {"open": [], "upcoming": []}}
+    now = datetime.datetime.now(datetime.timezone.utc)
+    for r in rows:
+        t = (r.get("position") or "").lower()
+        has1, has2 = re.search(r"\b1l\b", t) is not None, re.search(r"\b2l\b", t) is not None
+        levels = [lv for lv, keep in (("1L", has1 or not has2), ("2L", has2 or not has1)) if keep]
+        od = r.get("open_date")
+        upcoming = bool(od) and str(od)[:10] > now.date().isoformat()
+        if not upcoming and _close_passed(r.get("close_date")):
+            continue                       # deadline passed -> not open
+        for lv in levels:
+            out[lv]["upcoming" if upcoming else "open"].append(_summer_record(r, lv, upcoming))
+    for lv, key in (("1L", "summer1L"), ("2L", "summer2L")):
+        # open newest-first (already sorted desc), upcoming soonest-first
+        out[lv]["upcoming"].reverse()
+        data["tables"][key] = out[lv]
+    print(f"  summer split: 1L {len(out['1L']['open'])} open/{len(out['1L']['upcoming'])} upcoming, "
+          f"2L {len(out['2L']['open'])} open/{len(out['2L']['upcoming'])} upcoming")
+
+
 # ── TODO: other live sections (wire incrementally) ───────────────────────────
 # charts.*      -> Metabase aggregations (see specs 01-08 / memory); judgment-heavy
 #                  ones (practice-from-title, funnel, headcount) stay on snapshot until validated
-WIRED = [wire_public_interest, wire_campus_exams, wire_lateral, wire_pc, wire_entry3l]
+WIRED = [wire_public_interest, wire_campus_exams, wire_lateral, wire_pc, wire_entry3l,
+         wire_summer_split]
 
 
 def main() -> None:
