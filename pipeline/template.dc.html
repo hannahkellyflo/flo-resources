@@ -482,23 +482,11 @@
       <!-- ========== WORLD / SUBSECTION VIEW ========== -->
       <sc-if value="{{ isWorld }}" hint-placeholder-val="{{ false }}">
       <div style="background:{{ dPanelBg }};border:{{ dPanelBorder }};box-shadow:{{ dPanelShadow }};border-radius:24px;padding:30px;">
-        <!-- breadcrumb -->
-        <div style="display:flex;align-items:center;gap:10px;font-size:14px;margin-bottom:18px;">
-          <span onClick="{{ goOverview }}" style="display:inline-flex;align-items:center;gap:6px;color:#3E0C2D;font-weight:600;cursor:pointer;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-            Overview
-          </span>
-          <span style="color:#BDB7AE;">/</span>
-          <span style="color:#6E6860;font-weight:600;">{{ crumbWorld }}</span>
-          <span style="color:#BDB7AE;">/</span>
-          <span style="color:#6E6860;font-weight:600;">{{ crumbGroup }}</span>
-        </div>
-
         <!-- static section header (single tracker, no sibling switcher) -->
         <div style="border-bottom:2px solid {{ dRule }};margin-bottom:22px;padding-bottom:14px;display:flex;align-items:flex-end;justify-content:space-between;gap:28px;flex-wrap:wrap;">
           <div>
-            <div style="font-family:'Zalando Sans',sans-serif;font-weight:600;font-size:21px;letter-spacing:-0.01em;color:#3E0C2D;">{{ sectionTabs.0.name }}</div>
-            <div style="font-size:13px;color:#9A948C;margin-top:2px;">{{ sectionTabs.0.subtitle }}</div>
+            <div style="font-family:'Zalando Sans',sans-serif;font-weight:600;font-size:28px;letter-spacing:-0.02em;color:#3E0C2D;">{{ sectionTabs.0.name }}</div>
+            <div style="font-size:13.5px;color:#9A948C;margin-top:4px;">{{ sectionTabs.0.subtitle }}</div>
           </div>
           <sc-if value="{{ headerStatsShow }}">
           <div style="display:flex;gap:26px;align-items:flex-end;flex-wrap:wrap;">
@@ -515,6 +503,18 @@
             </sc-for>
           </div>
           </sc-if>
+        </div>
+
+        <!-- breadcrumb (below the header) -->
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;margin-bottom:22px;">
+          <span onClick="{{ goOverview }}" style="display:inline-flex;align-items:center;gap:6px;color:#3E0C2D;font-weight:600;cursor:pointer;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            Overview
+          </span>
+          <span style="color:#BDB7AE;">/</span>
+          <span style="color:#6E6860;font-weight:600;">{{ crumbWorld }}</span>
+          <span style="color:#BDB7AE;">/</span>
+          <span style="color:#6E6860;font-weight:600;">{{ crumbGroup }}</span>
         </div>
 
         <!-- stage switcher + search on one row (switcher hidden when the sub has a single tab) -->
