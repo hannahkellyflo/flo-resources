@@ -1579,7 +1579,7 @@ class Component extends DCLogic {
     const openFootCount = plz(splitOpenRows.length, 'opening');
     const noMatchMsg = 'No matches for “' + this.state.search.trim() + '” — try a firm, city, or position.';
     const emptyUpcomingMsg = hasQuery ? noMatchMsg : (is2L ? 'No Class of 2029 2L openings announced yet — check back this summer.' : 'No upcoming Class of 2029 1L openings announced yet — check back soon.');
-    const emptyOpenMsg = hasQuery ? noMatchMsg : (is2L ? 'No open Class of 2028 2L roles right now.' : 'No Class of 2029 1L roles are open yet — 1L Summer 2027 recruiting opens this winter.');
+    const emptyOpenMsg = hasQuery ? noMatchMsg : (is2L ? 'No open Class of 2028 2L roles right now.' : 'No Class of 2029 1L roles are open yet — 1L Summer 2027 recruiting opens this fall.');
     const openFile = is2L ? 'forward-jobs-2L-open-class-of-2028.csv' : 'forward-jobs-1L-open-class-of-2029.csv';
     const upcomingFile = is2L ? 'forward-jobs-2L-upcoming-class-of-2029.csv' : 'forward-jobs-1L-upcoming-class-of-2029.csv';
     const downloadOpen = () => this.exportCsv(splitColumns, splitOpenRows, openFile);
