@@ -590,7 +590,7 @@ FROM JOB j JOIN ORG o ON o.ID=j.ORG_ID WHERE {cond}""")
         if cat == "Other / General":
             continue
         for k in ("o", "w3", "w12"):
-            if int(r[k]):
+            if int(r[k] or 0):
                 agg[k][cat] = agg[k].get(cat, 0) + 1
 
     def arr(k):
