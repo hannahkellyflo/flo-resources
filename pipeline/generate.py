@@ -533,6 +533,73 @@ def _windows(rows, labelkey, as_int=False, by_label=False):
     return {"open": arr("o"), "3mo": arr("w3"), "12mo": arr("w12")}
 
 
+# Practice-area classifier (title -> master-taxonomy group). Fresh keyword heuristic
+# (practice is NOT a stored field). Ordered: substantive area first, general litigation
+# last (so "Patent Litigation"->IP, "Real Estate Litigation"->Real Estate, but bare
+# "Commercial Litigation"->Dispute Resolution). Unmatched -> 'Other / General' (excluded).
+_PRACTICE_RULES = [
+    ("Bankruptcy/Restructuring", r"bankruptc|restructur|insolvenc|workout|chapter 11|distressed"),
+    ("Antitrust", r"antitrust|\bcompetition\b|cartel"),
+    ("Tax", r"\btax\b|taxation"),
+    ("Capital Markets", r"capital markets|securit(ies|ization)|high.?yield|\becm\b|\bdcm\b|public offering|\bipo\b"),
+    ("Private Equity", r"private equity|\bpe\b|buyout"),
+    ("Banking & Finance", r"banking|leveraged finance|acquisition finance|project finance|structured finance|\bfinance\b|lending|\bcredit\b"),
+    ("Funds", r"fund formation|investment management|hedge fund|asset management|\bfunds\b"),
+    ("Real Estate", r"real estate|\breit\b|land use|leasing|zoning"),
+    ("Labor & Employment", r"\blabor\b|employment|\berisa\b|employee benefit|executive compensation|\bwage\b|labour"),
+    ("Intellectual Property", r"intellectual property|\bip\b|patent|trademark|copyright|trade secret"),
+    ("Privacy & Data Security", r"privacy|data security|data protection|\bcyber|information security"),
+    ("Technology", r"technolog|software|\bsaas\b|artificial intelligence|\bai\b|blockchain|\bcrypto"),
+    ("Healthcare", r"health\s?care|life science|pharmaceutic|\bfda\b|\bmedical\b|biotech"),
+    ("Energy & Projects", r"\benergy\b|oil\s?(&|and)?\s?gas|\bpower\b|renewable|utilit|infrastructure|\blng\b"),
+    ("Environment", r"environment|climate|\besg\b|natural resource"),
+    ("Insurance", r"insurance|reinsurance"),
+    ("Media & Entertainment", r"\bmedia\b|entertainment|\bfilm\b|\bmusic\b|advertising|\bsports\b"),
+    ("White Collar", r"white collar|\bfcpa\b|enforcement|government investigation|internal investigation"),
+    ("Trusts & Estates", r"\btrust|estate planning|private client|private wealth|fiduciary|\bwealth\b"),
+    ("Financial Services", r"fintech|financial services|\bpayments\b|consumer financial|broker.?dealer"),
+    ("Government, Administrative & Public Law", r"\bgovernment\b|regulatory|public law|administrative law|political law|lobbying"),
+    ("Construction", r"construction"),
+    ("Transportation", r"transportation|aviation|maritime|shipping|\brail\b"),
+    ("Family Law", r"family law|matrimonial|divorce"),
+    ("Trade & Commodities", r"international trade|commodit|customs|\bexport\b|sanctions|\bcfius\b"),
+    ("Corporate/M&A", r"corporate|\bm&a\b|m\s?&\s?a\b|\bmerger|acquisition|transactional|emerging compan|startup|venture capital"),
+    ("Dispute Resolution", r"litigation|\btrial\b|\bdispute|appellate|arbitration|\blitigator\b|class action|controvers"),
+]
+_PR = [(lbl, re.compile(pat)) for lbl, pat in _PRACTICE_RULES]
+
+
+def _practice(title):
+    t = (title or "").lower()
+    for lbl, rx in _PR:
+        if rx.search(t):
+            return lbl
+    return "Other / General"
+
+
+def _practice_windows(cond):
+    rows = metabase_sql(MB_DB, f"""
+SELECT j.TITLE AS title,
+  (j.FORWARD_PUBLISHING_STATUS='PUBLISHED') AS o,
+  (j.FORWARD_PUBLISHING_STATUS='PUBLISHED' OR j.OPEN_DATE>=DATE_SUB(NOW(),INTERVAL 3 MONTH)) AS w3,
+  (j.FORWARD_PUBLISHING_STATUS='PUBLISHED' OR j.OPEN_DATE>=DATE_SUB(NOW(),INTERVAL 12 MONTH)) AS w12
+FROM JOB j JOIN ORG o ON o.ID=j.ORG_ID WHERE {cond}""")
+    agg = {"o": {}, "w3": {}, "w12": {}}
+    for r in rows:
+        cat = _practice(r.get("title"))
+        if cat == "Other / General":
+            continue
+        for k in ("o", "w3", "w12"):
+            if int(r[k]):
+                agg[k][cat] = agg[k].get(cat, 0) + 1
+
+    def arr(k):
+        a = [[c, n] for c, n in agg[k].items()]
+        a.sort(key=lambda x: -x[1])
+        return a
+    return {"open": arr("o"), "3mo": arr("w3"), "12mo": arr("w12")}
+
+
 def wire_lateral_charts(data: dict) -> None:
     tl = metabase_sql(MB_DB, f"""
 SELECT YEAR(j.OPEN_DATE) AS yr, MONTH(j.OPEN_DATE) AS mo, COUNT(DISTINCT j.ID) AS n
@@ -543,7 +610,8 @@ GROUP BY yr, mo""")
     ch["totalByWindow"] = _job_window_totals(LATERAL_BASE)
     ch["marketByWindow"] = _windows(metabase_sql(MB_DB, _market_sql(LAT_COND)), "city")
     ch["gradByWindow"] = _windows(metabase_sql(MB_DB, _grad_sql(LAT_COND)), "gy", as_int=True, by_label=True)
-    print(f"  lateral charts: timeline + totals + market + grad")
+    ch["practiceByWindow"] = _practice_windows(LAT_COND)
+    print(f"  lateral charts: timeline + totals + market + grad + practice")
 
 
 def cycle_series(by: dict, cycle_start_year: int, axis_start=6) -> list:
@@ -607,7 +675,8 @@ SELECT YEAR(j.OPEN_DATE) AS yr, MONTH(j.OPEN_DATE) AS mo, COUNT(DISTINCT j.ID) A
 GROUP BY yr, mo""")
     data["charts"]["partner"]["timeline"] = {"2025": monthly12(tl, 2025), "2026": monthly12(tl, 2026)}
     data["charts"]["partner"]["market"] = _market_single(PARTNER_TAG_COND)
-    print(f"  partner charts: timeline + market")
+    data["charts"]["partner"]["practice"] = _practice_windows(PARTNER_TAG_COND)["12mo"]
+    print(f"  partner charts: timeline + market + practice")
 
 
 def wire_threeL_charts(data: dict) -> None:
@@ -629,7 +698,8 @@ GROUP BY gyear, yr, mo""" % (DEMO_REGEXP, THREEL_NOISE))
         "2027": cycle_series(by[2027], 2026),   # Class of 2027 cycle: Jun 2026 – May 2027
     }
     data["charts"]["threeL"]["marketByWindow"] = _windows(metabase_sql(MB_DB, _market_sql(THREEL_COND)), "city")
-    print(f"  3L charts: timeline + market")
+    data["charts"]["threeL"]["practiceByWindow"] = _practice_windows(THREEL_COND)
+    print(f"  3L charts: timeline + market + practice")
 
 
 # Post-clerkship market = firm-hosted judicial-clerk RECEPTIONS (EVENTS) + registrations
