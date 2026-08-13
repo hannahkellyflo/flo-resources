@@ -622,6 +622,87 @@ WITH subs AS (
 SELECT m, SUM(n) n FROM subs WHERE m >= '2022-07' GROUP BY m ORDER BY m"""
 
 
+# net_all = Metabase Q2445 "Law School Networking Events": EVENTS VIRTUAL IN (3,7,10)
+# ("University Events" types), demo org-id blocklist from the question. Reproduces snapshot
+# exactly. (The big candidate-law-school CTE in Q2445 is only for the unused T15 toggle.)
+NET_DEMO_ORGS = ("4,32,189,190,982,525,569,346,357,84,61,69,78,94,251,451,452,463,464,471,"
+                 "477,483,484,486,538,543,549,551,585,586,589,673,675,682,683,684,699,727,"
+                 "767,790,828,1003,1007,1135,1270,1280,1381,1396,1476,1503")
+NET_SQL = f"""
+SELECT YEAR(e.DATE) AS yr, MONTH(e.DATE) AS mo, COUNT(*) AS n
+FROM EVENTS e JOIN ORG o ON o.ID = e.OID
+WHERE e.VIRTUAL IN (3,7,10) AND o.ID NOT IN ({NET_DEMO_ORGS}) AND e.DATE >= '2022-07-01'
+GROUP BY yr, mo"""
+
+
+# ls_all = Metabase Q1123 "Law School Interview Volume": EVENTUSERTIMESLOTS (VIRTUAL IN
+# (5,9,11,13), org UNIVERSITY=1, demo org-id list). NOTE: NO event-name keyword filter
+# (that's the firm-side Q7459 only). Reproduces snapshot exactly.
+LS_SQL = f"""
+SELECT YEAR(ts.DATE) AS yr, MONTH(ts.DATE) AS mo, COUNT(*) AS n
+FROM EVENTUSERTIMESLOTS ts
+JOIN EVENTUSERSCHEDULE eus ON eus.ID = ts.EUSID
+JOIN EVENTS e ON e.ID = eus.EID
+JOIN ORG o ON o.ID = e.OID
+WHERE ts.DELETEDAT IS NULL AND e.VIRTUAL IN (5,9,11,13) AND o.UNIVERSITY = 1
+  AND o.ID NOT IN ({NET_DEMO_ORGS}) AND ts.DATE >= '2022-07-01'
+GROUP BY yr, mo"""
+
+# accounts = Metabase Q6436 "Account Creation - Cumulated": cumulative distinct active
+# candidates by grad class (grad year from QQ 'Graduation date' or education END_DATE),
+# REQUIRING a resolvable law school (QQ 'Law school' or education law school), by
+# ACTIVE_SINCE month. Each class over its Jul(Y-3)-Jun(Y-2) recruiting year. Validated.
+ACCOUNTS_SQL = """
+WITH cand AS (
+  SELECT DISTINCT RECRUITS.CANID cid,
+    CASE WHEN QQANSWERS.ANSWER LIKE '%2026%' THEN 2026 WHEN QQANSWERS.ANSWER LIKE '%2027%' THEN 2027
+         WHEN QQANSWERS.ANSWER LIKE '%2028%' THEN 2028 WHEN QQANSWERS.ANSWER LIKE '%2029%' THEN 2029 END gy
+  FROM QQANSWERS JOIN QQS ON QQS.ID=QQANSWERS.QID AND QQS.`LOCKED`=2 AND QQS.QUESTION='Graduation date'
+  JOIN RECRUITS ON QQANSWERS.RID=RECRUITS.ID
+  JOIN CANDIDATE_ACCOUNT ca ON ca.CANDIDATE_ID=RECRUITS.CANID AND ca.IS_ACTIVE=1 AND ca.DELETED_AT IS NULL
+  WHERE QQANSWERS.ANSWER LIKE '%2026%' OR QQANSWERS.ANSWER LIKE '%2027%'
+     OR QQANSWERS.ANSWER LIKE '%2028%' OR QQANSWERS.ANSWER LIKE '%2029%'
+  UNION
+  SELECT DISTINCT eh.candidate_id, YEAR(eh.END_DATE)
+  FROM CANDIDATE_EDUCATION_HISTORY_ENTRY eh
+  WHERE eh.DELETED_AT IS NULL AND YEAR(eh.END_DATE) IN (2026,2027,2028,2029)
+),
+has_ls AS (
+  SELECT DISTINCT RECRUITS.CANID cid FROM QQANSWERS JOIN QQS ON QQS.ID=QQANSWERS.QID
+    AND QQS.`LOCKED`=2 AND QQS.QUESTION='Law school' JOIN RECRUITS ON QQANSWERS.RID=RECRUITS.ID
+  UNION
+  SELECT DISTINCT eh.candidate_id FROM CANDIDATE_EDUCATION_HISTORY_ENTRY eh
+    JOIN LAW_SCHOOL ls ON ls.ID=eh.SCHOOL_ID AND ls.SCHOOL_TYPE='LAW_SCHOOL' WHERE eh.DELETED_AT IS NULL
+),
+monthly AS (
+  SELECT c.gy gy, DATE_FORMAT(ca.ACTIVE_SINCE,'%Y-%m') period, COUNT(DISTINCT c.cid) cnt
+  FROM cand c JOIN has_ls h ON h.cid=c.cid
+  JOIN CANDIDATE_ACCOUNT ca ON ca.CANDIDATE_ID=c.cid AND ca.IS_ACTIVE=1 AND ca.DELETED_AT IS NULL
+  WHERE c.gy IS NOT NULL GROUP BY c.gy, period
+),
+cum AS (SELECT gy, period, SUM(cnt) OVER (PARTITION BY gy ORDER BY period) cumc FROM monthly)
+SELECT gy, period, cumc FROM cum
+WHERE (gy=2026 AND period>='2023-07' AND period<'2024-07')
+   OR (gy=2027 AND period>='2024-07' AND period<'2025-07')
+   OR (gy=2028 AND period>='2025-07' AND period<'2026-07')
+   OR (gy=2029 AND period>='2026-07' AND period<'2027-07')
+ORDER BY gy, period"""
+
+
+def _cumulative_jul(per: dict, start_year: int) -> list:
+    """12-elem Jul..Jun cumulative array; forward-fills flat months, nulls strictly-future."""
+    out, last = [], None
+    for i in range(12):
+        mo = (6 + i) % 12 + 1
+        yr = start_year + (0 if mo >= 7 else 1)
+        key = f"{yr:04d}-{mo:02d}"
+        if key in per:
+            last = per[key]
+        future = yr > TODAY.year or (yr == TODAY.year and mo > TODAY.month)
+        out.append(None if future else last)
+    return out
+
+
 def _by_ym(rows, mkey="m", nkey="n"):
     out = {}
     for r in rows:
@@ -642,7 +723,18 @@ GROUP BY yr, mo""")
     # appsubs (Q2509, exact SQL) — cohorts 2023-24 .. 2026-27
     aby = _by_ym(metabase_sql(MB_DB, APPSUBS_SQL))
     ls["appsubs"] = {f"{cy}-{cy+1}": cycle_series(aby, cy, 7) for cy in range(2023, 2027)}
-    print(f"  lawStudent charts: postings + appsubs")
+    # net_all (Q2445) — university-event networking, Jul-Jun cycles
+    nby = {(int(r["yr"]), int(r["mo"])): int(r["n"]) for r in metabase_sql(MB_DB, NET_SQL)}
+    ls["net_all"] = {f"{cy}-{cy+1}": cycle_series(nby, cy, 7) for cy in range(2022, 2027)}
+    # ls_all (Q1123) — law-school interview volume, Jul-Jun cycles
+    lby = {(int(r["yr"]), int(r["mo"])): int(r["n"]) for r in metabase_sql(MB_DB, LS_SQL)}
+    ls["ls_all"] = {f"{cy}-{cy+1}": cycle_series(lby, cy, 7) for cy in range(2022, 2027)}
+    # accounts (Q6436) — cumulative account activations by grad Class
+    acc = {}
+    for r in metabase_sql(MB_DB, ACCOUNTS_SQL):
+        acc.setdefault(int(r["gy"]), {})[str(r["period"])[:7]] = int(r["cumc"])
+    ls["accounts"] = {f"Class of {Y}": _cumulative_jul(acc.get(Y, {}), Y - 3) for Y in (2026, 2027, 2028, 2029)}
+    print(f"  lawStudent charts: postings + appsubs + net_all + ls_all + accounts")
 
 
 # ── TODO: remaining chart segments (wire incrementally) ──────────────────────
