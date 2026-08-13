@@ -607,14 +607,42 @@ WHERE j.DELETED_AT IS NULL
   AND LOWER(j.TITLE) NOT REGEXP 'lateral|partner|paralegal|staff attorney|\\\\b3l\\\\b'""" % DEMO_REGEXP
 
 
+# appsubs = Metabase Q2509 "Forward Application Submissions" (native SQL extracted from
+# the saved question): JOB_APP (ATS, APP_SOURCE='FORWARD') + EXTERNAL_JOB_APP, by created
+# month. Reconstruction reproduced the snapshot EXACTLY.
+APPSUBS_SQL = """
+WITH subs AS (
+  SELECT DATE_FORMAT(ja.created_at,'%Y-%m') m, COUNT(*) n
+  FROM JOB_APP ja JOIN JOB j ON ja.job_id=j.id
+  WHERE j.job_type='ATS' AND ja.APP_SOURCE='FORWARD' GROUP BY m
+  UNION ALL
+  SELECT DATE_FORMAT(ja.created_at,'%Y-%m') m, COUNT(*) n
+  FROM EXTERNAL_JOB_APP ja JOIN JOB j ON ja.job_id=j.id GROUP BY m
+)
+SELECT m, SUM(n) n FROM subs WHERE m >= '2022-07' GROUP BY m ORDER BY m"""
+
+
+def _by_ym(rows, mkey="m", nkey="n"):
+    out = {}
+    for r in rows:
+        y, mo = str(r[mkey]).split("-")[:2]
+        out[(int(y), int(mo))] = int(r[nkey])
+    return out
+
+
 def wire_lawstudent_charts(data: dict) -> None:
+    ls = data["charts"]["lawStudent"]
+    # postings (rebuilt from Q6271 intent — law-student volume by open month)
     pr = metabase_sql(MB_DB, f"""
 SELECT YEAR(j.OPEN_DATE) AS yr, MONTH(j.OPEN_DATE) AS mo, COUNT(DISTINCT j.ID) AS n
 {LAWSTUDENT_JOB_WHERE} AND j.OPEN_DATE >= '2022-07-01'
 GROUP BY yr, mo""")
     by = {(int(r["yr"]), int(r["mo"])): int(r["n"]) for r in pr}
-    data["charts"]["lawStudent"]["postings"] = {f"{cy}-{cy+1}": cycle_series(by, cy, 7) for cy in range(2022, 2027)}
-    print(f"  lawStudent charts: postings")
+    ls["postings"] = {f"{cy}-{cy+1}": cycle_series(by, cy, 7) for cy in range(2022, 2027)}
+    # appsubs (Q2509, exact SQL) — cohorts 2023-24 .. 2026-27
+    aby = _by_ym(metabase_sql(MB_DB, APPSUBS_SQL))
+    ls["appsubs"] = {f"{cy}-{cy+1}": cycle_series(aby, cy, 7) for cy in range(2023, 2027)}
+    print(f"  lawStudent charts: postings + appsubs")
 
 
 # ── TODO: remaining chart segments (wire incrementally) ──────────────────────
