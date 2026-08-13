@@ -593,14 +593,39 @@ GROUP BY yr, mo""")
     print(f"  post-clerkship charts: events + registrations")
 
 
+# lawStudent.postings: law-student job postings by OPEN_DATE month, school-year (Jul-Jun)
+# cycles. Law-student = Law Student tag OR IS_1L/IS_2L flag OR summer-ish title, minus the
+# lateral/partner/paralegal/staff/3L guard; ATS+MANUAL_ENTRY; all non-deleted (volume).
+LAWSTUDENT_JOB_WHERE = """
+FROM JOB j JOIN ORG o ON o.ID = j.ORG_ID
+WHERE j.DELETED_AT IS NULL
+  AND (j.JOB_TYPE IN ('ATS','MANUAL_ENTRY') OR j.JOB_TYPE IS NULL) AND j.JOB_CLASSIFICATION = 'LAW_FIRM'
+  AND LOWER(o.NAME) NOT REGEXP '%s'
+  AND (EXISTS (SELECT 1 FROM JOB_HIRING_TYPE jh JOIN HIRING_TYPE h ON h.ID=jh.HIRING_TYPE_ID WHERE jh.JOB_ID=j.ID AND h.NAME='Law Student')
+       OR j.IS_1L=1 OR j.IS_2L=1
+       OR LOWER(j.TITLE) REGEXP 'summer associate|summer program|\\\\b1l\\\\b|\\\\b2l\\\\b|summer law|summer clerk|summer intern|summer fellow')
+  AND LOWER(j.TITLE) NOT REGEXP 'lateral|partner|paralegal|staff attorney|\\\\b3l\\\\b'""" % DEMO_REGEXP
+
+
+def wire_lawstudent_charts(data: dict) -> None:
+    pr = metabase_sql(MB_DB, f"""
+SELECT YEAR(j.OPEN_DATE) AS yr, MONTH(j.OPEN_DATE) AS mo, COUNT(DISTINCT j.ID) AS n
+{LAWSTUDENT_JOB_WHERE} AND j.OPEN_DATE >= '2022-07-01'
+GROUP BY yr, mo""")
+    by = {(int(r["yr"]), int(r["mo"])): int(r["n"]) for r in pr}
+    data["charts"]["lawStudent"]["postings"] = {f"{cy}-{cy+1}": cycle_series(by, cy, 7) for cy in range(2022, 2027)}
+    print(f"  lawStudent charts: postings")
+
+
 # ── TODO: remaining chart segments (wire incrementally) ──────────────────────
-# lawStudent.*  -> dashboard-661 aggregations (appsubs/postings/net/accounts clean;
-#                  outreach/lf need the <500/500+ pendo headcount split)
+# lawStudent: appsubs (FORWARD applications), accounts (grad-cohort cumulative), net_all
+#   (school networking events UNIVERSITY=1), ls_all (interview volume, timeslot join)
+# outreach_500plus/u500 + lf_500plus/u500 -> <500/500+ pendo headcount split (deferred)
 # *.practice*/market*/grad*/source + *.totalByWindow bars + postClerk.registrationsAnnual
 #   -> judgment-heavy / product calls, stay on snapshot
 WIRED = [wire_public_interest, wire_campus_exams, wire_lateral, wire_pc, wire_entry3l,
          wire_summer_split, wire_lateral_charts, wire_partner_charts, wire_threeL_charts,
-         wire_postclerk_charts]
+         wire_postclerk_charts, wire_lawstudent_charts]
 
 
 def main() -> None:
