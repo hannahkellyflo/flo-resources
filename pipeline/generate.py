@@ -711,6 +711,44 @@ def _by_ym(rows, mkey="m", nkey="n"):
     return out
 
 
+# outreach (Q2444) + lf interview (Q7459) with the <500/500+ attorney-headcount split.
+# The split is NOT in the questions — layered on via firm headcount. 500+ set = live
+# pendo.accounts.attorney_headcount>=500 (71 firms, warehouse db 67) + name-matched BigLaw
+# hosts whose pendo headcount is blank (Jones Day/Katten/Ballard/etc.); unknown -> <500.
+# STOPGAP: refresh the 500+ list periodically (pendo headcount backfill). outreach =
+# EVENTS VIRTUAL IN (0,1,2) (Q2444's real def; the snapshot used a wrong 0,1,2,4,8 guess).
+# lf = firm interview timeslots VIRTUAL IN (5,9,11,13) UNIVERSITY=0 WITH the keyword filter.
+HC_500PLUS = ("13,17,191,192,195,197,199,201,202,203,207,209,210,211,215,216,22,228,229,230,"
+              "232,233,234,237,240,241,258,272,273,277,278,28,280,284,304,310,313,325,33,335,"
+              "34,343,35,356,36,375,38,381,447,476,481,489,498,546,548,56,564,57,577,579,58,59,"
+              "605,63,632,67,732,736,751,772,92,"
+              "127,2579,16,288,276,591,2090,2232,130,279,1974,1983,2046,2647,2726")
+OUTREACH_SQL = f"""
+SELECT YEAR(e.DATE) AS yr, MONTH(e.DATE) AS mo,
+  SUM(CASE WHEN o.ID IN ({HC_500PLUS}) THEN 1 ELSE 0 END) AS p500,
+  SUM(CASE WHEN o.ID NOT IN ({HC_500PLUS}) THEN 1 ELSE 0 END) AS u500
+FROM EVENTS e JOIN ORG o ON o.ID = e.OID
+WHERE e.VIRTUAL IN (0,1,2) AND o.ID NOT IN ({NET_DEMO_ORGS}) AND e.DATE >= '2022-07-01'
+GROUP BY yr, mo"""
+LF_SQL = f"""
+SELECT YEAR(ts.DATE) AS yr, MONTH(ts.DATE) AS mo,
+  SUM(CASE WHEN o.ID IN ({HC_500PLUS}) THEN 1 ELSE 0 END) AS p500,
+  SUM(CASE WHEN o.ID NOT IN ({HC_500PLUS}) THEN 1 ELSE 0 END) AS u500
+FROM EVENTUSERTIMESLOTS ts
+JOIN EVENTUSERSCHEDULE eus ON eus.ID = ts.EUSID
+JOIN EVENTS e ON e.ID = eus.EID JOIN ORG o ON o.ID = e.OID
+WHERE ts.DELETEDAT IS NULL AND e.VIRTUAL IN (5,9,11,13) AND o.UNIVERSITY = 0
+  AND o.ID NOT IN ({NET_DEMO_ORGS})
+  AND LOWER(e.NAME) REGEXP '1l|2l|summer|student|callback|flyback|scholar|fellow|diversity'
+  AND ts.DATE >= '2022-07-01'
+GROUP BY yr, mo"""
+
+
+def _split_cycles(rows, key):
+    by = {(int(r["yr"]), int(r["mo"])): int(r[key]) for r in rows}
+    return {f"{cy}-{cy+1}": cycle_series(by, cy, 7) for cy in range(2022, 2027)}
+
+
 def wire_lawstudent_charts(data: dict) -> None:
     ls = data["charts"]["lawStudent"]
     # postings (rebuilt from Q6271 intent — law-student volume by open month)
@@ -734,7 +772,12 @@ GROUP BY yr, mo""")
     for r in metabase_sql(MB_DB, ACCOUNTS_SQL):
         acc.setdefault(int(r["gy"]), {})[str(r["period"])[:7]] = int(r["cumc"])
     ls["accounts"] = {f"Class of {Y}": _cumulative_jul(acc.get(Y, {}), Y - 3) for Y in (2026, 2027, 2028, 2029)}
-    print(f"  lawStudent charts: postings + appsubs + net_all + ls_all + accounts")
+    # outreach + lf interview volume, <500/500+ headcount split
+    oro = metabase_sql(MB_DB, OUTREACH_SQL)
+    ls["outreach_500plus"], ls["outreach_u500"] = _split_cycles(oro, "p500"), _split_cycles(oro, "u500")
+    lfo = metabase_sql(MB_DB, LF_SQL)
+    ls["lf_500plus"], ls["lf_u500"] = _split_cycles(lfo, "p500"), _split_cycles(lfo, "u500")
+    print(f"  lawStudent charts: postings + appsubs + net_all + ls_all + accounts + outreach + lf")
 
 
 # ── TODO: remaining chart segments (wire incrementally) ──────────────────────
