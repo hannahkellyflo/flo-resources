@@ -488,13 +488,72 @@ GROUP BY yr, mo""")
     print(f"  lateral charts: timeline + totals {ch['totalByWindow']}")
 
 
+def cycle_series(by: dict, cycle_start_year: int, axis_start=6) -> list:
+    """12-elem array on a cycle axis starting at `axis_start` month (6=Jun..May).
+    `by` = {(yr,mo): n}. Current partial month + future are null."""
+    out = []
+    for i in range(12):
+        mo = (axis_start - 1 + i) % 12 + 1
+        yr = cycle_start_year + (1 if mo < axis_start else 0)
+        complete = (yr, mo) < (TODAY.year, TODAY.month)
+        out.append(by.get((yr, mo), 0) if complete else None)
+    return out
+
+
+# Lateral PARTNER timeline uses tag OR title (the 'Lateral Partner' tag was ~absent
+# before Jul 2025, so pre-2025-07 points are a title-match FLOOR, not exact).
+PARTNER_WHERE = """
+FROM JOB j JOIN ORG o ON o.ID = j.ORG_ID
+WHERE j.DELETED_AT IS NULL
+  AND (j.JOB_TYPE = 'ATS' OR j.JOB_TYPE IS NULL) AND j.JOB_CLASSIFICATION = 'LAW_FIRM'
+  AND LOWER(o.NAME) NOT REGEXP '%s'
+  AND (EXISTS (SELECT 1 FROM JOB_HIRING_TYPE j2 JOIN HIRING_TYPE h2 ON h2.ID=j2.HIRING_TYPE_ID
+               WHERE j2.JOB_ID=j.ID AND h2.NAME='Lateral Partner')
+       OR (LOWER(j.TITLE) REGEXP 'partner'
+           AND LOWER(j.TITLE) NOT REGEXP 'non-partner|nonpartner|partnership program|partner development|business|assistant|paralegal|counsel to|of counsel'))""" % DEMO_REGEXP
+
+# 3L grad-target-year timeline: same noise exclusion as the entry3l table.
+THREEL_NOISE = (r"summer|intern|extern|clerk|test|vacation|fellowship|networking|\\boci\\b|resume|"
+                r"general submission|general consideration|\\blateral\\b|managing counsel|"
+                r"training contract|sign.?up|\\bselsc\\b|\\b1l\\b|\\b2l\\b")
+
+
+def wire_partner_charts(data: dict) -> None:
+    tl = metabase_sql(MB_DB, f"""
+SELECT YEAR(j.OPEN_DATE) AS yr, MONTH(j.OPEN_DATE) AS mo, COUNT(DISTINCT j.ID) AS n
+{PARTNER_WHERE} AND YEAR(j.OPEN_DATE) IN (2025, 2026)
+GROUP BY yr, mo""")
+    data["charts"]["partner"]["timeline"] = {"2025": monthly12(tl, 2025), "2026": monthly12(tl, 2026)}
+    print(f"  partner charts: timeline")
+
+
+def wire_threeL_charts(data: dict) -> None:
+    rows = metabase_sql(MB_DB, """
+SELECT r.gy AS gyear, YEAR(j.OPEN_DATE) AS yr, MONTH(j.OPEN_DATE) AS mo, COUNT(DISTINCT j.ID) AS n
+FROM JOB j JOIN ORG o ON o.ID = j.ORG_ID
+JOIN (SELECT DISTINCT JOB_ID, YEAR(MIN_GRAD_DATE) AS gy FROM FORWARD_JOB_GRAD_DATE_TARGET_RULE
+      WHERE IS_NOT_DELETED = 1 AND RULE_TYPE = 'INDIVIDUAL_YEARS') r ON r.JOB_ID = j.ID AND r.gy IN (2026, 2027)
+WHERE j.DELETED_AT IS NULL
+  AND (j.JOB_TYPE = 'ATS' OR j.JOB_TYPE IS NULL) AND j.JOB_CLASSIFICATION = 'LAW_FIRM'
+  AND LOWER(o.NAME) NOT REGEXP '%s'
+  AND LOWER(j.TITLE) NOT REGEXP '%s'
+  AND j.OPEN_DATE >= '2025-06-01' AND j.OPEN_DATE < '2027-06-01'
+GROUP BY gyear, yr, mo""" % (DEMO_REGEXP, THREEL_NOISE))
+    by = {gy: {(int(r["yr"]), int(r["mo"])): int(r["n"]) for r in rows if int(r["gyear"]) == gy}
+          for gy in (2026, 2027)}
+    data["charts"]["threeL"]["timeline"] = {
+        "2026": cycle_series(by[2026], 2025),   # Class of 2026 cycle: Jun 2025 – May 2026
+        "2027": cycle_series(by[2027], 2026),   # Class of 2027 cycle: Jun 2026 – May 2027
+    }
+    print(f"  3L charts: timeline")
+
+
 # ── TODO: remaining chart segments (wire incrementally) ──────────────────────
-# partner.timeline / threeL.timeline  -> same JOB monthly pattern (different filter)
 # postClerk.events/registrations      -> EVENTS + RATTENDEES monthly
 # lawStudent.*                        -> dashboard-661 aggregations (+ headcount split)
-# *.practice*/market*/grad*/source    -> judgment-heavy, stay on snapshot
+# *.practice*/market*/grad*/source + *.totalByWindow bars -> judgment-heavy, on snapshot
 WIRED = [wire_public_interest, wire_campus_exams, wire_lateral, wire_pc, wire_entry3l,
-         wire_summer_split, wire_lateral_charts]
+         wire_summer_split, wire_lateral_charts, wire_partner_charts, wire_threeL_charts]
 
 
 def main() -> None:
