@@ -863,7 +863,9 @@ def wire_overview_stats(data: dict) -> None:
     lf = metabase_sql(MB_DB, LAWFIRM_STATS_SQL)[0]
 
     def dlt(cur, prev):
-        return (f"{round((cur - prev) / prev * 100)}%", True) if prev else ("", False)
+        # suppress the YoY % when the prior-year baseline is too small to be meaningful
+        # (early-cycle same-window counts of 1-2 produce absurd percentages)
+        return (f"{round((cur - prev) / prev * 100)}%", True) if prev >= 5 else ("", False)
     mc, mp = int(lf["m_cur"]), int(lf["m_prev"])
     sc, sp = int(lf["s_cur"]), int(lf["s_prev"])
     md, mh = dlt(mc, mp)
