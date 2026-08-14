@@ -129,7 +129,7 @@
                       <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:8px;">Opened this month</div>
                       <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
                         <span style="font-family:'Zalando Sans',sans-serif;font-size:27px;font-weight:600;letter-spacing:-0.02em;line-height:1;color:#192B92;">{{ ovLfMonthVal }}</span>
-                        <span style="display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:#067F38;background:#E6F7EC;padding:3px 8px;border-radius:999px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 15 12 9 18 15"></polyline></svg>{{ ovLfMonthDelta }}</span>
+                        <sc-if value="{{ ovLfMonthShowDelta }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:#067F38;background:#E6F7EC;padding:3px 8px;border-radius:999px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 15 12 9 18 15"></polyline></svg>{{ ovLfMonthDelta }}</span></sc-if>
                       </div>
                       <div style="font-size:11.5px;color:#B0A99F;margin-top:6px;">{{ ovLfMonthVs }}</div>
                     </div>
@@ -137,7 +137,7 @@
                       <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:8px;">Opened this season</div>
                       <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
                         <span style="font-family:'Zalando Sans',sans-serif;font-size:27px;font-weight:600;letter-spacing:-0.02em;line-height:1;color:#192B92;">{{ ovLfSeasonVal }}</span>
-                        <span style="display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:#067F38;background:#E6F7EC;padding:3px 8px;border-radius:999px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 15 12 9 18 15"></polyline></svg>{{ ovLfSeasonDelta }}</span>
+                        <sc-if value="{{ ovLfSeasonShowDelta }}" hint-placeholder-val="{{ true }}"><span style="display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:#067F38;background:#E6F7EC;padding:3px 8px;border-radius:999px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 15 12 9 18 15"></polyline></svg>{{ ovLfSeasonDelta }}</span></sc-if>
                       </div>
                       <div style="font-size:11.5px;color:#B0A99F;margin-top:6px;">{{ ovLfSeasonVs }}</div>
                     </div>
@@ -2288,7 +2288,9 @@ class Component extends DCLogic {
     return {
       ov: OV,
       ovLfMonthVal: OV.lawfirm.stats[0].value, ovLfMonthDelta: OV.lawfirm.stats[0].delta, ovLfMonthVs: OV.lawfirm.stats[0].vs,
+      ovLfMonthShowDelta: !!OV.lawfirm.stats[0].delta && OV.lawfirm.stats[0].delta.charAt(0) !== '-',
       ovLfSeasonVal: OV.lawfirm.stats[1].value, ovLfSeasonDelta: OV.lawfirm.stats[1].delta, ovLfSeasonVs: OV.lawfirm.stats[1].vs,
+      ovLfSeasonShowDelta: !!OV.lawfirm.stats[1].delta && OV.lawfirm.stats[1].delta.charAt(0) !== '-',
       ovLfFirm: OV.lawfirm.latest.firm, ovLfRole: OV.lawfirm.latest.role, ovLfDate: OV.lawfirm.latest.date,
       ov3lOpen: OV.entrylevel3l.openValue, ov3lFirm: OV.entrylevel3l.latest.firm, ov3lRole: OV.entrylevel3l.latest.role, ov3lDate: OV.entrylevel3l.latest.date,
       ovPiSFirm: OV.pisummer.latest.firm, ovPiSRole: OV.pisummer.latest.role, ovPiSDate: OV.pisummer.latest.date,
