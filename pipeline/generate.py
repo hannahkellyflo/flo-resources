@@ -1028,14 +1028,44 @@ def _opened_this_month(recs, key="Application Open Date"):
     return sum(1 for r in recs if (d := _parse_mdy(r.get(key))) and (d.year, d.month) == (TODAY.year, TODAY.month))
 
 
+def _has_pay(comp) -> bool:
+    """A compensation value counts as 'paid' only if it's present and non-zero."""
+    s = str(comp or "").strip()
+    if s in ("", "—") or "unpaid" in s.lower():
+        return False
+    nums = re.findall(r"\d[\d,]*(?:\.\d+)?", s)
+    if nums and all(float(x.replace(",", "")) == 0 for x in nums):
+        return False  # e.g. "$0", "0/hr"
+    return True
+
+
+def _lawfirm_latest_postings(t: dict, k: int = 3) -> list:
+    """k most recently opened law-firm summer roles (across 1L + 2L) for the card."""
+    posts = []
+    for lv, key in (("1L", "summer1L"), ("2L", "summer2L")):
+        for r in t.get(key, {}).get("open", []):
+            ds = str(r.get(f"{lv} Application Open Date", "")).replace("Opens ", "").strip()
+            try:
+                d = datetime.datetime.strptime(ds, "%m/%d/%Y").date()
+            except ValueError:
+                continue
+            posts.append((d, r.get("Employer", "—"), r.get(f"{lv} Position", "—")))
+    posts.sort(key=lambda x: x[0], reverse=True)
+    return [{"firm": f, "role": role, "date": d.strftime("%b %-d")} for d, f, role in posts[:k]]
+
+
 def wire_overview_stats(data: dict) -> None:
     t, ov = data["tables"], data["overview"]
+    _latest = _lawfirm_latest_postings(t)
+    if _latest:
+        ov["cards"]["lawfirm"]["latestList"] = _latest
+        ov["cards"]["lawfirm"]["latest"] = _latest[0]
 
     def pi(open_key, third_kind):
         recs = t.get(open_key, [])
         n = len(recs)
         if third_kind == "paid":
-            paid = sum(1 for r in recs if str(r.get("Compensation", "")).strip() not in ("", "—"))
+            paid = sum(1 for r in recs if _has_pay(r.get("Compensation")))
             third = {"label": "Paid", "value": f"{round(100 * paid / n)}%" if n else "0%"}
         else:
             third = {"label": "Government", "value": str(sum(1 for r in recs if r.get("Government") is True))}

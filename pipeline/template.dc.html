@@ -35,6 +35,8 @@
   .campus-row .row-expand { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 7px; color: #B4ADA2; opacity: 0; transition: opacity 120ms ease, background 120ms ease, color 120ms ease; }
   .campus-row:hover .row-expand { opacity: 1; }
   .campus-row .row-expand:hover { background: #EDE7DE; color: #3E0C2D; }
+  .tcard { min-height: 420px; }
+  .tcard:has(.tempty) { min-height: 210px; }   /* halve the height when a table is fully empty */
   .tscroll { scrollbar-width: thin; scrollbar-color: #DED9D0 transparent; }
   .tscroll::-webkit-scrollbar { height: 7px; }
   .tscroll::-webkit-scrollbar-track { background: transparent; }
@@ -115,25 +117,17 @@
               <sc-if value="{{ studentLawfirm }}">
               <div style="display:flex;flex-direction:column;gap:14px;">
               <!-- Law Firm Hiring — table preview -->
-              <div onClick="{{ openLawfirm }}" style="background:#fff;border:1.5px solid #DBD7CF;border-radius:14px;padding:18px 20px;box-shadow:0 3px 12px rgba(0,0,0,.05);overflow:hidden;cursor:pointer;transition:border-color 120ms ease,box-shadow 120ms ease,transform 120ms ease;display:flex;flex-direction:column;flex:1;" style-hover="border-color:#3E0C2D;box-shadow:0 8px 22px rgba(60,11,44,.14);transform:translateY(-2px);">
-                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;background:#FAF9F6;margin:-18px -20px 0;padding:16px 20px 14px;">
+              <div style="background:#fff;border:1.5px solid #DBD7CF;border-radius:14px;padding:18px 20px;box-shadow:0 3px 12px rgba(0,0,0,.05);overflow:hidden;transition:border-color 120ms ease,box-shadow 120ms ease,transform 120ms ease;display:flex;flex-direction:column;flex:1;" style-hover="border-color:#1A1A1A;box-shadow:0 8px 22px rgba(26,26,26,.16);transform:translateY(-2px);">
+                <div onClick="{{ openLawfirm }}" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;background:#FAF9F6;margin:-18px -20px 0;padding:16px 20px 14px;cursor:pointer;transition:background 120ms ease;" style-hover="background:#F1EDE4;">
                   <div>
-                    <div style="font-family:'Zalando Sans',sans-serif;font-weight:600;font-size:19px;letter-spacing:-0.01em;color:#290A1B;">1L–2L Summer Associates</div>
-                    <div style="font-size:13px;color:#9A948C;margin-top:3px;">Law firm summer recruiting - Class of 2028, 2029</div>
+                    <div style="font-family:'Zalando Sans',sans-serif;font-weight:600;font-size:19px;letter-spacing:-0.01em;color:#1A1A1A;">1L–2L Summer Associates</div>
+                    <div style="font-size:13px;color:#8A857C;margin-top:3px;">Law firm summer recruiting - Class of 2028, 2029</div>
                   </div>
-                  <div style="color:#3E0C2D;flex-shrink:0;margin-top:2px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
+                  <div style="color:#3E0C2D;flex-shrink:0;margin-top:2px;font-size:12.5px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;">View tracker <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
                 </div>
                 <div style="margin-top:16px;padding-top:16px;border-top:1px solid #EFECE6;flex:1;display:flex;flex-direction:column;">
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+                  <div onClick="{{ openLawfirm }}" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:0 -8px;padding:8px;border-radius:8px;cursor:pointer;transition:background 120ms ease;" style-hover="background:#FAF8F4;">
                     <div>
-                      <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:8px;">Opened this month</div>
-                      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
-                        <span style="font-family:'Zalando Sans',sans-serif;font-size:27px;font-weight:600;letter-spacing:-0.02em;line-height:1;color:#192B92;">{{ ovLfMonthVal }}</span>
-                        <sc-if value="{{ ovLfMonthShowDelta }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:#067F38;background:#E6F7EC;padding:3px 8px;border-radius:999px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 15 12 9 18 15"></polyline></svg>{{ ovLfMonthDelta }}</span></sc-if>
-                      </div>
-                      <div style="font-size:11.5px;color:#B0A99F;margin-top:6px;">{{ ovLfMonthVs }}</div>
-                    </div>
-                    <div style="border-left:1px solid #EFECE6;padding-left:18px;">
                       <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:8px;">This season · Class of 2029</div>
                       <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
                         <span style="font-family:'Zalando Sans',sans-serif;font-size:27px;font-weight:600;letter-spacing:-0.02em;line-height:1;color:#192B92;">{{ ovLfSeasonVal }}</span>
@@ -141,8 +135,16 @@
                       </div>
                       <div style="font-size:11.5px;color:#B0A99F;margin-top:6px;">{{ ovLfSeasonVs }}</div>
                     </div>
+                    <div style="border-left:1px solid #EFECE6;padding-left:18px;">
+                      <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:8px;">Opened this month</div>
+                      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+                        <span style="font-family:'Zalando Sans',sans-serif;font-size:27px;font-weight:600;letter-spacing:-0.02em;line-height:1;color:#192B92;">{{ ovLfMonthVal }}</span>
+                        <sc-if value="{{ ovLfMonthShowDelta }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:#067F38;background:#E6F7EC;padding:3px 8px;border-radius:999px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 15 12 9 18 15"></polyline></svg>{{ ovLfMonthDelta }}</span></sc-if>
+                      </div>
+                      <div style="font-size:11.5px;color:#B0A99F;margin-top:6px;">{{ ovLfMonthVs }}</div>
+                    </div>
                   </div>
-                  <div style="margin-top:22px;padding-top:16px;border-top:1px solid #F1EEE8;">
+                  <div onClick="{{ openLawfirmData }}" style="margin:22px -8px 0;padding:16px 8px 4px;border-top:1px solid #F1EEE8;border-radius:8px;cursor:pointer;transition:background 120ms ease;" style-hover="background:#FAF8F4;">
                     <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:2px;">
                       <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;">Application submissions</div>
                       <div style="font-size:10.5px;color:#B0A99F;">Submission volume · monthly</div>
@@ -155,40 +157,26 @@
                       <text x="8.0" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">S</text><text x="33.8" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">O</text><text x="59.6" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">N</text><text x="85.5" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">D</text><text x="111.3" y="53" text-anchor="middle" font-size="7" font-weight="700" fill="#192B92" font-family="Zalando Sans,sans-serif">J</text><text x="137.1" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">F</text><text x="162.9" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">M</text><text x="188.7" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">A</text><text x="214.5" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">M</text><text x="240.4" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">J</text><text x="266.2" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">J</text><text x="292.0" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">A</text>
                     </svg>
                   </div>
-                  <div style="margin-top:22px;padding-top:16px;border-top:1px solid #F1EEE8;">
-                    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:2px;">
-                      <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;">Interview timing</div>
-                      <div style="font-size:10.5px;color:#B0A99F;">Callback volume · monthly</div>
-                    </div>
-                    <svg viewBox="0 0 300 58" width="100%" style="display:block;height:auto;">
-                      <line x1="8" y1="40" x2="292" y2="40" stroke="#E0DBD2" stroke-width="1"></line>
-                      <polyline points="8.0,39.7 33.8,39.8 59.6,39.2 85.5,37.8 111.3,30.5 137.1,34.7 162.9,39.1 188.7,31.5 214.5,24.4 240.4,27.2 266.2,37.4 292.0,39.2" fill="none" stroke="#C4BEB4" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"></polyline>
-                      <polyline points="8.0,39.6 33.8,39.5 59.6,34.7 85.5,29.9 111.3,8.0 137.1,25.1 162.9,37.6 188.7,39.4 214.5,39.4 240.4,39.0 266.2,39.3 292.0,39.9" fill="none" stroke="#192B92" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"></polyline>
-                      <circle cx="8.0" cy="39.6" r="1.8" fill="#192B92" stroke="#fff" stroke-width="0.8"></circle><circle cx="33.8" cy="39.5" r="1.8" fill="#192B92" stroke="#fff" stroke-width="0.8"></circle><circle cx="59.6" cy="34.7" r="1.8" fill="#192B92" stroke="#fff" stroke-width="0.8"></circle><circle cx="85.5" cy="29.9" r="1.8" fill="#192B92" stroke="#fff" stroke-width="0.8"></circle><circle cx="111.3" cy="8.0" r="2.4" fill="#192B92" stroke="#fff" stroke-width="0.8"></circle><circle cx="137.1" cy="25.1" r="1.8" fill="#192B92" stroke="#fff" stroke-width="0.8"></circle><circle cx="162.9" cy="37.6" r="1.8" fill="#192B92" stroke="#fff" stroke-width="0.8"></circle><circle cx="188.7" cy="39.4" r="1.8" fill="#192B92" stroke="#fff" stroke-width="0.8"></circle><circle cx="214.5" cy="39.4" r="1.8" fill="#192B92" stroke="#fff" stroke-width="0.8"></circle><circle cx="240.4" cy="39.0" r="1.8" fill="#192B92" stroke="#fff" stroke-width="0.8"></circle><circle cx="266.2" cy="39.3" r="1.8" fill="#192B92" stroke="#fff" stroke-width="0.8"></circle><circle cx="292.0" cy="39.9" r="1.8" fill="#192B92" stroke="#fff" stroke-width="0.8"></circle>
-                      <text x="8.0" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">S</text><text x="33.8" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">O</text><text x="59.6" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">N</text><text x="85.5" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">D</text><text x="111.3" y="53" text-anchor="middle" font-size="7" font-weight="700" fill="#192B92" font-family="Zalando Sans,sans-serif">J</text><text x="137.1" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">F</text><text x="162.9" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">M</text><text x="188.7" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">A</text><text x="214.5" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">M</text><text x="240.4" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">J</text><text x="266.2" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">J</text><text x="292.0" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">A</text>
-                    </svg>
-                  </div>
-                  <div style="margin-top:20px;padding:16px 0 20px;border-top:1px solid #F1EEE8;">
-                    <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:9px;">Latest posting</div>
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-                      <div><div style="font-size:14px;color:#212121;">{{ ovLfFirm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ ovLfRole }}</div></div>
-                      <span style="font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums;color:#3E0C2D;white-space:nowrap;">{{ ovLfDate }}</span>
-                    </div>
-                  </div>
-                  <div style="margin-top:auto;padding-top:16px;border-top:1px solid #F1EEE8;display:flex;justify-content:flex-end;">
-                    <span style="font-size:13px;font-weight:600;color:#3E0C2D;white-space:nowrap;">View tracker →</span>
+                  <div onClick="{{ openLawfirm }}" style="margin:20px -8px 0;padding:16px 8px 14px;border-top:1px solid #F1EEE8;border-radius:8px;cursor:pointer;transition:background 120ms ease;" style-hover="background:#FAF8F4;">
+                    <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:10px;">Latest postings</div>
+                    <sc-for list="{{ ovLfPostings }}" as="p" hint-placeholder-count="3">
+                      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:5px 0;">
+                        <div><div style="font-size:14px;color:#1A1A1A;">{{ p.firm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ p.role }}</div></div>
+                        <span style="font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums;color:#3E0C2D;white-space:nowrap;">{{ p.date }}</span>
+                      </div>
+                    </sc-for>
                   </div>
                 </div>
               </div>
 
               <!-- 3L Entry-Level Associates — table preview -->
-              <div onClick="{{ open3L }}" style="background:#fff;border:1.5px solid #DBD7CF;border-radius:14px;padding:18px 20px;box-shadow:0 3px 12px rgba(0,0,0,.05);overflow:hidden;cursor:pointer;transition:border-color 120ms ease,box-shadow 120ms ease,transform 120ms ease;display:flex;flex-direction:column;flex:1;" style-hover="border-color:#3E0C2D;box-shadow:0 8px 22px rgba(60,11,44,.14);transform:translateY(-2px);">
+              <div onClick="{{ open3L }}" style="background:#fff;border:1.5px solid #DBD7CF;border-radius:14px;padding:18px 20px;box-shadow:0 3px 12px rgba(0,0,0,.05);overflow:hidden;cursor:pointer;transition:border-color 120ms ease,box-shadow 120ms ease,transform 120ms ease;display:flex;flex-direction:column;flex:1;" style-hover="border-color:#1A1A1A;box-shadow:0 8px 22px rgba(26,26,26,.16);transform:translateY(-2px);">
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;background:#FAF9F6;margin:-18px -20px 0;padding:16px 20px 14px;">
                   <div>
-                    <div style="font-family:'Zalando Sans',sans-serif;font-weight:600;font-size:19px;letter-spacing:-0.01em;color:#290A1B;">3L Entry-Level Associates</div>
+                    <div style="font-family:'Zalando Sans',sans-serif;font-weight:600;font-size:19px;letter-spacing:-0.01em;color:#1A1A1A;">3L Entry-Level Associates</div>
                     <div style="font-size:13px;color:#9A948C;margin-top:3px;">Law firm entry-level recruiting - Class of 2027</div>
                   </div>
-                  <div style="color:#3E0C2D;flex-shrink:0;margin-top:2px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
+                  <div style="color:#3E0C2D;flex-shrink:0;margin-top:2px;font-size:12.5px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;">View tracker <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
                 </div>
                 <div style="margin-top:15px;padding-top:16px;border-top:1px solid #EFECE6;flex:1;display:flex;flex-direction:column;">
                   <div>
@@ -218,9 +206,6 @@
                       <span style="font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums;color:#3E0C2D;white-space:nowrap;">{{ ov3lDate }}</span>
                     </div>
                   </div>
-                  <div style="margin-top:auto;padding-top:16px;border-top:1px solid #F1EEE8;display:flex;justify-content:flex-end;">
-                    <span style="font-size:13px;font-weight:600;color:#3E0C2D;white-space:nowrap;">View tracker →</span>
-                  </div>
                 </div>
               </div>
               </div>
@@ -231,10 +216,10 @@
               <div onClick="{{ openPISummer }}" style="background:#fff;border:1.5px solid #DBD7CF;border-radius:14px;padding:18px 20px;box-shadow:0 3px 12px rgba(0,0,0,.05);overflow:hidden;cursor:pointer;transition:border-color 120ms ease,box-shadow 120ms ease,transform 120ms ease;display:flex;flex-direction:column;flex:1;" style-hover="border-color:#0174BE;box-shadow:0 8px 22px rgba(1,116,190,.14);transform:translateY(-2px);">
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;background:#FAF9F6;margin:-18px -20px 0;padding:16px 20px 14px;">
                   <div>
-                    <div style="font-family:'Zalando Sans',sans-serif;font-weight:600;font-size:19px;letter-spacing:-0.01em;color:#290A1B;">Law Student Internships</div>
+                    <div style="font-family:'Zalando Sans',sans-serif;font-weight:600;font-size:19px;letter-spacing:-0.01em;color:#1A1A1A;">Law Student Internships</div>
                     <div style="font-size:13px;color:#9A948C;margin-top:3px;">Public interest internships & summer roles - Class of 2028, 2029</div>
                   </div>
-                  <div style="color:#0174BE;flex-shrink:0;margin-top:2px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
+                  <div style="color:#0174BE;flex-shrink:0;margin-top:2px;font-size:12.5px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;">View tracker <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
                 </div>
                 <div style="margin-top:15px;padding-top:16px;border-top:1px solid #EFECE6;flex:1;display:flex;flex-direction:column;">
                   <div style="display:flex;gap:28px;flex-wrap:wrap;">
@@ -252,9 +237,6 @@
                       <span style="font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums;color:#0174BE;white-space:nowrap;">{{ ovPiSDate }}</span>
                     </div>
                   </div>
-                  <div style="margin-top:auto;padding-top:16px;border-top:1px solid #F1EEE8;display:flex;justify-content:flex-end;">
-                    <span style="font-size:13px;font-weight:600;color:#0174BE;white-space:nowrap;">View tracker →</span>
-                  </div>
                 </div>
               </div>
 
@@ -262,10 +244,10 @@
               <div onClick="{{ openPIExtern }}" style="background:#fff;border:1.5px solid #DBD7CF;border-radius:14px;padding:18px 20px;box-shadow:0 3px 12px rgba(0,0,0,.05);overflow:hidden;cursor:pointer;transition:border-color 120ms ease,box-shadow 120ms ease,transform 120ms ease;display:flex;flex-direction:column;flex:1;" style-hover="border-color:#0174BE;box-shadow:0 8px 22px rgba(1,116,190,.14);transform:translateY(-2px);">
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;background:#FAF9F6;margin:-18px -20px 0;padding:16px 20px 14px;">
                   <div>
-                    <div style="font-family:'Zalando Sans',sans-serif;font-weight:600;font-size:19px;letter-spacing:-0.01em;color:#290A1B;">Entry-Level Positions</div>
+                    <div style="font-family:'Zalando Sans',sans-serif;font-weight:600;font-size:19px;letter-spacing:-0.01em;color:#1A1A1A;">Entry-Level Positions</div>
                     <div style="font-size:13px;color:#9A948C;margin-top:3px;">Public interest entry-level roles - Class of 2026, 2027</div>
                   </div>
-                  <div style="color:#0174BE;flex-shrink:0;margin-top:2px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
+                  <div style="color:#0174BE;flex-shrink:0;margin-top:2px;font-size:12.5px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;">View tracker <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
                 </div>
                 <div style="margin-top:15px;padding-top:16px;border-top:1px solid #EFECE6;flex:1;display:flex;flex-direction:column;">
                   <div style="display:flex;gap:28px;flex-wrap:wrap;">
@@ -282,9 +264,6 @@
                       <div><div style="font-size:14px;color:#212121;">{{ ovPiEFirm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ ovPiERole }}</div></div>
                       <span style="font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums;color:#0174BE;white-space:nowrap;">{{ ovPiEDate }}</span>
                     </div>
-                  </div>
-                  <div style="margin-top:auto;padding-top:16px;border-top:1px solid #F1EEE8;display:flex;justify-content:flex-end;">
-                    <span style="font-size:13px;font-weight:600;color:#0174BE;white-space:nowrap;">View tracker →</span>
                   </div>
                 </div>
               </div>
@@ -307,13 +286,13 @@
               <sc-if value="{{ attorneyLawfirm }}">
               <div style="display:flex;flex-direction:column;gap:14px;">
               <!-- Post-Judicial Clerkship Associates — table preview -->
-              <div onClick="{{ openJudicial }}" style="background:#fff;border:1.5px solid #DBD7CF;border-radius:14px;padding:18px 20px;box-shadow:0 3px 12px rgba(0,0,0,.05);overflow:hidden;cursor:pointer;transition:border-color 120ms ease,box-shadow 120ms ease,transform 120ms ease;display:flex;flex-direction:column;flex:1;" style-hover="border-color:#3E0C2D;box-shadow:0 8px 22px rgba(60,11,44,.14);transform:translateY(-2px);">
+              <div onClick="{{ openJudicial }}" style="background:#fff;border:1.5px solid #DBD7CF;border-radius:14px;padding:18px 20px;box-shadow:0 3px 12px rgba(0,0,0,.05);overflow:hidden;cursor:pointer;transition:border-color 120ms ease,box-shadow 120ms ease,transform 120ms ease;display:flex;flex-direction:column;flex:1;" style-hover="border-color:#1A1A1A;box-shadow:0 8px 22px rgba(26,26,26,.16);transform:translateY(-2px);">
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;background:#FAF9F6;margin:-18px -20px 0;padding:16px 20px 14px;">
                   <div>
-                    <div style="font-family:'Zalando Sans',sans-serif;font-weight:600;font-size:19px;letter-spacing:-0.01em;color:#290A1B;">Post-Judicial Clerkship</div>
+                    <div style="font-family:'Zalando Sans',sans-serif;font-weight:600;font-size:19px;letter-spacing:-0.01em;color:#1A1A1A;">Post-Judicial Clerkship</div>
                     <div style="font-size:13px;color:#9A948C;margin-top:3px;">Judicial clerk & post-judicial clerkship associate roles</div>
                   </div>
-                  <div style="color:#3E0C2D;flex-shrink:0;margin-top:2px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
+                  <div style="color:#3E0C2D;flex-shrink:0;margin-top:2px;font-size:12.5px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;">View tracker <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
                 </div>
                 <div style="margin-top:15px;padding-top:16px;border-top:1px solid #EFECE6;flex:1;display:flex;flex-direction:column;">
                   <div style="background:#F6EFFB;border:1px solid #E6D6F1;border-radius:11px;padding:13px 15px;">
@@ -335,20 +314,17 @@
                       <span style="font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums;color:#3E0C2D;white-space:nowrap;">{{ ovJudDate }}</span>
                     </div>
                   </div>
-                  <div style="margin-top:16px;padding-top:16px;border-top:1px solid #F1EEE8;display:flex;justify-content:flex-end;">
-                    <span style="font-size:13px;font-weight:600;color:#3E0C2D;white-space:nowrap;">View tracker →</span>
-                  </div>
                 </div>
               </div>
 
               <!-- Lateral Non-Partners — table preview -->
-              <div onClick="{{ openLateral }}" style="background:#fff;border:1.5px solid #DBD7CF;border-radius:14px;padding:18px 20px;box-shadow:0 3px 12px rgba(0,0,0,.05);overflow:hidden;cursor:pointer;transition:border-color 120ms ease,box-shadow 120ms ease,transform 120ms ease;display:flex;flex-direction:column;flex:1;" style-hover="border-color:#3E0C2D;box-shadow:0 8px 22px rgba(60,11,44,.14);transform:translateY(-2px);">
+              <div onClick="{{ openLateral }}" style="background:#fff;border:1.5px solid #DBD7CF;border-radius:14px;padding:18px 20px;box-shadow:0 3px 12px rgba(0,0,0,.05);overflow:hidden;cursor:pointer;transition:border-color 120ms ease,box-shadow 120ms ease,transform 120ms ease;display:flex;flex-direction:column;flex:1;" style-hover="border-color:#1A1A1A;box-shadow:0 8px 22px rgba(26,26,26,.16);transform:translateY(-2px);">
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;background:#FAF9F6;margin:-18px -20px 0;padding:16px 20px 14px;">
                   <div>
-                    <div style="font-family:'Zalando Sans',sans-serif;font-weight:600;font-size:19px;letter-spacing:-0.01em;color:#290A1B;">Lateral Non-Partners</div>
+                    <div style="font-family:'Zalando Sans',sans-serif;font-weight:600;font-size:19px;letter-spacing:-0.01em;color:#1A1A1A;">Lateral Non-Partners</div>
                     <div style="font-size:13px;color:#9A948C;margin-top:3px;">Lateral associates, counsel & staff attorneys</div>
                   </div>
-                  <div style="color:#3E0C2D;flex-shrink:0;margin-top:2px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
+                  <div style="color:#3E0C2D;flex-shrink:0;margin-top:2px;font-size:12.5px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;">View tracker <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
                 </div>
                 <div style="margin-top:15px;padding-top:16px;border-top:1px solid #EFECE6;flex:1;display:flex;flex-direction:column;">
                   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px 14px;">
@@ -390,21 +366,18 @@
                       <span style="font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums;color:#3E0C2D;white-space:nowrap;">{{ ovLaDate }}</span>
                     </div>
                   </div>
-                  <div style="margin-top:auto;padding-top:16px;border-top:1px solid #F1EEE8;display:flex;justify-content:flex-end;">
-                    <span style="font-size:13px;font-weight:600;color:#3E0C2D;white-space:nowrap;">View tracker →</span>
-                  </div>
                 </div>
               </div>
 
               <!-- Lateral Partners — list preview -->
               <!-- Lateral Partners — market-data card -->
-              <div onClick="{{ openLateralPartner }}" style="background:#fff;border:1.5px solid #DBD7CF;border-radius:14px;padding:18px 20px;box-shadow:0 3px 12px rgba(0,0,0,.05);overflow:hidden;cursor:pointer;transition:border-color 120ms ease,box-shadow 120ms ease,transform 120ms ease;display:flex;flex-direction:column;flex:1;" style-hover="border-color:#3E0C2D;box-shadow:0 8px 22px rgba(60,11,44,.14);transform:translateY(-2px);">
+              <div onClick="{{ openLateralPartner }}" style="background:#fff;border:1.5px solid #DBD7CF;border-radius:14px;padding:18px 20px;box-shadow:0 3px 12px rgba(0,0,0,.05);overflow:hidden;cursor:pointer;transition:border-color 120ms ease,box-shadow 120ms ease,transform 120ms ease;display:flex;flex-direction:column;flex:1;" style-hover="border-color:#1A1A1A;box-shadow:0 8px 22px rgba(26,26,26,.16);transform:translateY(-2px);">
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;background:#FAF9F6;margin:-18px -20px 0;padding:16px 20px 14px;">
                   <div>
-                    <div style="font-family:'Zalando Sans',sans-serif;font-weight:600;font-size:19px;letter-spacing:-0.01em;color:#290A1B;">Lateral Partners</div>
+                    <div style="font-family:'Zalando Sans',sans-serif;font-weight:600;font-size:19px;letter-spacing:-0.01em;color:#1A1A1A;">Lateral Partners</div>
                     <div style="font-size:13px;color:#9A948C;margin-top:3px;">Partner & practice-group moves — market data</div>
                   </div>
-                  <div style="color:#3E0C2D;flex-shrink:0;margin-top:2px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
+                  <div style="color:#3E0C2D;flex-shrink:0;margin-top:2px;font-size:12.5px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;">View tracker <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
                 </div>
                 <div style="margin-top:15px;padding-top:16px;border-top:1px solid #EFECE6;flex:1;display:flex;flex-direction:column;">
                   <div>
@@ -413,9 +386,6 @@
                       <span style="font-family:'Zalando Sans',sans-serif;font-size:27px;font-weight:600;letter-spacing:-0.02em;line-height:1;color:#192B92;">{{ ovLpVal }}</span>
                       <span style="font-size:12px;color:#B0A99F;">partner listings · aggregate market trends</span>
                     </div>
-                  </div>
-                  <div style="margin-top:auto;padding-top:16px;border-top:1px solid #F1EEE8;display:flex;justify-content:flex-end;">
-                    <span style="font-size:13px;font-weight:600;color:#3E0C2D;white-space:nowrap;">View market data →</span>
                   </div>
                 </div>
               </div>
@@ -427,10 +397,10 @@
               <div onClick="{{ openPIAttorney }}" style="background:#fff;border:1.5px solid #DBD7CF;border-radius:14px;padding:18px 20px;box-shadow:0 3px 12px rgba(0,0,0,.05);overflow:hidden;cursor:pointer;transition:border-color 120ms ease,box-shadow 120ms ease,transform 120ms ease;display:flex;flex-direction:column;flex:1;" style-hover="border-color:#0174BE;box-shadow:0 8px 22px rgba(1,116,190,.14);transform:translateY(-2px);">
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;background:#FAF9F6;margin:-18px -20px 0;padding:16px 20px 14px;">
                   <div>
-                    <div style="font-family:'Zalando Sans',sans-serif;font-weight:600;font-size:19px;letter-spacing:-0.01em;color:#290A1B;">Attorney Positions</div>
+                    <div style="font-family:'Zalando Sans',sans-serif;font-weight:600;font-size:19px;letter-spacing:-0.01em;color:#1A1A1A;">Attorney Positions</div>
                     <div style="font-size:13px;color:#9A948C;margin-top:3px;">Public interest attorney roles - Class of 2025 & earlier</div>
                   </div>
-                  <div style="color:#0174BE;flex-shrink:0;margin-top:2px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
+                  <div style="color:#0174BE;flex-shrink:0;margin-top:2px;font-size:12.5px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;">View tracker <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
                 </div>
                 <div style="margin-top:15px;padding-top:16px;border-top:1px solid #EFECE6;flex:1;display:flex;flex-direction:column;">
                   <div style="display:flex;gap:28px;flex-wrap:wrap;">
@@ -447,9 +417,6 @@
                       <div><div style="font-size:14px;color:#212121;">{{ ovPiAFirm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ ovPiARole }}</div></div>
                       <span style="font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums;color:#0174BE;white-space:nowrap;">{{ ovPiADate }}</span>
                     </div>
-                  </div>
-                  <div style="margin-top:auto;padding-top:16px;border-top:1px solid #F1EEE8;display:flex;justify-content:flex-end;">
-                    <span style="font-size:13px;font-weight:600;color:#0174BE;white-space:nowrap;">View tracker →</span>
                   </div>
                 </div>
               </div>
@@ -489,7 +456,7 @@
         <!-- static section header (single tracker, no sibling switcher) -->
         <div style="border-bottom:2px solid {{ dRule }};margin-bottom:22px;padding-bottom:14px;display:flex;align-items:flex-end;justify-content:space-between;gap:28px;flex-wrap:wrap;">
           <div>
-            <div style="font-family:'Zalando Sans',sans-serif;font-weight:600;font-size:28px;letter-spacing:-0.02em;color:#3E0C2D;">{{ sectionTabs.0.name }}</div>
+            <div style="font-family:'Zalando Sans',sans-serif;font-weight:600;font-size:28px;letter-spacing:-0.02em;color:#1A1A1A;">{{ sectionTabs.0.name }}</div>
             <div style="font-size:13.5px;color:#9A948C;margin-top:4px;">{{ sectionTabs.0.subtitle }}</div>
           </div>
           <sc-if value="{{ headerStatsShow }}">
@@ -515,10 +482,10 @@
           <div style="display:inline-flex;background:{{ dToggleBg }};border-radius:10px;padding:4px;gap:3px;flex-wrap:wrap;max-width:100%;">
             <sc-for list="{{ stageTabs }}" as="t" hint-placeholder-count="5">
               <sc-if value="{{ t.isActive }}">
-                <div onClick="{{ t.onClick }}" style="display:inline-flex;align-items:center;height:34px;padding:0 16px;border-radius:7px;background:#fff;color:#3E0C2D;font-size:13.5px;font-weight:600;cursor:pointer;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.1);">{{ t.label }}</div>
+                <div onClick="{{ t.onClick }}" style="display:inline-flex;align-items:center;height:34px;padding:0 16px;border-radius:7px;background:#fff;color:#1A1A1A;font-size:13.5px;font-weight:600;cursor:pointer;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.1);">{{ t.label }}</div>
               </sc-if>
               <sc-if value="{{ t.isInactive }}">
-                <div onClick="{{ t.onClick }}" style="display:inline-flex;align-items:center;height:34px;padding:0 16px;border-radius:7px;background:transparent;color:#7D8491;font-size:13.5px;font-weight:600;cursor:pointer;white-space:nowrap;transition:color 120ms ease;" style-hover="color:#3E0C2D;">{{ t.label }}</div>
+                <div onClick="{{ t.onClick }}" style="display:inline-flex;align-items:center;height:34px;padding:0 16px;border-radius:7px;background:transparent;color:#6B6862;font-size:13.5px;font-weight:600;cursor:pointer;white-space:nowrap;transition:color 120ms ease;" style-hover="color:#1A1A1A;">{{ t.label }}</div>
               </sc-if>
             </sc-for>
           </div>
@@ -538,7 +505,7 @@
         <div style="position:relative;">
         <!-- embedded table card -->
         <sc-if value="{{ showTable }}">
-        <div style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;min-height:420px;display:flex;flex-direction:column;">
+        <div class="tcard" style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;display:flex;flex-direction:column;">
           <!-- card header chrome -->
           <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:15px 20px;flex-wrap:wrap;">
             <div style="display:flex;align-items:center;gap:9px;font-size:15px;color:#5C606B;">
@@ -570,7 +537,7 @@
               <thead>
                 <tr>
                   <sc-for list="{{ columns }}" as="c" hint-placeholder-count="6">
-                    <th style="text-align:left;font-weight:600;font-size:11.5px;letter-spacing:0.03em;text-transform:uppercase;color:#8A857C;padding:11px 16px;white-space:nowrap;border-bottom:1px solid #E7E4DD;">{{ c }}</th>
+                    <th style="text-align:left;font-weight:600;font-size:11.5px;letter-spacing:0.03em;text-transform:uppercase;color:#57534C;padding:11px 16px;white-space:nowrap;border-bottom:1px solid #E7E4DD;">{{ c }}</th>
                   </sc-for>
                 </tr>
               </thead>
@@ -596,7 +563,7 @@
         <!-- split table: open vs upcoming -->
         <sc-if value="{{ showSplitTable }}">
         <div style="display:flex;flex-direction:column;gap:22px;">
-          <div style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;min-height:420px;display:flex;flex-direction:column;">
+          <div class="tcard" style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;display:flex;flex-direction:column;">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 20px;flex-wrap:wrap;">
               <div style="display:flex;align-items:center;gap:10px;">
                 <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:#FCEBD5;color:#A15E11;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;">Upcoming</span>
@@ -612,7 +579,7 @@
                   <tr>
                     <th style="width:40px;border-bottom:1px solid #E7E4DD;padding:8px 0 8px 16px;"></th>
                     <sc-for list="{{ columns }}" as="c" hint-placeholder-count="6">
-                      <th class="{{ c.thClass }}" onClick="{{ c.onClick }}" style="text-align:left;font-weight:600;font-size:11.5px;letter-spacing:0.03em;text-transform:uppercase;color:#8A857C;padding:11px 16px;white-space:nowrap;border-bottom:1px solid #E7E4DD;">{{ c.label }}<span class="sort-arrow">{{ c.arrow }}</span></th>
+                      <th class="{{ c.thClass }}" onClick="{{ c.onClick }}" style="text-align:left;font-weight:600;font-size:11.5px;letter-spacing:0.03em;text-transform:uppercase;color:#57534C;padding:11px 16px;white-space:nowrap;border-bottom:1px solid #E7E4DD;">{{ c.label }}<span class="sort-arrow">{{ c.arrow }}</span></th>
                     </sc-for>
                   </tr>
                 </thead>
@@ -636,11 +603,11 @@
             </div>
               <sc-if value="{{ upcomingHasRows }}"><div style="padding:12px 20px;border-top:1px solid #EFEDE7;background:#FBFAF6;font-size:12px;font-weight:500;color:#A39D93;letter-spacing:0.01em;margin-top:auto;">{{ upcomingFootCount }}</div></sc-if>
             <sc-if value="{{ upcomingEmpty }}">
-              <div style="padding:22px;text-align:center;color:#9A948C;font-size:14px;">{{ emptyUpcomingMsg }}</div>
+              <div class="tempty" style="padding:22px;text-align:center;color:#9A948C;font-size:14px;">{{ emptyUpcomingMsg }}</div>
             </sc-if>
           </div>
 
-          <div style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;min-height:420px;display:flex;flex-direction:column;">
+          <div class="tcard" style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;display:flex;flex-direction:column;">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 20px;flex-wrap:wrap;">
               <div style="display:flex;align-items:center;gap:10px;">
                 <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:#DCF3E4;color:#1B7F4D;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;">Open now</span>
@@ -659,7 +626,7 @@
                   <tr>
                     <th style="width:40px;border-bottom:1px solid #E7E4DD;padding:8px 0 8px 16px;"></th>
                     <sc-for list="{{ columns }}" as="c" hint-placeholder-count="6">
-                      <th class="{{ c.thClass }}" onClick="{{ c.onClick }}" style="text-align:left;font-weight:600;font-size:11.5px;letter-spacing:0.03em;text-transform:uppercase;color:#8A857C;padding:11px 16px;white-space:nowrap;border-bottom:1px solid #E7E4DD;">{{ c.label }}<span class="sort-arrow">{{ c.arrow }}</span></th>
+                      <th class="{{ c.thClass }}" onClick="{{ c.onClick }}" style="text-align:left;font-weight:600;font-size:11.5px;letter-spacing:0.03em;text-transform:uppercase;color:#57534C;padding:11px 16px;white-space:nowrap;border-bottom:1px solid #E7E4DD;">{{ c.label }}<span class="sort-arrow">{{ c.arrow }}</span></th>
                     </sc-for>
                   </tr>
                 </thead>
@@ -683,7 +650,7 @@
             </div>
               <sc-if value="{{ openHasRows }}"><div style="padding:12px 20px;border-top:1px solid #EFEDE7;background:#FBFAF6;font-size:12px;font-weight:500;color:#A39D93;letter-spacing:0.01em;margin-top:auto;">{{ openFootCount }}</div></sc-if>
             <sc-if value="{{ openEmpty }}">
-              <div style="padding:22px;text-align:center;color:#9A948C;font-size:14px;">{{ emptyOpenMsg }}</div>
+              <div class="tempty" style="padding:22px;text-align:center;color:#9A948C;font-size:14px;">{{ emptyOpenMsg }}</div>
             </sc-if>
           </div>
         </div>
@@ -691,7 +658,7 @@
 
         <!-- Campus Interview Programs table (horizontal scroll, all fields) -->
         <sc-if value="{{ showCampus }}">
-        <div style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;min-height:420px;display:flex;flex-direction:column;">
+        <div class="tcard" style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;display:flex;flex-direction:column;">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 20px;flex-wrap:wrap;">
             <div style="display:flex;align-items:center;gap:10px;">
               <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:#E3E8FB;color:#3A4CB0;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;">Campus Programs</span>
@@ -707,7 +674,7 @@
                 <tr>
                   <th style="width:40px;border-bottom:1px solid #E7E4DD;padding:8px 0 8px 16px;"></th>
                   <sc-for list="{{ campusColumns }}" as="c" hint-placeholder-count="8">
-                    <th class="{{ c.thClass }}" onClick="{{ c.onClick }}" style="text-align:left;font-weight:600;font-size:11.5px;letter-spacing:0.03em;text-transform:uppercase;color:#8A857C;padding:11px 16px;white-space:nowrap;border-bottom:1px solid #E7E4DD;">{{ c.label }}<span class="sort-arrow">{{ c.arrow }}</span></th>
+                    <th class="{{ c.thClass }}" onClick="{{ c.onClick }}" style="text-align:left;font-weight:600;font-size:11.5px;letter-spacing:0.03em;text-transform:uppercase;color:#57534C;padding:11px 16px;white-space:nowrap;border-bottom:1px solid #E7E4DD;">{{ c.label }}<span class="sort-arrow">{{ c.arrow }}</span></th>
                   </sc-for>
                 </tr>
               </thead>
@@ -733,14 +700,14 @@
           </div>
               <sc-if value="{{ campusHasRows }}"><div style="padding:12px 20px;border-top:1px solid #EFEDE7;background:#FBFAF6;font-size:12px;font-weight:500;color:#A39D93;letter-spacing:0.01em;margin-top:auto;">{{ campusFootCount }}</div></sc-if>
           <sc-if value="{{ campusEmpty }}">
-            <div style="padding:22px;text-align:center;color:#9A948C;font-size:14px;">{{ campusEmptyMsg }}</div>
+            <div class="tempty" style="padding:22px;text-align:center;color:#9A948C;font-size:14px;">{{ campusEmptyMsg }}</div>
           </sc-if>
         </div>
         </sc-if>
 
         <!-- Exams & Grades table (exams + grades combined, horizontal scroll, click to expand) -->
         <sc-if value="{{ showExams }}">
-        <div style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;min-height:420px;display:flex;flex-direction:column;">
+        <div class="tcard" style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;display:flex;flex-direction:column;">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 20px;flex-wrap:wrap;">
             <div style="display:flex;align-items:center;gap:10px;">
               <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:#F3E3F0;color:#8A3E7C;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;">Exams &amp; Grades</span>
@@ -756,7 +723,7 @@
                 <tr>
                   <th style="width:40px;border-bottom:1px solid #E7E4DD;padding:8px 0 8px 16px;"></th>
                   <sc-for list="{{ examsColumns }}" as="c" hint-placeholder-count="7">
-                    <th class="{{ c.thClass }}" onClick="{{ c.onClick }}" style="text-align:left;font-weight:600;font-size:11.5px;letter-spacing:0.03em;text-transform:uppercase;color:#8A857C;padding:11px 16px;white-space:nowrap;border-bottom:1px solid #E7E4DD;">{{ c.label }}<span class="sort-arrow">{{ c.arrow }}</span></th>
+                    <th class="{{ c.thClass }}" onClick="{{ c.onClick }}" style="text-align:left;font-weight:600;font-size:11.5px;letter-spacing:0.03em;text-transform:uppercase;color:#57534C;padding:11px 16px;white-space:nowrap;border-bottom:1px solid #E7E4DD;">{{ c.label }}<span class="sort-arrow">{{ c.arrow }}</span></th>
                   </sc-for>
                 </tr>
               </thead>
@@ -781,14 +748,14 @@
           </div>
               <sc-if value="{{ examsHasRows }}"><div style="padding:12px 20px;border-top:1px solid #EFEDE7;background:#FBFAF6;font-size:12px;font-weight:500;color:#A39D93;letter-spacing:0.01em;margin-top:auto;">{{ examsFootCount }}</div></sc-if>
           <sc-if value="{{ examsEmpty }}">
-            <div style="padding:22px;text-align:center;color:#9A948C;font-size:14px;">{{ examsEmptyMsg }}</div>
+            <div class="tempty" style="padding:22px;text-align:center;color:#9A948C;font-size:14px;">{{ examsEmptyMsg }}</div>
           </sc-if>
         </div>
         </sc-if>
 
         <!-- 3L Entry-Level Associates table (single table, Airtable + Flo merged, horizontal scroll) -->
         <sc-if value="{{ show3L }}">
-        <div style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;min-height:420px;display:flex;flex-direction:column;">
+        <div class="tcard" style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;display:flex;flex-direction:column;">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 20px;flex-wrap:wrap;">
             <div style="display:flex;align-items:center;gap:10px;">
               <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:#DCF3E4;color:#1B7F4D;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;">Open now</span>
@@ -807,7 +774,7 @@
                 <tr>
                   <th style="width:40px;border-bottom:1px solid #E7E4DD;padding:8px 0 8px 16px;"></th>
                   <sc-for list="{{ entry3lColumns }}" as="c" hint-placeholder-count="7">
-                    <th class="{{ c.thClass }}" onClick="{{ c.onClick }}" style="text-align:left;font-weight:600;font-size:11.5px;letter-spacing:0.03em;text-transform:uppercase;color:#8A857C;padding:11px 16px;white-space:nowrap;border-bottom:1px solid #E7E4DD;">{{ c.label }}<span class="sort-arrow">{{ c.arrow }}</span></th>
+                    <th class="{{ c.thClass }}" onClick="{{ c.onClick }}" style="text-align:left;font-weight:600;font-size:11.5px;letter-spacing:0.03em;text-transform:uppercase;color:#57534C;padding:11px 16px;white-space:nowrap;border-bottom:1px solid #E7E4DD;">{{ c.label }}<span class="sort-arrow">{{ c.arrow }}</span></th>
                   </sc-for>
                 </tr>
               </thead>
@@ -831,14 +798,14 @@
           </div>
               <sc-if value="{{ entry3lHasRows }}"><div style="padding:12px 20px;border-top:1px solid #EFEDE7;background:#FBFAF6;font-size:12px;font-weight:500;color:#A39D93;letter-spacing:0.01em;margin-top:auto;">{{ entry3lFootCount }}</div></sc-if>
           <sc-if value="{{ entry3lEmpty }}">
-            <div style="padding:22px;text-align:center;color:#9A948C;font-size:14px;">{{ entry3lEmptyMsg }}</div>
+            <div class="tempty" style="padding:22px;text-align:center;color:#9A948C;font-size:14px;">{{ entry3lEmptyMsg }}</div>
           </sc-if>
         </div>
         </sc-if>
 
         <!-- Public Interest — Open Positions (shared by Internships / Entry-Level / Attorney) -->
         <sc-if value="{{ showPI }}">
-        <div style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;min-height:420px;display:flex;flex-direction:column;">
+        <div class="tcard" style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;display:flex;flex-direction:column;">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 20px;flex-wrap:wrap;">
             <div style="display:flex;align-items:center;gap:10px;">
               <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:#DCF3E4;color:#1B7F4D;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;">Open now</span>
@@ -857,7 +824,7 @@
                 <tr>
                   <th style="width:40px;border-bottom:1px solid #E7E4DD;padding:8px 0 8px 16px;"></th>
                   <sc-for list="{{ piColumns }}" as="c" hint-placeholder-count="10">
-                    <th class="{{ c.thClass }}" onClick="{{ c.onClick }}" style="text-align:left;font-weight:600;font-size:11.5px;letter-spacing:0.03em;text-transform:uppercase;color:#8A857C;padding:11px 16px;white-space:nowrap;border-bottom:1px solid #E7E4DD;">{{ c.label }}<span class="sort-arrow">{{ c.arrow }}</span></th>
+                    <th class="{{ c.thClass }}" onClick="{{ c.onClick }}" style="text-align:left;font-weight:600;font-size:11.5px;letter-spacing:0.03em;text-transform:uppercase;color:#57534C;padding:11px 16px;white-space:nowrap;border-bottom:1px solid #E7E4DD;">{{ c.label }}<span class="sort-arrow">{{ c.arrow }}</span></th>
                   </sc-for>
                 </tr>
               </thead>
@@ -884,12 +851,12 @@
           </div>
               <sc-if value="{{ piOpenHasRows }}"><div style="padding:12px 20px;border-top:1px solid #EFEDE7;background:#FBFAF6;font-size:12px;font-weight:500;color:#A39D93;letter-spacing:0.01em;margin-top:auto;">{{ piOpenFootCount }}</div></sc-if>
           <sc-if value="{{ piOpenEmpty }}">
-            <div style="padding:22px;text-align:center;color:#9A948C;font-size:14px;">{{ piOpenEmptyMsg }}</div>
+            <div class="tempty" style="padding:22px;text-align:center;color:#9A948C;font-size:14px;">{{ piOpenEmptyMsg }}</div>
           </sc-if>
         </div>
 
         <!-- Public Interest — Past Roles (recently closed; auto-removed 30 days after close date) -->
-        <div style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;min-height:420px;display:flex;flex-direction:column;margin-top:22px;">
+        <div class="tcard" style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;display:flex;flex-direction:column;margin-top:22px;">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 20px;flex-wrap:wrap;">
             <div style="display:flex;align-items:center;gap:10px;">
               <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:#ECE9E3;color:#7D766C;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;">Past roles</span>
@@ -905,7 +872,7 @@
                 <tr>
                   <th style="width:40px;border-bottom:1px solid #E7E4DD;padding:8px 0 8px 16px;"></th>
                   <sc-for list="{{ piColumns }}" as="c" hint-placeholder-count="10">
-                    <th class="{{ c.thClass }}" onClick="{{ c.onClick }}" style="text-align:left;font-weight:600;font-size:11.5px;letter-spacing:0.03em;text-transform:uppercase;color:#8A857C;padding:11px 16px;white-space:nowrap;border-bottom:1px solid #E7E4DD;">{{ c.label }}<span class="sort-arrow">{{ c.arrow }}</span></th>
+                    <th class="{{ c.thClass }}" onClick="{{ c.onClick }}" style="text-align:left;font-weight:600;font-size:11.5px;letter-spacing:0.03em;text-transform:uppercase;color:#57534C;padding:11px 16px;white-space:nowrap;border-bottom:1px solid #E7E4DD;">{{ c.label }}<span class="sort-arrow">{{ c.arrow }}</span></th>
                   </sc-for>
                 </tr>
               </thead>
@@ -932,14 +899,14 @@
           </div>
               <sc-if value="{{ piPastHasRows }}"><div style="padding:12px 20px;border-top:1px solid #EFEDE7;background:#FBFAF6;font-size:12px;font-weight:500;color:#A39D93;letter-spacing:0.01em;margin-top:auto;">{{ piPastFootCount }}</div></sc-if>
           <sc-if value="{{ piPastEmpty }}">
-            <div style="padding:22px;text-align:center;color:#9A948C;font-size:14px;">{{ piPastEmptyMsg }}</div>
+            <div class="tempty" style="padding:22px;text-align:center;color:#9A948C;font-size:14px;">{{ piPastEmptyMsg }}</div>
           </sc-if>
         </div>
         </sc-if>
 
         <!-- Lateral Non-Partners table (law firm; associate / counsel / staff attorney) -->
         <sc-if value="{{ showLateralNP }}">
-        <div style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;min-height:420px;display:flex;flex-direction:column;">
+        <div class="tcard" style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;display:flex;flex-direction:column;">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 20px;flex-wrap:wrap;">
             <div style="display:flex;align-items:center;gap:10px;">
               <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:#DCF3E4;color:#1B7F4D;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;">Open now</span>
@@ -958,7 +925,7 @@
                 <tr>
                   <th style="width:40px;border-bottom:1px solid #E7E4DD;padding:8px 0 8px 16px;"></th>
                   <sc-for list="{{ lateralColumns }}" as="c" hint-placeholder-count="8">
-                    <th class="{{ c.thClass }}" onClick="{{ c.onClick }}" style="text-align:left;font-weight:600;font-size:11.5px;letter-spacing:0.03em;text-transform:uppercase;color:#8A857C;padding:11px 16px;white-space:nowrap;border-bottom:1px solid #E7E4DD;">{{ c.label }}<span class="sort-arrow">{{ c.arrow }}</span></th>
+                    <th class="{{ c.thClass }}" onClick="{{ c.onClick }}" style="text-align:left;font-weight:600;font-size:11.5px;letter-spacing:0.03em;text-transform:uppercase;color:#57534C;padding:11px 16px;white-space:nowrap;border-bottom:1px solid #E7E4DD;">{{ c.label }}<span class="sort-arrow">{{ c.arrow }}</span></th>
                   </sc-for>
                 </tr>
               </thead>
@@ -986,14 +953,14 @@
           </div>
               <sc-if value="{{ lateralHasRows }}"><div style="padding:12px 20px;border-top:1px solid #EFEDE7;background:#FBFAF6;font-size:12px;font-weight:500;color:#A39D93;letter-spacing:0.01em;margin-top:auto;">{{ lateralFootCount }}</div></sc-if>
           <sc-if value="{{ lateralEmpty }}">
-            <div style="padding:22px;text-align:center;color:#9A948C;font-size:14px;">{{ lateralEmptyMsg }}</div>
+            <div class="tempty" style="padding:22px;text-align:center;color:#9A948C;font-size:14px;">{{ lateralEmptyMsg }}</div>
           </sc-if>
         </div>
         </sc-if>
 
         <!-- Post-Judicial Clerkship Associates table (law firm; judicial clerk + post-judicial clerkship) -->
         <sc-if value="{{ showPostClerk }}">
-        <div style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;min-height:420px;display:flex;flex-direction:column;">
+        <div class="tcard" style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;display:flex;flex-direction:column;">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 20px;flex-wrap:wrap;">
             <div style="display:flex;align-items:center;gap:10px;">
               <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:#DCF3E4;color:#1B7F4D;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;">Open now</span>
@@ -1012,7 +979,7 @@
                 <tr>
                   <th style="width:40px;border-bottom:1px solid #E7E4DD;padding:8px 0 8px 16px;"></th>
                   <sc-for list="{{ pcColumns }}" as="c" hint-placeholder-count="8">
-                    <th class="{{ c.thClass }}" onClick="{{ c.onClick }}" style="text-align:left;font-weight:600;font-size:11.5px;letter-spacing:0.03em;text-transform:uppercase;color:#8A857C;padding:11px 16px;white-space:nowrap;border-bottom:1px solid #E7E4DD;">{{ c.label }}<span class="sort-arrow">{{ c.arrow }}</span></th>
+                    <th class="{{ c.thClass }}" onClick="{{ c.onClick }}" style="text-align:left;font-weight:600;font-size:11.5px;letter-spacing:0.03em;text-transform:uppercase;color:#57534C;padding:11px 16px;white-space:nowrap;border-bottom:1px solid #E7E4DD;">{{ c.label }}<span class="sort-arrow">{{ c.arrow }}</span></th>
                   </sc-for>
                 </tr>
               </thead>
@@ -1040,7 +1007,7 @@
           </div>
               <sc-if value="{{ pcHasRows }}"><div style="padding:12px 20px;border-top:1px solid #EFEDE7;background:#FBFAF6;font-size:12px;font-weight:500;color:#A39D93;letter-spacing:0.01em;margin-top:auto;">{{ pcFootCount }}</div></sc-if>
           <sc-if value="{{ pcEmpty }}">
-            <div style="padding:22px;text-align:center;color:#9A948C;font-size:14px;">{{ pcEmptyMsg }}</div>
+            <div class="tempty" style="padding:22px;text-align:center;color:#9A948C;font-size:14px;">{{ pcEmptyMsg }}</div>
           </sc-if>
         </div>
         </sc-if>
@@ -1101,7 +1068,7 @@
         <!-- duplicate section: Class of 2028 -->
         <sc-if value="{{ showClass2028 }}">
         <h2 style="font-family:'Zalando Sans',sans-serif;font-weight:700;font-size:30px;letter-spacing:-0.02em;color:#290A1B;margin:36px 0 16px;">1L–2L Summer Openings — Class of 2028</h2>
-        <div style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;min-height:420px;display:flex;flex-direction:column;">
+        <div class="tcard" style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;display:flex;flex-direction:column;">
           <div style="display:flex;align-items:center;gap:10px;padding:15px 20px;">
             <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:#DCF3E4;color:#1B7F4D;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;">Open now</span>
             <span style="font-size:14px;color:#7D8491;">Accepting applications</span>
@@ -1111,7 +1078,7 @@
               <thead>
                 <tr>
                   <sc-for list="{{ columns }}" as="c" hint-placeholder-count="6">
-                    <th style="text-align:left;font-weight:600;font-size:11.5px;letter-spacing:0.03em;text-transform:uppercase;color:#8A857C;padding:11px 16px;white-space:nowrap;border-bottom:1px solid #E7E4DD;">{{ c }}</th>
+                    <th style="text-align:left;font-weight:600;font-size:11.5px;letter-spacing:0.03em;text-transform:uppercase;color:#57534C;padding:11px 16px;white-space:nowrap;border-bottom:1px solid #E7E4DD;">{{ c }}</th>
                   </sc-for>
                 </tr>
               </thead>
@@ -1481,9 +1448,12 @@ class Component extends DCLogic {
     return subId === 'lawfirm' || subId === 'entrylevel3l' || subId === 'publicinterest' || subId === 'pisummer' || subId === 'piextern' ? 'entry' : 'lateral';
   }
 
-  enterSub = (subId) => {
+  enterSub = (subId, targetTab) => {
     const { SUBS } = this.data();
-    this.setState({ view: 'world', worldId: this.worldOf(subId), subId, tabId: SUBS[subId].tabs[0].id, chartZoom: null });
+    const tabs = SUBS[subId].tabs;
+    const tabId = (targetTab && tabs.some(t => t.id === targetTab)) ? targetTab : tabs[0].id;
+    this.setState({ view: 'world', worldId: this.worldOf(subId), subId, tabId, chartZoom: null });
+    if (typeof window !== 'undefined' && window.scrollTo) window.scrollTo(0, 0);
   };
   selectSub = (subId) => {
     const { SUBS } = this.data();
@@ -1552,7 +1522,7 @@ class Component extends DCLogic {
     const splitOpenSrc = is2L ? DATA.tables.summer2L.open : DATA.tables.summer1L.open;
     const splitUpcomingSrc = is2L ? DATA.tables.summer2L.upcoming : DATA.tables.summer1L.upcoming;
     const splitOpenRows = sortRows(buildRows(splitOpenSrc, splitColumns, {}).filter(matchRow));  // open: links auto, em-dash muted
-    const splitUpcomingRows = sortRows(buildRows(splitUpcomingSrc, splitColumns, { muted: { 0: true, 2: true } }).filter(matchRow));  // upcoming: 'Opens…' + 'Not yet open' muted
+    const splitUpcomingRows = sortRows(buildRows(splitUpcomingSrc, splitColumns, { muted: { 2: true } }).filter(matchRow));  // upcoming: only 'Not yet open' (col 2) muted; open date stays full-color (real data)
     splitUpcomingRows.forEach((r, i) => { r.onOpen = () => this.setState({ rowOpen: i }); });
     splitOpenRows.forEach((r, i) => { r.onOpen = () => this.setState({ rowOpen: splitUpcomingRows.length + i }); });
     const sortColumns = splitColumns.map((label, i) => ({
@@ -2292,6 +2262,7 @@ class Component extends DCLogic {
       ovLfSeasonVal: OV.lawfirm.stats[1].value, ovLfSeasonDelta: OV.lawfirm.stats[1].delta, ovLfSeasonVs: OV.lawfirm.stats[1].vs,
       ovLfSeasonShowDelta: !!OV.lawfirm.stats[1].delta && OV.lawfirm.stats[1].delta.charAt(0) !== '-',
       ovLfFirm: OV.lawfirm.latest.firm, ovLfRole: OV.lawfirm.latest.role, ovLfDate: OV.lawfirm.latest.date,
+      ovLfPostings: OV.lawfirm.latestList || (OV.lawfirm.latest ? [OV.lawfirm.latest] : []),
       ov3lOpen: OV.entrylevel3l.openValue, ov3lFirm: OV.entrylevel3l.latest.firm, ov3lRole: OV.entrylevel3l.latest.role, ov3lDate: OV.entrylevel3l.latest.date,
       ovPiSFirm: OV.pisummer.latest.firm, ovPiSRole: OV.pisummer.latest.role, ovPiSDate: OV.pisummer.latest.date,
       ovPiEFirm: OV.piextern.latest.firm, ovPiERole: OV.piextern.latest.role, ovPiEDate: OV.piextern.latest.date,
@@ -2364,6 +2335,12 @@ class Component extends DCLogic {
       // Post-Judicial Clerkship overview stats — hide any stat that's 0, show when > 0 (TEMP snapshot; pipeline sets values).
       pcStats: DATA.overview.pcStats.filter((s) => Number(s.value) > 0),
       openLateral: () => this.enterSub('lateralassoc'),
+      // chart previews link to the Market Data ("data") tab; header/stats/postings link to the table
+      openLawfirmData: () => this.enterSub('lawfirm', 'market'),
+      open3LData: () => this.enterSub('entrylevel3l', 'market'),
+      openLateralData: () => this.enterSub('lateralassoc', 'market'),
+      openJudicialData: () => this.enterSub('judicial', 'market'),
+      openPublicInterestData: () => this.enterSub('publicinterest', 'market'),
       studentLawfirm: this.state.studentSection !== 'pi',
       studentPI: this.state.studentSection === 'pi',
       onStudentLawfirm: () => this.setState({ studentSection: 'lawfirm' }),
