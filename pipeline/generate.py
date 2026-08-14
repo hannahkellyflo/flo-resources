@@ -434,8 +434,7 @@ def wire_summer_split(data: dict) -> None:
     rows = metabase_sql(MB_DB, SUMMER_SQL)
     out = {"1L": {"open": [], "upcoming": []}, "2L": {"open": [], "upcoming": []}}
     now = datetime.datetime.now(datetime.timezone.utc)
-    season_start = datetime.date(now.year if now.month >= 6 else now.year - 1, 6, 1)
-    mcur, scur = set(), set()  # distinct job ids opened this month / this season (as shown in the tables)
+    mcur = set()  # distinct job ids opened this calendar month (as shown in the tables)
     for r in rows:
         levels = []
         if int(r.get("g1L") or 0):
@@ -454,22 +453,19 @@ def wire_summer_split(data: dict) -> None:
             od_d = datetime.date.fromisoformat(str(od)[:10]) if od else None
         except ValueError:
             od_d = None
-        if od_d:
-            jid = r.get("job_id")
-            if (od_d.year, od_d.month) == (now.year, now.month):
-                mcur.add(jid)
-            if od_d >= season_start:
-                scur.add(jid)
+        if od_d and (od_d.year, od_d.month) == (now.year, now.month):
+            mcur.add(r.get("job_id"))
         for lv in levels:
             out[lv]["upcoming" if upcoming else "open"].append(_summer_record(r, lv, upcoming))
     for lv, key in (("1L", "summer1L"), ("2L", "summer2L")):
         # open newest-first (already sorted desc), upcoming soonest-first
         out[lv]["upcoming"].reverse()
         data["tables"][key] = out[lv]
-    data["overview"]["_lawfirmFlow"] = {"m_cur": len(mcur), "s_cur": len(scur)}
+    # m_cur: listings (both classes) opened this month; c2029_open: Class of 2029 (1L) listings open now
+    data["overview"]["_lawfirmFlow"] = {"m_cur": len(mcur), "c2029_open": len(out["1L"]["open"])}
     print(f"  summer split: 1L {len(out['1L']['open'])} open/{len(out['1L']['upcoming'])} upcoming, "
           f"2L {len(out['2L']['open'])} open/{len(out['2L']['upcoming'])} upcoming; "
-          f"opened this month {len(mcur)}, this season {len(scur)}")
+          f"opened this month {len(mcur)}, Class of 2029 open {len(out['1L']['open'])}")
 
 
 # ── MARKET CHARTS (Metabase db 2, LIVE) ──────────────────────────────────────
@@ -982,20 +978,23 @@ GROUP BY yr, mo""")
 
 
 # ── OVERVIEW STAT TILES (runs last — derives from already-wired DATA.tables + a few flow
-# queries). 1L-2L card = combined 1L(grad 2029)+2L(grad 2028), "opened" by OPEN_DATE with
-# YoY deltas (same-day window). Categorical lateral tiles stay on snapshot (from breakdowns).
-# Current-window counts (m_cur/s_cur) mirror the visible table exactly: published and
-# not-yet-closed. The prior-year baselines (m_prev/s_prev) are historical flow — those
-# jobs are all long closed, so a "still open" filter would zero them out.
+# queries). 1L-2L card tiles: "Opened this month" = listings across both classes (grad
+# 2028+2029) opened this calendar month; "This season" = Class of 2029 (1L) listings open
+# now. Current-window counts come from the table-derived flow; the SQL below supplies only
+# the prior-year baselines. "Season" here is a graduating-class cohort, not a calendar date:
+# this season = Class of 2029, last season = Class of 2028 at the equivalent point a year ago.
+#   m_prev      = openings in the same calendar month last year (both classes)
+#   season_prev = Class of 2028 listings open as of this date one year ago (the "last season" 1L cohort)
 LAWFIRM_STATS_SQL = ("""
 SELECT
-  SUM(j.OPEN_DATE >= DATE_FORMAT(NOW(),'%%Y-%%m-01')
-      AND (j.CLOSE_DATE IS NULL OR j.CLOSE_DATE >= CURDATE())) AS m_cur,
   SUM(j.OPEN_DATE >= DATE_FORMAT(DATE_SUB(NOW(),INTERVAL 1 YEAR),'%%Y-%%m-01')
-      AND j.OPEN_DATE <= DATE_SUB(NOW(),INTERVAL 1 YEAR)) AS m_prev,
-  SUM(j.OPEN_DATE >= '2026-06-01'
-      AND (j.CLOSE_DATE IS NULL OR j.CLOSE_DATE >= CURDATE())) AS s_cur,
-  SUM(j.OPEN_DATE >= '2025-06-01' AND j.OPEN_DATE <= DATE_SUB(NOW(),INTERVAL 1 YEAR)) AS s_prev
+      AND j.OPEN_DATE <= DATE_SUB(NOW(),INTERVAL 1 YEAR)
+      AND EXISTS (SELECT 1 FROM FORWARD_JOB_GRAD_DATE_TARGET_RULE r WHERE r.JOB_ID=j.ID
+                  AND r.IS_NOT_DELETED=1 AND r.RULE_TYPE='INDIVIDUAL_YEARS' AND YEAR(r.MIN_GRAD_DATE) IN (2028,2029))) AS m_prev,
+  SUM(j.OPEN_DATE <= DATE_SUB(NOW(),INTERVAL 1 YEAR)
+      AND (j.CLOSE_DATE IS NULL OR j.CLOSE_DATE >= DATE_SUB(NOW(),INTERVAL 1 YEAR))
+      AND EXISTS (SELECT 1 FROM FORWARD_JOB_GRAD_DATE_TARGET_RULE r WHERE r.JOB_ID=j.ID
+                  AND r.IS_NOT_DELETED=1 AND r.RULE_TYPE='INDIVIDUAL_YEARS' AND YEAR(r.MIN_GRAD_DATE)=2028)) AS season_prev
 FROM JOB j JOIN ORG o ON o.ID = j.ORG_ID
 WHERE j.DELETED_AT IS NULL AND j.FORWARD_PUBLISHING_STATUS = 'PUBLISHED'
   AND (j.JOB_TYPE IN ('ATS','MANUAL_ENTRY') OR j.JOB_TYPE IS NULL)
@@ -1003,8 +1002,6 @@ WHERE j.DELETED_AT IS NULL AND j.FORWARD_PUBLISHING_STATUS = 'PUBLISHED'
   AND (EXISTS (SELECT 1 FROM JOB_HIRING_TYPE jh JOIN HIRING_TYPE h ON h.ID=jh.HIRING_TYPE_ID WHERE jh.JOB_ID=j.ID AND h.NAME='Law Student')
        OR LOWER(j.TITLE) REGEXP 'summer associate|summer program|\\\\b1l\\\\b|\\\\b2l\\\\b|summer law|summer clerk|summer intern|summer fellow|summer scholar')
   AND LOWER(j.TITLE) NOT REGEXP 'lateral|partner|paralegal|staff attorney|\\\\b3l\\\\b'
-  AND EXISTS (SELECT 1 FROM FORWARD_JOB_GRAD_DATE_TARGET_RULE r WHERE r.JOB_ID=j.ID
-              AND r.IS_NOT_DELETED=1 AND r.RULE_TYPE='INDIVIDUAL_YEARS' AND YEAR(r.MIN_GRAD_DATE) IN (2028,2029))
 """ % DEMO_REGEXP)
 
 PARTNER_12MO_SQL = f"""
@@ -1068,23 +1065,27 @@ def wire_overview_stats(data: dict) -> None:
     ov["headerStats"]["lateralpartner"] = [{"label": "Opened past 12 mo", "value": str(p12), "delta": "", "hasDelta": False}]
 
     lf = metabase_sql(MB_DB, LAWFIRM_STATS_SQL)[0]
-    # current-window counts come from the table-derived flow (exact match to the visible
-    # table); the SQL supplies only the prior-year baselines for the YoY comparison.
-    flow = ov.pop("_lawfirmFlow", None) or {"m_cur": int(lf["m_cur"]), "s_cur": int(lf["s_cur"])}
+    # current counts come from the table-derived flow (exact match to the visible table);
+    # the SQL supplies only the prior-year / prior-season baselines for the comparisons.
+    flow = ov.pop("_lawfirmFlow", None) or {"m_cur": 0, "c2029_open": 0}
 
     def dlt(cur, prev):
-        # suppress the YoY % when the prior-year baseline is too small to be meaningful
-        # (early-cycle same-window counts of 1-2 produce absurd percentages)
-        return (f"{round((cur - prev) / prev * 100)}%", True) if prev >= 5 else ("", False)
+        # suppress the % when the baseline is too small to be meaningful (a count of 1-2
+        # produces absurd percentages) or the change isn't positive (pill is green/up-only)
+        return (f"{round((cur - prev) / prev * 100)}%", True) if prev >= 5 and cur > prev else ("", False)
+    # tile 1 — listings (both classes) opened this month, vs. same month last year
     mc, mp = int(flow["m_cur"]), int(lf["m_prev"])
-    sc, sp = int(flow["s_cur"]), int(lf["s_prev"])
+    # tile 2 — "this season" = Class of 2029 (1L) listings open now, vs. the Class of 2028
+    # cohort at the equivalent point one year ago ("last season")
+    sc, sp = int(flow["c2029_open"]), int(lf["season_prev"])
     md, mh = dlt(mc, mp)
     sd, sh = dlt(sc, sp)
+    last_month = TODAY.strftime("%B")
     ov["headerStats"]["lawfirm"] = [{"label": "Opened this month", "value": str(mc), "delta": md, "hasDelta": mh},
-                                    {"label": "Opened this season", "value": str(sc), "delta": sd, "hasDelta": sh}]
+                                    {"label": "This season · Class of 2029", "value": str(sc), "delta": sd, "hasDelta": sh}]
     ov["cards"]["lawfirm"]["stats"] = [
-        {"value": str(mc), "delta": md, "vs": f"vs. {mp} this time last year"},
-        {"value": str(sc), "delta": sd, "vs": f"vs. {sp} by this date last year"}]
+        {"value": str(mc), "delta": md, "vs": f"vs. {mp} last {last_month}"},
+        {"value": str(sc), "delta": sd, "vs": f"vs. {sp} at this point last season"}]
 
     total = (len(t.get("lateral", [])) + npc + len(t.get("entry3l", []))
              + len(t.get("summer1L", {}).get("open", [])) + len(t.get("summer2L", {}).get("open", []))
@@ -1101,7 +1102,9 @@ def wire_overview_stats(data: dict) -> None:
                 pass
     if ups:
         ov["statStrip"][2]["value"] = min(ups).strftime("%b %-d")
-    print(f"  overview stats: 1L-2L {mc}/{sc}, 3L {len(t.get('entry3l', []))}, pc {npc}, partner12mo {p12}, openings {total}")
+    print(f"  overview stats: opened-this-month {mc} (vs {mp} last {last_month}), "
+          f"this-season/Class2029 {sc} (vs {sp} last season), "
+          f"3L {len(t.get('entry3l', []))}, pc {npc}, partner12mo {p12}, openings {total}")
 
 
 WIRED = [wire_public_interest, wire_campus_exams, wire_lateral, wire_pc, wire_entry3l,
