@@ -1009,6 +1009,26 @@ WHERE j.DELETED_AT IS NULL AND j.FORWARD_PUBLISHING_STATUS = 'PUBLISHED'
   AND LOWER(j.TITLE) NOT REGEXP 'lateral|partner|paralegal|staff attorney|\\\\b3l\\\\b'
 """ % DEMO_REGEXP)
 
+# TEMP diagnostic: what are the grad-2028 roles counted as "open last season"? break down by
+# OPEN_DATE month + sample titles, so we can see whether they're really 1L-cycle roles.
+SEASON_PREV_DIAG_SQL = ("""
+SELECT DATE_FORMAT(j.OPEN_DATE,'%%Y-%%m') AS om, COUNT(*) AS n,
+       SUBSTRING(GROUP_CONCAT(DISTINCT j.TITLE SEPARATOR ' || '),1,240) AS titles
+FROM JOB j JOIN ORG o ON o.ID=j.ORG_ID
+WHERE j.DELETED_AT IS NULL AND j.FORWARD_PUBLISHING_STATUS='PUBLISHED'
+  AND (j.JOB_TYPE IN ('ATS','MANUAL_ENTRY') OR j.JOB_TYPE IS NULL)
+  AND j.JOB_CLASSIFICATION='LAW_FIRM' AND LOWER(o.NAME) NOT REGEXP '%s'
+  AND (EXISTS (SELECT 1 FROM JOB_HIRING_TYPE jh JOIN HIRING_TYPE h ON h.ID=jh.HIRING_TYPE_ID WHERE jh.JOB_ID=j.ID AND h.NAME='Law Student')
+       OR LOWER(j.TITLE) REGEXP 'summer associate|summer program|\\\\b1l\\\\b|\\\\b2l\\\\b|summer law|summer clerk|summer intern|summer fellow|summer scholar')
+  AND LOWER(j.TITLE) NOT REGEXP 'lateral|partner|paralegal|staff attorney|\\\\b3l\\\\b'
+  AND j.OPEN_DATE <= DATE_SUB(NOW(),INTERVAL 1 YEAR)
+  AND (j.CLOSE_DATE IS NULL OR j.CLOSE_DATE >= DATE_SUB(NOW(),INTERVAL 1 YEAR))
+  AND EXISTS (SELECT 1 FROM FORWARD_JOB_GRAD_DATE_TARGET_RULE r WHERE r.JOB_ID=j.ID AND r.IS_NOT_DELETED=1 AND r.RULE_TYPE='INDIVIDUAL_YEARS' AND YEAR(r.MIN_GRAD_DATE)=2028)
+  AND NOT EXISTS (SELECT 1 FROM FORWARD_JOB_GRAD_DATE_TARGET_RULE r2 WHERE r2.JOB_ID=j.ID AND r2.IS_NOT_DELETED=1 AND r2.RULE_TYPE='INDIVIDUAL_YEARS' AND YEAR(r2.MIN_GRAD_DATE)<2028)
+  AND LOWER(j.TITLE) NOT REGEXP '\\\\b2l\\\\b'
+GROUP BY om ORDER BY om
+""" % DEMO_REGEXP)
+
 PARTNER_12MO_SQL = f"""
 SELECT COUNT(DISTINCT j.ID) AS n
 FROM JOB j JOIN ORG o ON o.ID = j.ORG_ID
@@ -1070,6 +1090,8 @@ def wire_overview_stats(data: dict) -> None:
     ov["headerStats"]["lateralpartner"] = [{"label": "Opened past 12 mo", "value": str(p12), "delta": "", "hasDelta": False}]
 
     lf = metabase_sql(MB_DB, LAWFIRM_STATS_SQL)[0]
+    for _r in metabase_sql(MB_DB, SEASON_PREV_DIAG_SQL):
+        print(f"  [diag season_prev] {_r['om']}: {_r['n']} — {_r['titles']}")
     # current counts come from the table-derived flow (exact match to the visible table);
     # the SQL supplies only the prior-year / prior-season baselines for the comparisons.
     flow = ov.pop("_lawfirmFlow", None) or {"m_cur": 0, "c2029_open": 0}
