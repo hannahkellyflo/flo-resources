@@ -981,25 +981,16 @@ GROUP BY yr, mo""")
 # queries). 1L-2L card tiles: "Opened this month" = listings across both classes (grad
 # 2028+2029) opened this calendar month; "This season" = Class of 2029 (1L) listings open
 # now. Current-window counts come from the table-derived flow; the SQL below supplies only
-# the prior-year baselines. "Season" here is a graduating-class cohort, not a calendar date:
-# this season = Class of 2029, last season = Class of 2028 at the equivalent point a year ago.
-#   m_prev      = openings in the same calendar month last year (both classes)
-#   season_prev = explicitly 1L-titled Class of 2028 roles open as of this date one year ago
-#                 (grad-year tags alone conflate 1L with the general summer cycle, so the
-#                  "last season" baseline is restricted to roles that name themselves 1L)
+# the prior-year baseline for the "opened this month" tile. The "this season" tile (Class of
+# 2029 listings open now) shows no year-over-year comparison: grad-year tags conflate 1L with
+# the general summer cycle and can't reliably reconstruct last year's early-1L pipeline.
+#   m_prev = openings in the same calendar month last year (both classes)
 LAWFIRM_STATS_SQL = ("""
 SELECT
   SUM(j.OPEN_DATE >= DATE_FORMAT(DATE_SUB(NOW(),INTERVAL 1 YEAR),'%%Y-%%m-01')
       AND j.OPEN_DATE <= DATE_SUB(NOW(),INTERVAL 1 YEAR)
       AND EXISTS (SELECT 1 FROM FORWARD_JOB_GRAD_DATE_TARGET_RULE r WHERE r.JOB_ID=j.ID
-                  AND r.IS_NOT_DELETED=1 AND r.RULE_TYPE='INDIVIDUAL_YEARS' AND YEAR(r.MIN_GRAD_DATE) IN (2028,2029))) AS m_prev,
-  SUM(j.OPEN_DATE <= DATE_SUB(NOW(),INTERVAL 1 YEAR)
-      AND (j.CLOSE_DATE IS NULL OR j.CLOSE_DATE >= DATE_SUB(NOW(),INTERVAL 1 YEAR))
-      AND EXISTS (SELECT 1 FROM FORWARD_JOB_GRAD_DATE_TARGET_RULE r WHERE r.JOB_ID=j.ID
-                  AND r.IS_NOT_DELETED=1 AND r.RULE_TYPE='INDIVIDUAL_YEARS' AND YEAR(r.MIN_GRAD_DATE)=2028)
-      -- explicitly 1L-titled only: grad-year tags don't cleanly separate 1L from the general
-      -- summer cycle, so restrict the baseline to roles that name themselves 1L (fellowships etc.)
-      AND LOWER(j.TITLE) REGEXP '\\\\b1l\\\\b') AS season_prev
+                  AND r.IS_NOT_DELETED=1 AND r.RULE_TYPE='INDIVIDUAL_YEARS' AND YEAR(r.MIN_GRAD_DATE) IN (2028,2029))) AS m_prev
 FROM JOB j JOIN ORG o ON o.ID = j.ORG_ID
 WHERE j.DELETED_AT IS NULL AND j.FORWARD_PUBLISHING_STATUS = 'PUBLISHED'
   AND (j.JOB_TYPE IN ('ATS','MANUAL_ENTRY') OR j.JOB_TYPE IS NULL)
@@ -1080,17 +1071,16 @@ def wire_overview_stats(data: dict) -> None:
         return (f"{round((cur - prev) / prev * 100)}%", True) if prev >= 5 and cur > prev else ("", False)
     # tile 1 — listings (both classes) opened this month, vs. same month last year
     mc, mp = int(flow["m_cur"]), int(lf["m_prev"])
-    # tile 2 — "this season" = Class of 2029 (1L) listings open now, vs. the Class of 2028
-    # cohort at the equivalent point one year ago ("last season")
-    sc, sp = int(flow["c2029_open"]), int(lf["season_prev"])
+    # tile 2 — "this season" = Class of 2029 (1L) listings open now (no YoY: grad-year tags
+    # can't reliably reconstruct last year's early-1L pipeline)
+    sc = int(flow["c2029_open"])
     md, mh = dlt(mc, mp)
-    sd, sh = dlt(sc, sp)
     last_month = TODAY.strftime("%B")
     ov["headerStats"]["lawfirm"] = [{"label": "Opened this month", "value": str(mc), "delta": md, "hasDelta": mh},
-                                    {"label": "This season · Class of 2029", "value": str(sc), "delta": sd, "hasDelta": sh}]
+                                    {"label": "This season · Class of 2029", "value": str(sc), "delta": "", "hasDelta": False}]
     ov["cards"]["lawfirm"]["stats"] = [
         {"value": str(mc), "delta": md, "vs": f"vs. {mp} last {last_month}"},
-        {"value": str(sc), "delta": sd, "vs": f"vs. {sp} at this point last season"}]
+        {"value": str(sc), "delta": "", "vs": "1L Summer 2027 roles open now"}]
 
     total = (len(t.get("lateral", [])) + npc + len(t.get("entry3l", []))
              + len(t.get("summer1L", {}).get("open", [])) + len(t.get("summer2L", {}).get("open", []))
@@ -1108,7 +1098,7 @@ def wire_overview_stats(data: dict) -> None:
     if ups:
         ov["statStrip"][2]["value"] = min(ups).strftime("%b %-d")
     print(f"  overview stats: opened-this-month {mc} (vs {mp} last {last_month}), "
-          f"this-season/Class2029 {sc} (vs {sp} last season), "
+          f"this-season/Class2029 {sc}, "
           f"3L {len(t.get('entry3l', []))}, pc {npc}, partner12mo {p12}, openings {total}")
 
 
