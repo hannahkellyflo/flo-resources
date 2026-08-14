@@ -968,15 +968,21 @@ GROUP BY yr, mo""")
 # ── OVERVIEW STAT TILES (runs last — derives from already-wired DATA.tables + a few flow
 # queries). 1L-2L card = combined 1L(grad 2029)+2L(grad 2028), "opened" by OPEN_DATE with
 # YoY deltas (same-day window). Categorical lateral tiles stay on snapshot (from breakdowns).
+# Current-window counts (m_cur/s_cur) mirror the visible table exactly: published and
+# not-yet-closed. The prior-year baselines (m_prev/s_prev) are historical flow — those
+# jobs are all long closed, so a "still open" filter would zero them out.
 LAWFIRM_STATS_SQL = ("""
 SELECT
-  SUM(j.OPEN_DATE >= DATE_FORMAT(NOW(),'%%Y-%%m-01')) AS m_cur,
+  SUM(j.OPEN_DATE >= DATE_FORMAT(NOW(),'%%Y-%%m-01')
+      AND (j.CLOSE_DATE IS NULL OR j.CLOSE_DATE >= CURDATE())) AS m_cur,
   SUM(j.OPEN_DATE >= DATE_FORMAT(DATE_SUB(NOW(),INTERVAL 1 YEAR),'%%Y-%%m-01')
       AND j.OPEN_DATE <= DATE_SUB(NOW(),INTERVAL 1 YEAR)) AS m_prev,
-  SUM(j.OPEN_DATE >= '2026-06-01') AS s_cur,
+  SUM(j.OPEN_DATE >= '2026-06-01'
+      AND (j.CLOSE_DATE IS NULL OR j.CLOSE_DATE >= CURDATE())) AS s_cur,
   SUM(j.OPEN_DATE >= '2025-06-01' AND j.OPEN_DATE <= DATE_SUB(NOW(),INTERVAL 1 YEAR)) AS s_prev
 FROM JOB j JOIN ORG o ON o.ID = j.ORG_ID
-WHERE j.DELETED_AT IS NULL AND (j.JOB_TYPE IN ('ATS','MANUAL_ENTRY') OR j.JOB_TYPE IS NULL)
+WHERE j.DELETED_AT IS NULL AND j.FORWARD_PUBLISHING_STATUS = 'PUBLISHED'
+  AND (j.JOB_TYPE IN ('ATS','MANUAL_ENTRY') OR j.JOB_TYPE IS NULL)
   AND j.JOB_CLASSIFICATION='LAW_FIRM' AND LOWER(o.NAME) NOT REGEXP '%s'
   AND (EXISTS (SELECT 1 FROM JOB_HIRING_TYPE jh JOIN HIRING_TYPE h ON h.ID=jh.HIRING_TYPE_ID WHERE jh.JOB_ID=j.ID AND h.NAME='Law Student')
        OR LOWER(j.TITLE) REGEXP 'summer associate|summer program|\\\\b1l\\\\b|\\\\b2l\\\\b|summer law|summer clerk|summer intern|summer fellow|summer scholar')
