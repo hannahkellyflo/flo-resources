@@ -434,6 +434,8 @@ def wire_summer_split(data: dict) -> None:
     rows = metabase_sql(MB_DB, SUMMER_SQL)
     out = {"1L": {"open": [], "upcoming": []}, "2L": {"open": [], "upcoming": []}}
     now = datetime.datetime.now(datetime.timezone.utc)
+    season_start = datetime.date(now.year if now.month >= 6 else now.year - 1, 6, 1)
+    mcur, scur = set(), set()  # distinct job ids opened this month / this season (as shown in the tables)
     for r in rows:
         levels = []
         if int(r.get("g1L") or 0):
@@ -446,14 +448,28 @@ def wire_summer_split(data: dict) -> None:
         upcoming = bool(od) and str(od)[:10] > now.date().isoformat()
         if not upcoming and _close_passed(r.get("close_date")):
             continue                       # deadline passed -> not open
+        # count opened-in-window straight off the same rows that build the tables,
+        # so the momentum tiles can't diverge from what's countable in the table
+        try:
+            od_d = datetime.date.fromisoformat(str(od)[:10]) if od else None
+        except ValueError:
+            od_d = None
+        if od_d:
+            jid = r.get("job_id")
+            if (od_d.year, od_d.month) == (now.year, now.month):
+                mcur.add(jid)
+            if od_d >= season_start:
+                scur.add(jid)
         for lv in levels:
             out[lv]["upcoming" if upcoming else "open"].append(_summer_record(r, lv, upcoming))
     for lv, key in (("1L", "summer1L"), ("2L", "summer2L")):
         # open newest-first (already sorted desc), upcoming soonest-first
         out[lv]["upcoming"].reverse()
         data["tables"][key] = out[lv]
+    data["overview"]["_lawfirmFlow"] = {"m_cur": len(mcur), "s_cur": len(scur)}
     print(f"  summer split: 1L {len(out['1L']['open'])} open/{len(out['1L']['upcoming'])} upcoming, "
-          f"2L {len(out['2L']['open'])} open/{len(out['2L']['upcoming'])} upcoming")
+          f"2L {len(out['2L']['open'])} open/{len(out['2L']['upcoming'])} upcoming; "
+          f"opened this month {len(mcur)}, this season {len(scur)}")
 
 
 # ── MARKET CHARTS (Metabase db 2, LIVE) ──────────────────────────────────────
@@ -1052,13 +1068,16 @@ def wire_overview_stats(data: dict) -> None:
     ov["headerStats"]["lateralpartner"] = [{"label": "Opened past 12 mo", "value": str(p12), "delta": "", "hasDelta": False}]
 
     lf = metabase_sql(MB_DB, LAWFIRM_STATS_SQL)[0]
+    # current-window counts come from the table-derived flow (exact match to the visible
+    # table); the SQL supplies only the prior-year baselines for the YoY comparison.
+    flow = ov.pop("_lawfirmFlow", None) or {"m_cur": int(lf["m_cur"]), "s_cur": int(lf["s_cur"])}
 
     def dlt(cur, prev):
         # suppress the YoY % when the prior-year baseline is too small to be meaningful
         # (early-cycle same-window counts of 1-2 produce absurd percentages)
         return (f"{round((cur - prev) / prev * 100)}%", True) if prev >= 5 else ("", False)
-    mc, mp = int(lf["m_cur"]), int(lf["m_prev"])
-    sc, sp = int(lf["s_cur"]), int(lf["s_prev"])
+    mc, mp = int(flow["m_cur"]), int(lf["m_prev"])
+    sc, sp = int(flow["s_cur"]), int(lf["s_prev"])
     md, mh = dlt(mc, mp)
     sd, sh = dlt(sc, sp)
     ov["headerStats"]["lawfirm"] = [{"label": "Opened this month", "value": str(mc), "delta": md, "hasDelta": mh},
