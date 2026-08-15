@@ -40,7 +40,7 @@
   /* Cap the table's scroll area so long tables scroll inside a viewport-height box:
      column headers stay pinned (sticky thead) and the horizontal scrollbar stays reachable
      at the bottom of the box, just above the footer — instead of being buried under 500+ rows. */
-  .tscroll { scrollbar-width: thin; scrollbar-color: #DED9D0 transparent; overflow-y: auto; max-height: 60vh; }
+  .tscroll { scrollbar-width: thin; scrollbar-color: #DED9D0 transparent; overflow-y: auto; max-height: 60vh; flex: 1 1 auto; min-height: 0; }
   .tscroll::-webkit-scrollbar { height: 10px; width: 10px; }
   .tscroll::-webkit-scrollbar-track { background: #F6F4EF; border-radius: 999px; }
   .tscroll::-webkit-scrollbar-thumb { background: #D2CCC1; border-radius: 999px; border: 2px solid #F6F4EF; }
