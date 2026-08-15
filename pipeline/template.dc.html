@@ -1040,6 +1040,11 @@
                     <sc-if value="{{ f.isLink }}"><a href="{{ f.href }}" target="_blank" rel="noopener" style="color:#1C6FD6;font-weight:600;text-decoration:none;">{{ f.value }}</a></sc-if>
                     <sc-if value="{{ f.isPill }}"><span style="display:inline-flex;align-items:center;height:21px;padding:0 9px;border-radius:999px;background:#CDEFE1;color:#0F7A57;font-size:11.5px;font-weight:600;">{{ f.value }}</span></sc-if>
                     <sc-if value="{{ f.isText }}"><span>{{ f.value }}</span></sc-if>
+                    <sc-if value="{{ f.isLong }}">
+                      <sc-if value="{{ descCollapsed }}"><div style="white-space:pre-wrap;line-height:1.5;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;">{{ f.value }}</div></sc-if>
+                      <sc-if value="{{ descExpanded }}"><div style="white-space:pre-wrap;line-height:1.5;">{{ f.value }}</div></sc-if>
+                      <span onClick="{{ onToggleDesc }}" style="display:inline-block;margin-top:6px;font-size:12.5px;font-weight:600;color:#1C6FD6;cursor:pointer;">{{ descToggleLabel }}</span>
+                    </sc-if>
                     <sc-if value="{{ f.isEmpty }}"><span style="color:#C3BDB3;">{{ f.value }}</span></sc-if>
                   </div>
                 </div>
@@ -1248,7 +1253,7 @@ const buildRows = (records, labels, cfg) => {
   }));
 };
 class Component extends DCLogic {
-  state = { view: 'overview', worldId: 'entry', subId: 'lawfirm', tabId: '1lsummer', alerts: {}, search: '', sortCol: null, sortDir: 'asc', mktScope: 'all', hover: null, rowOpen: null, chartZoom: null };
+  state = { view: 'overview', worldId: 'entry', subId: 'lawfirm', tabId: '1lsummer', alerts: {}, search: '', sortCol: null, sortDir: 'asc', mktScope: 'all', hover: null, rowOpen: null, chartZoom: null, descExpanded: false };
 
   onScopeAll = () => this.setState({ mktScope: 'all' });
   onScopeT15 = () => this.setState({ mktScope: 't15' });
@@ -1762,16 +1767,17 @@ class Component extends DCLogic {
         const value = isCheck ? 'Yes' : (empty ? '—' : String(c.text));
         const isLink = !!c.isLink && !!c.href && !empty;
         const isPill = !!detailCfg.pills[i] && !empty && !isLink;
-        return { label, value, href: c.href || '', isLink, isPill, isEmpty: empty, isText: !isLink && !isPill && !empty };
+        const isLong = !!c.isDesc && !empty;  // job description — clamp to 5 lines with View more
+        return { label, value, href: c.href || '', isLink, isPill, isLong, isEmpty: empty, isText: !isLink && !isPill && !isLong && !empty };
       });
       const titleCell = pr.cells[detailCfg.titleIdx];
       recDetail = {
         title: titleCell && titleCell.text ? String(titleCell.text) : detailCfg.fallback,
         fields,
         position: (rowOpenIdx + 1) + ' of ' + detailCfg.rows.length,
-        onClose: () => this.setState({ rowOpen: null }),
-        onPrev: () => this.setState({ rowOpen: Math.max(0, rowOpenIdx - 1) }),
-        onNext: () => this.setState({ rowOpen: Math.min(detailCfg.rows.length - 1, rowOpenIdx + 1) }),
+        onClose: () => this.setState({ rowOpen: null, descExpanded: false }),
+        onPrev: () => this.setState({ rowOpen: Math.max(0, rowOpenIdx - 1), descExpanded: false }),
+        onNext: () => this.setState({ rowOpen: Math.min(detailCfg.rows.length - 1, rowOpenIdx + 1), descExpanded: false }),
       };
     }
 
@@ -2449,6 +2455,10 @@ class Component extends DCLogic {
       stopLink,
       showRowPanel: !!recDetail,
       recDetail,
+      descExpanded: this.state.descExpanded,
+      descCollapsed: !this.state.descExpanded,
+      descToggleLabel: this.state.descExpanded ? 'View less' : 'View more',
+      onToggleDesc: () => this.setState({ descExpanded: !this.state.descExpanded }),
       showClass2028: false,
       marketChart,
       chartTitle,
