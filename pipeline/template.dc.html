@@ -2228,10 +2228,12 @@ class Component extends DCLogic {
         chart('appsubs', 'Flo Forward application submissions', 'All students · monthly', mkSA(D.appsubs, SY, SYC)),
         chart('postings', 'Job postings listed on Flo Forward', 'Law student roles · monthly', mkSA(D.postings, SY, SYC)),
         Object.assign(chart('outreach', 'Law firm outreach events on Flo', (hcBucket === '500plus' ? '500+ attorney firms' : 'Under 500 attorneys') + ' · monthly', mkSA(hcBucket === '500plus' ? D.outreach_500plus : D.outreach_u500, SY, SYC)), { hasHcToggle: true }),
+        chart('eventregs', 'Event registrations on Flo', 'All students · monthly', mkSA(D.event_regs || {}, SY, SYC)),
         chart('net', 'Law school networking events on Flo', sSub, mkSA(D.net_all, SY, SYC)),
         Object.assign(chart('lf', 'Law firm student interview volume on Flo', (hcBucket === '500plus' ? '500+ attorney firms' : 'Under 500 attorneys') + ' · callback interviews, monthly', mkSA(hcBucket === '500plus' ? D.lf_500plus : D.lf_u500, SY, SYC)), { hasHcToggle: true }),
         chart('ls', 'Law school student interview volume on Flo', sSub, mkSA(D.ls_all, SY, SYC)),
         chart('accounts', 'Flo Forward account creation', 'Cumulative by graduating class · recruiting year Jul–Jun', mk(D.accounts, GY, GYC), null, MO_JUL),
+        chart('firmviews', 'Flo Forward firm profile views', 'Candidate page views · monthly', mkSA(D.firm_views || {}, SY, SYC)),
       ];
       }
     }

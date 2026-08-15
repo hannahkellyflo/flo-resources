@@ -941,6 +941,31 @@ WHERE ts.DELETEDAT IS NULL AND e.VIRTUAL IN (5,9,11,13) AND o.UNIVERSITY = 0
 GROUP BY yr, mo"""
 
 
+# Event registrations by month (model #3895 intent) — one row per registration (RATTENDEES),
+# real events only (VIRTUAL not null), demo orgs excluded (same list as networking events).
+EVENT_REGS_SQL = f"""
+SELECT YEAR(er.TIME) AS yr, MONTH(er.TIME) AS mo, COUNT(DISTINCT er.ID) AS n
+FROM RATTENDEES er JOIN EVENTS e ON e.ID = er.EID JOIN ORG o ON o.ID = e.OID
+WHERE e.VIRTUAL IS NOT NULL AND o.ID NOT IN ({NET_DEMO_ORGS}) AND er.TIME >= '2022-07-01'
+GROUP BY yr, mo"""
+
+# Flo Forward firm-profile page views by month (Q8185) — DWH/Redshift, pendo.matched_events.
+# accountid demo/test list copied from the source question (broader than the MySQL demo list).
+FIRM_VIEWS_DEMO = ("4,32,50,54,61,69,78,80,84,94,111,112,154,155,156,157,172,189,190,226,238,251,323,326,329,"
+                   "346,357,374,451,452,463,464,471,477,483,484,486,520,525,526,538,543,547,549,550,551,553,554,"
+                   "556,569,585,586,589,608,673,675,679,682,683,684,699,727,741,755,767,790,793,798,804,828,834,"
+                   "982,1003,1007,1135,1270,1280,1326,1354,1381,1383,1396,1476,1503,1649")
+FIRM_VIEWS_SQL = f"""
+SELECT DATE_PART(year, TIMESTAMP 'epoch' + periodid) AS yr,
+       DATE_PART(month, TIMESTAMP 'epoch' + periodid) AS mo,
+       COUNT(DISTINCT eventid) AS n
+FROM pendo.matched_events
+WHERE matchableid = 'Page/SMXwJOK_8LGLIFnGObi4D0UT2P8' AND eventtype = 'load'
+  AND accountid NOT ILIKE 'uat%' AND accountid NOT ILIKE 'dev%'
+  AND accountid NOT IN ({FIRM_VIEWS_DEMO})
+GROUP BY 1, 2"""
+
+
 def _split_cycles(rows, key):
     by = {(int(r["yr"]), int(r["mo"])): int(r[key]) for r in rows}
     return {f"{cy}-{cy+1}": cycle_series(by, cy, 7) for cy in range(2022, 2027)}
@@ -974,7 +999,13 @@ GROUP BY yr, mo""")
     ls["outreach_500plus"], ls["outreach_u500"] = _split_cycles(oro, "p500"), _split_cycles(oro, "u500")
     lfo = metabase_sql(MB_DB, LF_SQL)
     ls["lf_500plus"], ls["lf_u500"] = _split_cycles(lfo, "p500"), _split_cycles(lfo, "u500")
-    print(f"  lawStudent charts: postings + appsubs + net_all + ls_all + accounts + outreach + lf")
+    # event registrations (model #3895) — monthly, Jul-Jun cycles
+    erby = {(int(r["yr"]), int(r["mo"])): int(r["n"]) for r in metabase_sql(MB_DB, EVENT_REGS_SQL)}
+    ls["event_regs"] = {f"{cy}-{cy+1}": cycle_series(erby, cy, 7) for cy in range(2022, 2027)}
+    # Flo Forward firm profile views (Q8185, DWH) — monthly; pendo data starts 2024-08
+    fvby = {(int(float(r["yr"])), int(float(r["mo"]))): int(r["n"]) for r in metabase_sql(67, FIRM_VIEWS_SQL)}
+    ls["firm_views"] = {f"{cy}-{cy+1}": cycle_series(fvby, cy, 7) for cy in range(2022, 2027)}
+    print(f"  lawStudent charts: postings + appsubs + net_all + ls_all + accounts + outreach + lf + event_regs + firm_views")
 
 
 # ── OVERVIEW STAT TILES (runs last — derives from already-wired DATA.tables + a few flow
