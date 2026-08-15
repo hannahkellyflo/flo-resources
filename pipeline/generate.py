@@ -942,11 +942,13 @@ GROUP BY yr, mo"""
 
 
 # Event registrations by month (model #3895 intent) — one row per registration (RATTENDEES),
-# real events only (VIRTUAL not null), demo orgs excluded (same list as networking events).
+# LAW-FIRM events only: exclude Virtual callbacks (VIRTUAL 9) and every university-side
+# type (3,5,7,11,13); demo orgs excluded (same list as networking events).
 EVENT_REGS_SQL = f"""
 SELECT YEAR(er.TIME) AS yr, MONTH(er.TIME) AS mo, COUNT(DISTINCT er.ID) AS n
 FROM RATTENDEES er JOIN EVENTS e ON e.ID = er.EID JOIN ORG o ON o.ID = e.OID
-WHERE e.VIRTUAL IS NOT NULL AND o.ID NOT IN ({NET_DEMO_ORGS}) AND er.TIME >= '2022-07-01'
+WHERE e.VIRTUAL IS NOT NULL AND e.VIRTUAL NOT IN (3, 5, 7, 9, 11, 13)
+  AND o.ID NOT IN ({NET_DEMO_ORGS}) AND er.TIME >= '2022-07-01'
 GROUP BY yr, mo"""
 
 # Flo Forward firm-profile page views by month (Q8185) — DWH/Redshift, pendo.matched_events.
