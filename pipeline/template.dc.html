@@ -179,14 +179,14 @@
                   <div style="color:#3E0C2D;flex-shrink:0;margin-top:2px;font-size:12.5px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;">View tracker <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
                 </div>
                 <div style="margin-top:15px;padding-top:16px;border-top:1px solid #EFECE6;flex:1;display:flex;flex-direction:column;">
-                  <div>
+                  <div style="transition:transform 130ms ease;" style-hover="transform:translateY(-2px);">
                     <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;">Currently open</div>
                     <div style="display:flex;align-items:baseline;gap:10px;margin-top:7px;">
                       <span style="font-family:'Zalando Sans',sans-serif;font-size:27px;font-weight:600;letter-spacing:-0.02em;line-height:1;color:#192B92;">{{ ov3lOpen }}</span>
                       <span style="font-size:12px;color:#B0A99F;">Class of 2027 entry-level roles</span>
                     </div>
                   </div>
-                  <div style="margin-top:22px;padding-top:16px;border-top:1px solid #F1EEE8;">
+                  <div onClick="{{ open3LData }}" style="margin:22px -8px 0;padding:16px 8px 4px;border-top:1px solid #F1EEE8;border-radius:8px;cursor:pointer;transition:transform 130ms ease;" style-hover="transform:translateY(-2px);">
                     <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:2px;">
                       <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;">Posting timing</div>
                       <div style="font-size:10.5px;color:#B0A99F;">New listings · monthly</div>
@@ -199,7 +199,7 @@
                       <text x="8.0" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">J</text><text x="33.8" y="53" text-anchor="middle" font-size="7" font-weight="700" fill="#192B92" font-family="Zalando Sans,sans-serif">J</text><text x="59.6" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">A</text><text x="85.5" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">S</text><text x="111.3" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">O</text><text x="137.1" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">N</text><text x="162.9" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">D</text><text x="188.7" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">J</text><text x="214.5" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">F</text><text x="240.4" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">M</text><text x="266.2" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">A</text><text x="292.0" y="53" text-anchor="middle" font-size="7" font-weight="600" fill="#BCB5AB" font-family="Zalando Sans,sans-serif">M</text>
                     </svg>
                   </div>
-                  <div style="margin-top:20px;padding:16px 0 20px;border-top:1px solid #F1EEE8;">
+                  <div style="margin-top:20px;padding:16px 0 20px;border-top:1px solid #F1EEE8;transition:transform 130ms ease;" style-hover="transform:translateY(-2px);">
                     <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:9px;">Latest posting</div>
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
                       <div><div style="font-size:14px;color:#212121;">{{ ov3lFirm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ ov3lRole }}</div></div>
@@ -222,7 +222,7 @@
                   <div style="color:#0174BE;flex-shrink:0;margin-top:2px;font-size:12.5px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;">View tracker <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
                 </div>
                 <div style="margin-top:15px;padding-top:16px;border-top:1px solid #EFECE6;flex:1;display:flex;flex-direction:column;">
-                  <div style="display:flex;gap:28px;flex-wrap:wrap;">
+                  <div style="display:flex;gap:28px;flex-wrap:wrap;transition:transform 130ms ease;" style-hover="transform:translateY(-2px);">
                     <sc-for list="{{ piSummerCardStats }}" as="s" hint-placeholder-count="3">
                       <div>
                         <div style="font-size:10.5px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#9A948C;line-height:1.25;min-height:26px;">{{ s.label }}</div>
@@ -230,7 +230,7 @@
                       </div>
                     </sc-for>
                   </div>
-                  <div style="margin-top:20px;padding:16px 0 20px;border-top:1px solid #F1EEE8;">
+                  <div style="margin-top:20px;padding:16px 0 20px;border-top:1px solid #F1EEE8;transition:transform 130ms ease;" style-hover="transform:translateY(-2px);">
                     <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:9px;">Latest posting</div>
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
                       <div><div style="font-size:14px;color:#212121;">{{ ovPiSFirm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ ovPiSRole }}</div></div>
@@ -250,7 +250,7 @@
                   <div style="color:#0174BE;flex-shrink:0;margin-top:2px;font-size:12.5px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;">View tracker <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
                 </div>
                 <div style="margin-top:15px;padding-top:16px;border-top:1px solid #EFECE6;flex:1;display:flex;flex-direction:column;">
-                  <div style="display:flex;gap:28px;flex-wrap:wrap;">
+                  <div style="display:flex;gap:28px;flex-wrap:wrap;transition:transform 130ms ease;" style-hover="transform:translateY(-2px);">
                     <sc-for list="{{ piExternCardStats }}" as="s" hint-placeholder-count="3">
                       <div>
                         <div style="font-size:10.5px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#9A948C;line-height:1.25;min-height:26px;">{{ s.label }}</div>
@@ -258,7 +258,7 @@
                       </div>
                     </sc-for>
                   </div>
-                  <div style="margin-top:20px;padding:16px 0 20px;border-top:1px solid #F1EEE8;">
+                  <div style="margin-top:20px;padding:16px 0 20px;border-top:1px solid #F1EEE8;transition:transform 130ms ease;" style-hover="transform:translateY(-2px);">
                     <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:9px;">Latest posting</div>
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
                       <div><div style="font-size:14px;color:#212121;">{{ ovPiEFirm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ ovPiERole }}</div></div>
@@ -299,7 +299,7 @@
                     <div style="font-size:12px;line-height:1.5;color:#574463;">New this year, Flo Forward helps connect law firms and judicial clerks. Add your application open date today to help clerks start researching opportunities.</div>
                     <div style="margin-top:9px;"><span style="font-size:12.5px;font-weight:600;color:#7A2E92;">Submit yours today →</span></div>
                   </div>
-                  <div style="display:flex;gap:28px;margin-top:18px;">
+                  <div style="display:flex;gap:28px;margin-top:18px;transition:transform 130ms ease;" style-hover="transform:translateY(-2px);">
                     <sc-for list="{{ pcStats }}" as="s" hint-placeholder-count="2">
                       <div>
                         <div style="font-size:10.5px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#9A948C;line-height:1.25;">{{ s.label }}</div>
@@ -307,7 +307,7 @@
                       </div>
                     </sc-for>
                   </div>
-                  <div style="margin-top:18px;padding:16px 0 18px;border-top:1px solid #F1EEE8;">
+                  <div style="margin-top:18px;padding:16px 0 18px;border-top:1px solid #F1EEE8;transition:transform 130ms ease;" style-hover="transform:translateY(-2px);">
                     <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:9px;">Latest posting</div>
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
                       <div><div style="font-size:14px;color:#212121;">{{ ovJudFirm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ ovJudRole }}</div></div>
@@ -327,7 +327,7 @@
                   <div style="color:#3E0C2D;flex-shrink:0;margin-top:2px;font-size:12.5px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;">View tracker <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
                 </div>
                 <div style="margin-top:15px;padding-top:16px;border-top:1px solid #EFECE6;flex:1;display:flex;flex-direction:column;">
-                  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px 14px;">
+                  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px 14px;transition:transform 130ms ease;" style-hover="transform:translateY(-2px);">
                     <div>
                       <div style="font-size:10.5px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#9A948C;line-height:1.25;min-height:26px;">Top practice area</div>
                       <div style="font-size:16px;font-weight:600;letter-spacing:-0.01em;color:#192B92;line-height:1.15;margin-top:6px;">{{ ovLaPracVal }}</div>
@@ -344,7 +344,7 @@
                       <div style="font-size:11px;color:#B0A99F;margin-top:2px;">{{ ovLaGradSub }}</div>
                     </div>
                   </div>
-                  <div style="margin-top:20px;padding-top:16px;border-top:1px solid #F1EEE8;">
+                  <div onClick="{{ openLateralData }}" style="margin:20px -8px 0;padding:16px 8px 4px;border-top:1px solid #F1EEE8;border-radius:8px;cursor:pointer;transition:transform 130ms ease;" style-hover="transform:translateY(-2px);">
                     <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px;">
                       <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;">Where offers come from</div>
                       <div style="font-size:10.5px;color:#B0A99F;">Candidate source · past 12 mo</div>
@@ -359,7 +359,7 @@
                       </div>
                     </div>
                   </div>
-                  <div style="margin-top:20px;padding:16px 0 20px;border-top:1px solid #F1EEE8;">
+                  <div style="margin-top:20px;padding:16px 0 20px;border-top:1px solid #F1EEE8;transition:transform 130ms ease;" style-hover="transform:translateY(-2px);">
                     <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:9px;">Latest posting</div>
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
                       <div><div style="font-size:14px;color:#212121;">{{ ovLaFirm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ ovLaRole }}</div></div>
@@ -380,7 +380,7 @@
                   <div style="color:#3E0C2D;flex-shrink:0;margin-top:2px;font-size:12.5px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;">View tracker <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
                 </div>
                 <div style="margin-top:15px;padding-top:16px;border-top:1px solid #EFECE6;flex:1;display:flex;flex-direction:column;">
-                  <div>
+                  <div style="transition:transform 130ms ease;" style-hover="transform:translateY(-2px);">
                     <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;">Opened past 12 months</div>
                     <div style="display:flex;align-items:baseline;gap:10px;margin-top:7px;">
                       <span style="font-family:'Zalando Sans',sans-serif;font-size:27px;font-weight:600;letter-spacing:-0.02em;line-height:1;color:#192B92;">{{ ovLpVal }}</span>
@@ -403,7 +403,7 @@
                   <div style="color:#0174BE;flex-shrink:0;margin-top:2px;font-size:12.5px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;">View tracker <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
                 </div>
                 <div style="margin-top:15px;padding-top:16px;border-top:1px solid #EFECE6;flex:1;display:flex;flex-direction:column;">
-                  <div style="display:flex;gap:28px;flex-wrap:wrap;">
+                  <div style="display:flex;gap:28px;flex-wrap:wrap;transition:transform 130ms ease;" style-hover="transform:translateY(-2px);">
                     <sc-for list="{{ piAttorneyCardStats }}" as="s" hint-placeholder-count="3">
                       <div>
                         <div style="font-size:10.5px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#9A948C;line-height:1.25;min-height:26px;">{{ s.label }}</div>
@@ -411,7 +411,7 @@
                       </div>
                     </sc-for>
                   </div>
-                  <div style="margin-top:20px;padding:16px 0 20px;border-top:1px solid #F1EEE8;">
+                  <div style="margin-top:20px;padding:16px 0 20px;border-top:1px solid #F1EEE8;transition:transform 130ms ease;" style-hover="transform:translateY(-2px);">
                     <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:9px;">Latest posting</div>
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
                       <div><div style="font-size:14px;color:#212121;">{{ ovPiAFirm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ ovPiARole }}</div></div>
@@ -2335,12 +2335,13 @@ class Component extends DCLogic {
       // Post-Judicial Clerkship overview stats — hide any stat that's 0, show when > 0 (TEMP snapshot; pipeline sets values).
       pcStats: DATA.overview.pcStats.filter((s) => Number(s.value) > 0),
       openLateral: () => this.enterSub('lateralassoc'),
-      // chart previews link to the Market Data ("data") tab; header/stats/postings link to the table
-      openLawfirmData: () => this.enterSub('lawfirm', 'market'),
-      open3LData: () => this.enterSub('entrylevel3l', 'market'),
-      openLateralData: () => this.enterSub('lateralassoc', 'market'),
-      openJudicialData: () => this.enterSub('judicial', 'market'),
-      openPublicInterestData: () => this.enterSub('publicinterest', 'market'),
+      // chart previews link to the Market Data ("data") tab; stop the click from bubbling to
+      // the whole-card handler (which targets the table)
+      openLawfirmData: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.enterSub('lawfirm', 'market'); },
+      open3LData: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.enterSub('entrylevel3l', 'market'); },
+      openLateralData: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.enterSub('lateralassoc', 'market'); },
+      openJudicialData: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.enterSub('judicial', 'market'); },
+      openPublicInterestData: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.enterSub('publicinterest', 'market'); },
       studentLawfirm: this.state.studentSection !== 'pi',
       studentPI: this.state.studentSection === 'pi',
       onStudentLawfirm: () => this.setState({ studentSection: 'lawfirm' }),
