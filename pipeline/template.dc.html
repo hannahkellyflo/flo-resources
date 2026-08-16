@@ -2084,7 +2084,7 @@ class Component extends DCLogic {
           kids.push(e('text', { key: 'lp' + i, x: 250, y: ly, textAnchor: 'end', fontSize: 10.5, fontWeight: 700, fill: '#290A1B', fontFamily: 'Zalando Sans,sans-serif' }, pct.toFixed(1) + '%'));
           ly += 27;
         });
-        return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'xMidYMid meet', style: { display: 'block', height: 'auto' } }, kids);
+        return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'xMidYMid meet', style: { display: 'block', height: 'auto', maxWidth: '520px', margin: '0 auto' } }, kids);
       };
       // US bubble map for "hiring by market". Contiguous-48 state outlines (d3.geoAlbersUsa fit to 975×610,
       // from react-usa-map). City coords are approximate Albers positions in that viewBox.
@@ -2093,7 +2093,7 @@ class Component extends DCLogic {
       const usMap = (items) => {
         const VBW = 975, VBH = 610;
         const total = items.reduce((s, it) => s + it[1], 0) || 1;
-        const cities = items.map((it) => ({ label: it[0], v: it[1], xy: CITY_XY[it[0]] })).filter((c) => c.xy);
+        const cities = items.map((it) => { const short = String(it[0]).split(',')[0].trim(); return { label: short, v: it[1], xy: CITY_XY[it[0]] || CITY_XY[short] }; }).filter((c) => c.xy);
         const maxV = Math.max(1, ...cities.map((c) => c.v));
         const rOf = (v) => 4 + 30 * Math.sqrt(v / maxV);
         const kids = [];
@@ -2172,7 +2172,7 @@ class Component extends DCLogic {
         // Markets: distinct listings per office city — a multi-office listing counts in each of its markets.
         const mktByWin = DATA.charts.lateral.marketByWindow;
         const winLbl = mktWin === '12mo' ? 'Past 12 months' : mktWin === '3mo' ? 'Past 3 months' : 'Open now';
-        const practiceBar = { title: 'Lateral non-partner hiring on Flo by practice area', sub: winLbl + ' · ' + totalByWin[mktWin] + ' roles · top areas where title specifies', svg: barChart(pracByWin[mktWin], '#192B92', 8), legend: [], hasToggle: true };
+        const practiceBar = { title: 'Lateral non-partner hiring on Flo by top practice areas', sub: winLbl + ' · ' + totalByWin[mktWin] + ' roles · top 15 areas where title specifies', svg: barChart(pracByWin[mktWin].slice(0, 15), '#192B92', 8), legend: [], hasToggle: true };
         const marketBar = { title: 'Lateral non-partner hiring on Flo by market', sub: winLbl + ' · ' + totalByWin[mktWin] + ' roles across ' + mktByWin[mktWin].length + ' U.S. markets · bubble size = listings (roles may span markets)', svg: usMap(mktByWin[mktWin]), legend: [], hasToggle: true };
         // Grad year targeted by lateral searches (FORWARD_JOB_GRAD_DATE_TARGET_RULE). A listing counts in each
         // year it targets. Sparse future-year noise (2027+, n≈1) excluded; pipeline adds a year once it has volume.
