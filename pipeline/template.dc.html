@@ -1842,7 +1842,7 @@ class Component extends DCLogic {
       chartTitle = cfg.title;
       chartSub = cfg.sub;
       const data = cfg.data;
-      const VBW = 920, VBH = 420, padL = 64, padR = 24, padT = 28, padB = 56;
+      const VBW = 1380, VBH = 420, padL = 64, padR = 24, padT = 28, padB = 56;
       const plotW = VBW - padL - padR, plotH = VBH - padT - padB, baseY = padT + plotH, maxV = cfg.maxV;
       const y = (v) => baseY - (v / maxV) * plotH;
       const slot = plotW / data.length, barW = Math.min(64, slot * 0.52);
@@ -1861,7 +1861,7 @@ class Component extends DCLogic {
         kids.push(e('text', { key: 'm' + i, x: bx + barW / 2, y: baseY + 22, textAnchor: 'middle', fontSize: 12.5, fill: '#5C606B', fontFamily: FONT }, d.m));
       });
       kids.push(e('line', { key: 'base', x1: padL, x2: VBW - padR, y1: baseY, y2: baseY, stroke: '#C8C3B9', strokeWidth: 1.5 }));
-      marketChart = e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'none', style: { display: 'block', height: (VBH * 760 / VBW) + 'px' } }, kids);
+      marketChart = e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'xMidYMid meet', style: { display: 'block', height: 'auto' } }, kids);
     }
 
     // contextual stat strip — overview totals vs. section-specific
@@ -1901,7 +1901,7 @@ class Component extends DCLogic {
       const rawFmt = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
       const lineChart = (series, cid, yFix, ax) => {
         const MOx = ax || MO; // optional axis override (accounts chart stays Jul–Jun while others are Sep–Aug)
-        const VBW = 520, VBH = 232, padL = 46, padR = 14, padT = 14, padB = 30;
+        const VBW = 780, VBH = 232, padL = 46, padR = 14, padT = 14, padB = 30;
         const plotW = VBW - padL - padR, plotH = VBH - padT - padB, baseY = padT + plotH;
         let maxV = 0; series.forEach((s) => s.points.forEach((v) => { if (v != null && v > maxV) maxV = v; }));
         if (maxV <= 0) maxV = 1;
@@ -1948,12 +1948,12 @@ class Component extends DCLogic {
             )
           ));
         }));
-        return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'none', style: { display: 'block', height: (VBH * 760 / VBW) + 'px' } }, kids);
+        return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'xMidYMid meet', style: { display: 'block', height: 'auto' } }, kids);
       };
       // Horizontal bar chart (practice area / market breakdowns). items = [[label, value], ...].
       // targetRows keeps the card height steady across toggle states — short windows show grey empty tracks.
       const barChart = (items, color, targetRows) => {
-        const rowH = 26, gap = 12, padL = 172, padR = 46, padT = 6, VBW = 520;
+        const rowH = 26, gap = 12, padL = 172, padR = 46, padT = 6, VBW = 780;
         const rows = Math.max(targetRows || 0, items.length, 1);
         const VBH = padT * 2 + rows * rowH + (rows - 1) * gap;
         const maxV = Math.max(1, ...items.map((it) => it[1]));
@@ -1981,13 +1981,13 @@ class Component extends DCLogic {
             )
           ));
         }
-        return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'none', style: { display: 'block', height: (VBH * 760 / VBW) + 'px' } }, kids);
+        return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'xMidYMid meet', style: { display: 'block', height: 'auto' } }, kids);
       };
       // Vertical annual bar chart. items = [{label, value, est?}]. An `est` item renders as a dashed
       // placeholder outline with NO value label — replace it with a solid data bar (drop `est`) once the
       // 2026-27 cycle has real registration volume.
       const vBarChart = (items, color) => {
-        const VBW = 520, VBH = 260, padB = 38, padT = 34, sidePad = 26;
+        const VBW = 780, VBH = 260, padB = 38, padT = 34, sidePad = 26;
         const baseY = VBH - padB, plotH = baseY - padT;
         const maxV = Math.max(1, ...items.map((it) => it.value));
         const n = items.length, slot = (VBW - sidePad * 2) / n;
@@ -2006,13 +2006,13 @@ class Component extends DCLogic {
           }
           kids.push(e('text', { key: 'x' + i, x: cx, y: baseY + 18, textAnchor: 'middle', fontSize: 8.5, fontWeight: 500, fill: '#A8A29A', fontFamily: 'Zalando Sans,sans-serif' }, it.label));
         });
-        return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'none', style: { display: 'block', height: (VBH * 760 / VBW) + 'px' } }, kids);
+        return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'xMidYMid meet', style: { display: 'block', height: 'auto' } }, kids);
       };
       // Grad-year histogram for lateral searches. rows = [[year, count], ...] (any set of years — evolves as
       // the pipeline adds years). Bars colored by seniority bucket derived from the LATEST year present:
       // junior = last 3 grad years, mid-level = the 3 before that, senior = everything older.
       const gradYearChart = (rows) => {
-        const VBW = 520, VBH = 300, padL = 32, padR = 12, padT = 22, padB = 34;
+        const VBW = 780, VBH = 300, padL = 32, padR = 12, padT = 22, padB = 34;
         const baseY = VBH - padB, plotH = baseY - padT, plotW = VBW - padL - padR;
         const maxYr = Math.max(...rows.map((r) => r[0]));
         const maxV = Math.max(1, ...rows.map((r) => r[1]));
@@ -2041,7 +2041,7 @@ class Component extends DCLogic {
             )
           )); });
         kids.push(e('line', { key: 'base', x1: padL, x2: VBW - padR, y1: baseY, y2: baseY, stroke: '#C8C3B9', strokeWidth: 1 }));
-        return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'none', style: { display: 'block', height: (VBH * 760 / VBW) + 'px' } }, kids);
+        return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'xMidYMid meet', style: { display: 'block', height: 'auto' } }, kids);
       };
       // Seniority split of grad-year demand → 3 stat tiles. Boundaries relative to the latest year, so the
       // buckets shift automatically as new cohorts arrive. Shares of total year-tags; forced to sum to 100%.
@@ -2083,7 +2083,7 @@ class Component extends DCLogic {
           kids.push(e('text', { key: 'lp' + i, x: 250, y: ly, textAnchor: 'end', fontSize: 10.5, fontWeight: 700, fill: '#290A1B', fontFamily: 'Zalando Sans,sans-serif' }, pct.toFixed(1) + '%'));
           ly += 27;
         });
-        return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'none', style: { display: 'block', height: (VBH * 760 / VBW) + 'px' } }, kids);
+        return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'xMidYMid meet', style: { display: 'block', height: 'auto' } }, kids);
       };
       // US bubble map for "hiring by market". Contiguous-48 state outlines (d3.geoAlbersUsa fit to 975×610,
       // from react-usa-map). City coords are approximate Albers positions in that viewBox.
@@ -2127,7 +2127,7 @@ class Component extends DCLogic {
           kids.push(e('text', { key: 'l' + i, x: x + (lblDX[c.label] || 0), y: y + r + 14, textAnchor: 'middle', fontSize: 14.5, fontWeight: 600, fill: '#3B3D44', fontFamily: 'Zalando Sans,sans-serif', paintOrder: 'stroke', stroke: '#F4F1EA', strokeWidth: 3, strokeLinejoin: 'round' }, c.label));
         });
         kids.push(...tips);
-        return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'none', style: { display: 'block', height: (VBH * 760 / VBW) + 'px' } }, kids);
+        return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'xMidYMid meet', style: { display: 'block', height: 'auto' } }, kids);
       };
       if (is3LMarket) {
         // Timeline: Metabase OPEN_DATE (db 2), DISTINCT jobs, genuine 3L entry-level only (the grad-target year alone
