@@ -432,22 +432,6 @@
 
         </div>
 
-        <!-- featured blogs -->
-        <div style="margin-top:26px;padding-top:22px;border-top:1px solid #DCD8D0;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-            <div style="font-size:12px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#9A776E;">From the Flo blog</div>
-            <span style="font-size:13px;font-weight:600;color:#3E0C2D;cursor:pointer;">View all insights →</span>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">
-            <sc-for list="{{ overviewBlogs }}" as="post" hint-placeholder-count="3">
-              <div style="background:#fff;border:1px solid #E4E0D8;border-radius:12px;padding:15px 16px;cursor:pointer;transition:border-color 120ms ease;" style-hover="border-color:#3E0C2D;">
-                <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#7A2E92;margin-bottom:7px;">{{ post.tag }}</div>
-                <div style="font-size:15px;font-weight:600;line-height:1.35;color:#290A1B;">{{ post.title }}</div>
-                <div style="font-size:12px;color:#9A948C;margin-top:9px;">{{ post.read }}</div>
-              </div>
-            </sc-for>
-          </div>
-        </div>
       </div>
       </sc-if>
 
@@ -1204,22 +1188,6 @@
         </div>
         <!-- /tracker content region -->
 
-        <!-- related reads for this section -->
-        <div style="margin-top:28px;padding-top:24px;border-top:1px solid #D7D3CA;">
-          <div style="font-size:12px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#9A776E;margin-bottom:14px;">Related reads</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-            <sc-for list="{{ subBlogs }}" as="post" hint-placeholder-count="2">
-              <div style="background:#fff;border:1px solid #E4E0D8;border-radius:12px;padding:15px 18px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:14px;transition:border-color 120ms ease;" style-hover="border-color:#3E0C2D;">
-                <div>
-                  <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#7A2E92;margin-bottom:5px;">{{ post.tag }}</div>
-                  <div style="font-size:15px;font-weight:600;line-height:1.35;color:#290A1B;">{{ post.title }}</div>
-                  <div style="font-size:12px;color:#9A948C;margin-top:6px;">{{ post.read }}</div>
-                </div>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3E0C2D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-              </div>
-            </sc-for>
-          </div>
-        </div>
       </div>
       </sc-if>
 
