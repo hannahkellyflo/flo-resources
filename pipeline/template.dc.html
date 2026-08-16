@@ -1179,7 +1179,7 @@
                 <sc-if value="{{ ch.stats }}">
                 <div style="display:flex;gap:9px;margin-top:11px;flex-wrap:wrap;">
                   <sc-for list="{{ ch.stats }}" as="st">
-                    <div style="flex:1 1 110px;background:#F7F5F0;border-radius:10px;padding:9px 12px;border-left:3px solid {{ st.color }};">
+                    <div onMouseEnter="{{ st.onEnter }}" onMouseLeave="{{ st.onLeave }}" style="flex:1 1 110px;background:#F7F5F0;border-radius:10px;padding:9px 12px;border-left:3px solid {{ st.color }};cursor:default;transition:transform 120ms ease,box-shadow 120ms ease;" style-hover="transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.08);">
                       <div style="font-size:11px;font-weight:600;color:#3B3D44;">{{ st.label }}</div>
                       <div style="font-size:9.5px;color:#A8A29A;margin-top:1px;">{{ st.range }}</div>
                       <div style="font-size:18px;font-weight:700;color:#290A1B;margin-top:4px;line-height:1;">{{ st.pct }}</div>
@@ -1254,7 +1254,7 @@ const buildRows = (records, labels, cfg) => {
   }));
 };
 class Component extends DCLogic {
-  state = { view: 'overview', worldId: 'entry', subId: 'lawfirm', tabId: '1lsummer', alerts: {}, search: '', sortCol: null, sortDir: 'asc', mktScope: 'all', hover: null, rowOpen: null, chartZoom: null, descExpanded: false };
+  state = { view: 'overview', worldId: 'entry', subId: 'lawfirm', tabId: '1lsummer', alerts: {}, search: '', sortCol: null, sortDir: 'asc', mktScope: 'all', hover: null, rowOpen: null, chartZoom: null, descExpanded: false, donutHover: null, gradHover: null };
 
   onScopeAll = () => this.setState({ mktScope: 'all' });
   onScopeT15 = () => this.setState({ mktScope: 't15' });
@@ -1960,6 +1960,9 @@ class Component extends DCLogic {
         const maxV = Math.max(1, ...items.map((it) => it[1]));
         const total = items.reduce((s, it) => s + it[1], 0) || 1;
         const plotW = VBW - padL - padR;
+        // labels sit in the padL gutter; truncate with an ellipsis so long names can't overflow / get cut off
+        const lblMax = Math.max(6, Math.floor((padL - 16) / (8.5 * 0.58)));
+        const clipLbl = (s) => { s = String(s == null ? '' : s); return s.length > lblMax ? s.slice(0, lblMax - 1).replace(/\s+$/, '') + '…' : s; };
         const kids = [];
         for (let i = 0; i < rows; i++) {
           const y = padT + i * (rowH + gap);
@@ -1967,7 +1970,7 @@ class Component extends DCLogic {
           const it = items[i];
           if (!it) continue; // empty row — grey track only
           const w = Math.max(plotW * (it[1] / maxV), 3);
-          kids.push(e('text', { key: 'l' + i, x: padL - 10, y: y + rowH / 2 + 3, textAnchor: 'end', fontSize: 8.5, fill: '#3B3D44', fontFamily: 'Zalando Sans,sans-serif', fontWeight: 600 }, it[0]));
+          kids.push(e('text', { key: 'l' + i, x: padL - 10, y: y + rowH / 2 + 3, textAnchor: 'end', fontSize: 8.5, fill: '#3B3D44', fontFamily: 'Zalando Sans,sans-serif', fontWeight: 600 }, e('title', null, String(it[0])), clipLbl(it[0])));
           kids.push(e('rect', { key: 'b' + i, x: padL, y: y, width: w, height: rowH, rx: 6, fill: color }));
           kids.push(e('text', { key: 'v' + i, x: padL + w + 7, y: y + rowH / 2 + 3, fontSize: 8.5, fontWeight: 700, fill: '#212121', fontFamily: 'Zalando Sans,sans-serif' }, String(it[1])));
           // hover → percentage of total (CSS-only tooltip)
@@ -2026,10 +2029,14 @@ class Component extends DCLogic {
         for (let g = 0; g <= 4; g++) { const gv = yMax * g / 4, yy = Y(gv);
           kids.push(e('line', { key: 'g' + g, x1: padL, x2: VBW - padR, y1: yy, y2: yy, stroke: '#EFECE4', strokeWidth: 1 }));
           kids.push(e('text', { key: 'gl' + g, x: padL - 6, y: yy + 3, textAnchor: 'end', fontSize: 8, fill: '#9A948C', fontFamily: 'Zalando Sans,sans-serif' }, String(Math.round(gv)))); }
+        const gh = this.state.gradHover;
         rows.forEach((r, i) => { const y = r[0], c = r[1], h = Math.max(plotH * (c / yMax), 1), x = X(i) - bw / 2, yy = baseY - h;
-          kids.push(e('rect', { key: 'b' + i, x: x, y: yy, width: bw, height: h, rx: 3, fill: colOf(y) }));
-          kids.push(e('text', { key: 'v' + i, x: X(i), y: yy - 4, textAnchor: 'middle', fontSize: 8, fontWeight: 700, fill: '#3B3D44', fontFamily: 'Zalando Sans,sans-serif' }, String(c)));
-          kids.push(e('text', { key: 'x' + i, x: X(i), y: baseY + 13, textAnchor: 'middle', fontSize: 7.5, fill: '#9A948C', fontFamily: 'Zalando Sans,sans-serif' }, String(y)));
+          const bk = y >= maxYr - 2 ? 2 : (y >= maxYr - 5 ? 1 : 0);
+          const active = gh === bk, dim = gh != null && !active, lift = active ? 'translate(0 -5)' : 'translate(0 0)';
+          const trans = { transition: 'transform 130ms ease, fill-opacity 130ms ease' };
+          kids.push(e('rect', { key: 'b' + i, x: x, y: yy, width: bw, height: h, rx: 3, fill: colOf(y), fillOpacity: dim ? 0.3 : 1, transform: lift, style: trans }));
+          kids.push(e('text', { key: 'v' + i, x: X(i), y: yy - 4, textAnchor: 'middle', fontSize: 8, fontWeight: 700, fill: '#3B3D44', fillOpacity: dim ? 0.3 : 1, transform: lift, style: trans, fontFamily: 'Zalando Sans,sans-serif' }, String(c)));
+          kids.push(e('text', { key: 'x' + i, x: X(i), y: baseY + 13, textAnchor: 'middle', fontSize: 7.5, fill: '#9A948C', fillOpacity: dim ? 0.45 : 1, fontFamily: 'Zalando Sans,sans-serif' }, String(y)));
           // hover → percentage of total grad-year demand (CSS-only tooltip)
           const pct = c / total * 100, tw = 40, th = 20;
           let ty = yy - 24; if (ty < 2) ty = yy + 4;
@@ -2060,6 +2067,8 @@ class Component extends DCLogic {
       // Donut with left legend (source + %) and a center total. items = [{label,color,value}].
       const donutChart = (items, total, centerLabel) => {
         const VBW = 520, VBH = 300, cx = 384, cy = 150, R = 104, r = 64, tau = Math.PI * 2;
+        const hov = this.state.donutHover;
+        const setHov = (i) => this.setState({ donutHover: i });
         const kids = [];
         let a0 = -Math.PI / 2;
         items.forEach((it, i) => {
@@ -2070,7 +2079,8 @@ class Component extends DCLogic {
             const xi1 = cx + r * Math.cos(a1), yi1 = cy + r * Math.sin(a1), xi0 = cx + r * Math.cos(a0), yi0 = cy + r * Math.sin(a0);
             const d = 'M' + x0.toFixed(2) + ' ' + y0.toFixed(2) + ' A' + R + ' ' + R + ' 0 ' + large + ' 1 ' + x1.toFixed(2) + ' ' + y1.toFixed(2) +
               ' L' + xi1.toFixed(2) + ' ' + yi1.toFixed(2) + ' A' + r + ' ' + r + ' 0 ' + large + ' 0 ' + xi0.toFixed(2) + ' ' + yi0.toFixed(2) + ' Z';
-            kids.push(e('path', { key: 'seg' + i, d: d, fill: it.color, stroke: '#fff', strokeWidth: 1.5 }));
+            const op = (hov == null || hov === i) ? 1 : 0.3;
+            kids.push(e('path', { key: 'seg' + i, d: d, fill: it.color, stroke: '#fff', strokeWidth: hov === i ? 2.5 : 1.5, fillOpacity: op, style: { transition: 'fill-opacity 120ms ease', cursor: 'pointer' }, onMouseEnter: () => setHov(i), onMouseLeave: () => setHov(null) }, e('title', null, it.label)));
             a0 = a1;
           }
         });
@@ -2079,9 +2089,14 @@ class Component extends DCLogic {
         const lx = 16; let ly = 44;
         items.forEach((it, i) => {
           const pct = total > 0 ? (it.value / total * 100) : 0;
-          kids.push(e('rect', { key: 'ls' + i, x: lx, y: ly - 8, width: 10, height: 10, rx: 2.5, fill: it.color }));
-          kids.push(e('text', { key: 'll' + i, x: lx + 16, y: ly, fontSize: 10.5, fill: '#3B3D44', fontFamily: 'Zalando Sans,sans-serif' }, it.label));
-          kids.push(e('text', { key: 'lp' + i, x: 250, y: ly, textAnchor: 'end', fontSize: 10.5, fontWeight: 700, fill: '#290A1B', fontFamily: 'Zalando Sans,sans-serif' }, pct.toFixed(1) + '%'));
+          const on = hov === i, dim = hov != null && hov !== i;
+          const row = [];
+          if (on) row.push(e('rect', { key: 'lh' + i, x: lx - 8, y: ly - 15, width: 258, height: 22, rx: 6, fill: '#F1EDE4' }));
+          row.push(e('rect', { key: 'ls' + i, x: lx, y: ly - 8, width: 10, height: 10, rx: 2.5, fill: it.color, fillOpacity: dim ? 0.45 : 1 }));
+          row.push(e('text', { key: 'll' + i, x: lx + 16, y: ly, fontSize: 10.5, fontWeight: on ? 700 : 400, fill: dim ? '#A39D93' : '#3B3D44', fontFamily: 'Zalando Sans,sans-serif' }, it.label));
+          row.push(e('text', { key: 'lp' + i, x: 250, y: ly, textAnchor: 'end', fontSize: 10.5, fontWeight: 700, fill: dim ? '#B7B0A6' : '#290A1B', fontFamily: 'Zalando Sans,sans-serif' }, pct.toFixed(1) + '%'));
+          row.push(e('rect', { key: 'lt' + i, x: lx - 8, y: ly - 15, width: 258, height: 22, fill: 'transparent', style: { cursor: 'pointer' }, onMouseEnter: () => setHov(i), onMouseLeave: () => setHov(null) }));
+          kids.push(e('g', { key: 'lg' + i }, row));
           ly += 27;
         });
         return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'xMidYMid meet', style: { display: 'block', height: 'auto', maxWidth: '520px', margin: '0 auto' } }, kids);
@@ -2178,7 +2193,7 @@ class Component extends DCLogic {
         // year it targets. Sparse future-year noise (2027+, n≈1) excluded; pipeline adds a year once it has volume.
         const gradData = DATA.charts.lateral.gradByWindow;
         const gradRows = gradData[mktWin];
-        const gradChart = { title: 'Lateral non-partner searches on Flo by target grad year', sub: winLbl + ' · graduation year targeted by lateral searches', svg: gradYearChart(gradRows), legend: [], hasToggle: true, stats: gradStats(gradRows) };
+        const gradChart = { title: 'Lateral non-partner searches on Flo by target grad year', sub: winLbl + ' · graduation year targeted by lateral searches', svg: gradYearChart(gradRows), legend: [], hasToggle: true, stats: gradStats(gradRows).map((s, i) => Object.assign({}, s, { onEnter: () => this.setState({ gradHover: i }), onLeave: () => this.setState({ gradHover: null }) })) };
         // Source of candidates by funnel stage. Stage = furthest core bucket reached, rolled up from the custom
         // status string (Interview+ / Offer+ include candidates rejected AT that stage). Metabase DWH job_applications.
         // Demo/test orgs excluded (121 org_ids, see memory). TEMP snapshot 2026-08-03; applied since 2025-01-01.
