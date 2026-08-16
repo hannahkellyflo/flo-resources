@@ -46,7 +46,7 @@
   .tscroll::-webkit-scrollbar-thumb { background: #D2CCC1; border-radius: 999px; border: 2px solid #F6F4EF; }
   .tscroll:hover::-webkit-scrollbar-thumb { background: #BDB6AA; }
   .tscroll thead th { position: sticky; top: 0; z-index: 2; background: #fff; box-shadow: inset 0 -1px 0 #E7E4DD; }
-  .mkt-grid { display: grid; grid-template-columns: minmax(0, 760px); gap: 16px; }
+  .mkt-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .mkt-zoom { cursor: zoom-in; }
   .mkt-zoom-hint { position: absolute; top: 8px; right: 8px; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; background: rgba(247,245,240,.85); color: #B4ADA2; opacity: 0; transition: opacity 130ms ease, color 130ms ease; pointer-events: none; }
   .mkt-zoom:hover .mkt-zoom-hint { opacity: 1; color: #7C766F; }
@@ -1861,7 +1861,7 @@ class Component extends DCLogic {
         kids.push(e('text', { key: 'm' + i, x: bx + barW / 2, y: baseY + 22, textAnchor: 'middle', fontSize: 12.5, fill: '#5C606B', fontFamily: FONT }, d.m));
       });
       kids.push(e('line', { key: 'base', x1: padL, x2: VBW - padR, y1: baseY, y2: baseY, stroke: '#C8C3B9', strokeWidth: 1.5 }));
-      marketChart = e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'xMidYMid meet', style: { display: 'block', height: 'auto' } }, kids);
+      marketChart = e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'none', style: { display: 'block', height: (VBH * 760 / VBW) + 'px' } }, kids);
     }
 
     // contextual stat strip — overview totals vs. section-specific
@@ -1948,7 +1948,7 @@ class Component extends DCLogic {
             )
           ));
         }));
-        return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'xMidYMid meet', style: { display: 'block', height: 'auto' } }, kids);
+        return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'none', style: { display: 'block', height: (VBH * 760 / VBW) + 'px' } }, kids);
       };
       // Horizontal bar chart (practice area / market breakdowns). items = [[label, value], ...].
       // targetRows keeps the card height steady across toggle states — short windows show grey empty tracks.
@@ -1981,7 +1981,7 @@ class Component extends DCLogic {
             )
           ));
         }
-        return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'xMidYMid meet', style: { display: 'block', height: 'auto' } }, kids);
+        return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'none', style: { display: 'block', height: (VBH * 760 / VBW) + 'px' } }, kids);
       };
       // Vertical annual bar chart. items = [{label, value, est?}]. An `est` item renders as a dashed
       // placeholder outline with NO value label — replace it with a solid data bar (drop `est`) once the
@@ -2006,7 +2006,7 @@ class Component extends DCLogic {
           }
           kids.push(e('text', { key: 'x' + i, x: cx, y: baseY + 18, textAnchor: 'middle', fontSize: 8.5, fontWeight: 500, fill: '#A8A29A', fontFamily: 'Zalando Sans,sans-serif' }, it.label));
         });
-        return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'xMidYMid meet', style: { display: 'block', height: 'auto' } }, kids);
+        return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'none', style: { display: 'block', height: (VBH * 760 / VBW) + 'px' } }, kids);
       };
       // Grad-year histogram for lateral searches. rows = [[year, count], ...] (any set of years — evolves as
       // the pipeline adds years). Bars colored by seniority bucket derived from the LATEST year present:
@@ -2041,7 +2041,7 @@ class Component extends DCLogic {
             )
           )); });
         kids.push(e('line', { key: 'base', x1: padL, x2: VBW - padR, y1: baseY, y2: baseY, stroke: '#C8C3B9', strokeWidth: 1 }));
-        return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'xMidYMid meet', style: { display: 'block', height: 'auto' } }, kids);
+        return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'none', style: { display: 'block', height: (VBH * 760 / VBW) + 'px' } }, kids);
       };
       // Seniority split of grad-year demand → 3 stat tiles. Boundaries relative to the latest year, so the
       // buckets shift automatically as new cohorts arrive. Shares of total year-tags; forced to sum to 100%.
@@ -2083,7 +2083,7 @@ class Component extends DCLogic {
           kids.push(e('text', { key: 'lp' + i, x: 250, y: ly, textAnchor: 'end', fontSize: 10.5, fontWeight: 700, fill: '#290A1B', fontFamily: 'Zalando Sans,sans-serif' }, pct.toFixed(1) + '%'));
           ly += 27;
         });
-        return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'xMidYMid meet', style: { display: 'block', height: 'auto' } }, kids);
+        return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'none', style: { display: 'block', height: (VBH * 760 / VBW) + 'px' } }, kids);
       };
       // US bubble map for "hiring by market". Contiguous-48 state outlines (d3.geoAlbersUsa fit to 975×610,
       // from react-usa-map). City coords are approximate Albers positions in that viewBox.
@@ -2127,7 +2127,7 @@ class Component extends DCLogic {
           kids.push(e('text', { key: 'l' + i, x: x + (lblDX[c.label] || 0), y: y + r + 14, textAnchor: 'middle', fontSize: 14.5, fontWeight: 600, fill: '#3B3D44', fontFamily: 'Zalando Sans,sans-serif', paintOrder: 'stroke', stroke: '#F4F1EA', strokeWidth: 3, strokeLinejoin: 'round' }, c.label));
         });
         kids.push(...tips);
-        return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'xMidYMid meet', style: { display: 'block', height: 'auto' } }, kids);
+        return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', preserveAspectRatio: 'none', style: { display: 'block', height: (VBH * 760 / VBW) + 'px' } }, kids);
       };
       if (is3LMarket) {
         // Timeline: Metabase OPEN_DATE (db 2), DISTINCT jobs, genuine 3L entry-level only (the grad-target year alone
