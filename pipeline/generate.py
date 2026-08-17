@@ -1233,8 +1233,13 @@ def wire_overview_stats(data: dict) -> None:
     for sub, k in (("pisummer", "summer"), ("piextern", "extern"), ("piattorney", "attorney")):
         ov["headerStats"][sub] = [{**s, "delta": "", "hasDelta": False} for s in ov["piCardStats"][k]]
 
-    ov["headerStats"]["entrylevel3l"] = [{"label": "Currently open", "value": str(len(t.get("entry3l", []))),
+    # entry3l mixes live rows (listing = {text,href}) with Airtable "upcoming" rows ("Not yet
+    # open"); "Currently open" must count only the live ones, not the not-yet-open survey rows.
+    n3l_live = sum(1 for r in t.get("entry3l", []) if isinstance(r.get("3L Job Listing"), dict))
+    ov["headerStats"]["entrylevel3l"] = [{"label": "Currently open", "value": str(n3l_live),
                                           "delta": "", "hasDelta": False}]
+    if isinstance(ov.get("cards", {}).get("entrylevel3l"), dict):
+        ov["cards"]["entrylevel3l"]["openValue"] = str(n3l_live)   # was a stale snapshot value
 
     npc = len(t.get("pc", []))
     recept = int(metabase_sql(MB_DB, RECEPTIONS_SQL)[0]["n"])
@@ -1268,7 +1273,7 @@ def wire_overview_stats(data: dict) -> None:
         {"value": str(mc), "delta": md, "vs": f"vs. {mp} last {last_month}"},
         {"value": str(sc), "delta": "", "vs": "1L Summer 2027 roles open now"}]
 
-    total = (len(t.get("lateral", [])) + npc + len(t.get("entry3l", []))
+    total = (len(t.get("lateral", [])) + npc + n3l_live
              + len(t.get("summer1L", {}).get("open", [])) + len(t.get("summer2L", {}).get("open", []))
              + sum(len(t.get(k, [])) for k in ("piSummerOpen", "piExternOpen", "piAttorneyOpen"))
              + len(t.get("campus", [])))
@@ -1285,7 +1290,7 @@ def wire_overview_stats(data: dict) -> None:
         ov["statStrip"][2]["value"] = min(ups).strftime("%b %-d")
     print(f"  overview stats: opened-this-month {mc} (vs {mp} last {last_month}), "
           f"this-season/Class2029 {sc}, "
-          f"3L {len(t.get('entry3l', []))}, pc {npc}, partner12mo {p12}, openings {total}")
+          f"3L {n3l_live} open (+{len(t.get('entry3l', [])) - n3l_live} upcoming), pc {npc}, partner12mo {p12}, openings {total}")
 
 
 WIRED = [wire_public_interest, wire_campus_exams, wire_lateral, wire_pc, wire_entry3l,
