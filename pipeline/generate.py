@@ -359,7 +359,7 @@ ENTRY3L_WHERE = r"""
 
 def wire_entry3l(data: dict) -> None:
     rows = metabase_sql(MB_DB, _JOB_SELECT % ENTRY3L_WHERE)
-    data["tables"]["entry3l"] = [{
+    table = [{
         "Employer": r.get("firm") or "—",
         "3L Position": r.get("position") or "—",
         "3L Job Listing": {"text": "View listing",
@@ -369,7 +369,32 @@ def wire_entry3l(data: dict) -> None:
         "Bar Admission, If Required": "",
         "Last Updated": fmt_date(r.get("updated_at")),
     } for r in rows]
-    print(f"  entry3l: {len(rows)} 3L entry-level listings")
+
+    # ── merge Airtable Direct-Apply 3L survey jobs (Class of 2027) — Tier-1 dedup by Job ID ──
+    live_ids = {str(r.get("job_id")) for r in rows if r.get("job_id") is not None}
+    seen = {(str(r.get("firm") or "").strip().lower(), str(r.get("position") or "").strip().lower()) for r in rows}
+    da_added = 0
+    for row in direct_apply_rows():
+        if row["level"] != "3L" or row["class"] != 2027:
+            continue
+        if row["jobid"] and row["jobid"] in live_ids:
+            continue                                    # already live in Metabase → drop Airtable
+        k2 = (row["firm"].strip().lower(), row["position"].strip().lower())
+        if k2 in seen:
+            continue
+        seen.add(k2); da_added += 1
+        table.append({
+            "Employer": row["firm"],
+            "3L Position": row["position"] or "—",
+            "3L Job Listing": "Not yet open",           # upcoming — no live listing/apply link yet
+            "Offices": "—",
+            "Practices, If Specified": "",
+            "Bar Admission, If Required": "",
+            "Last Updated": "—",
+        })
+
+    data["tables"]["entry3l"] = table
+    print(f"  entry3l: {len(rows)} 3L entry-level listings (+{da_added} from Airtable survey)")
 
 
 # ── 1L / 2L SUMMER SPLIT (Metabase db 2, LIVE) ───────────────────────────────
@@ -430,6 +455,88 @@ def _summer_record(r: dict, lvl: str, upcoming: bool) -> dict:
     }
 
 
+# ── AIRTABLE "Direct Apply Dates" survey jobs (merged into summer + 3L, deduped vs Metabase) ──
+# Per forward-jobs-table/03_airtable_upcoming_spec.md: Approved records only, exploded per level
+# (1L/2L/3L), class from JD Grad Year (required since 2026-07-19) else the open-date window.
+# Tier-1 dedup: an Airtable row whose Job ID Plain Text == a Metabase job_id is already LIVE →
+# drop it (Metabase row wins). An Airtable row with no live twin shows as UPCOMING (no apply link).
+DA_TABLE = "tblteCi8SMhBaFnnc"
+DA_STATUS, DA_EMP, DA_JOBID, DA_GY = "fldkUebV5Eeg8RlTB", "fldji3ZGYNArg0Gt3", "fldjULSzW3EXrUwoe", "fld4fnczgORVHmkE2"
+DA_LEVELS = {  # level -> (position, open_date, close_date, listing_url) field ids
+    "1L": ("fld2gjhVYgn06N0Hi", "fldPQFHcIN6v19uTm", "fldRQgaKF31OocHrH", "fldumQF7HBjz7B1Xk"),
+    "2L": ("fldfY6QtdpZJvxCYV", "fldBCZmyVCB7dFPo6", "fldWWrX7x6KqkIIjT", "fldOl58U673B7Wx0K"),
+    "3L": ("fldf1l8fMRlqR5oBm", None, None, "fldc0zZ5CIGCBYOqa"),
+}
+
+
+def _iso(d):
+    try:
+        return datetime.date.fromisoformat(str(d)[:10]) if d else None
+    except (ValueError, TypeError):
+        return None
+
+
+def _window_class(level: str, open_iso) -> int | None:
+    """Fallback class-year from the level's open date (recruiting year starts Jun 1).
+    1L→+3, 2L→+2, 3L→+1 grad years out. Only used when JD Grad Year is absent (old records)."""
+    d = _iso(open_iso)
+    if not d:
+        return None
+    ry = d.year if d.month >= 6 else d.year - 1
+    return ry + {"1L": 3, "2L": 2, "3L": 1}[level]
+
+
+def direct_apply_rows() -> list[dict]:
+    """Approved Direct-Apply survey records, exploded into one row per populated level."""
+    fields = [DA_STATUS, DA_EMP, DA_JOBID, DA_GY] + [f for L in DA_LEVELS.values() for f in L if f]
+    out = []
+    for rec in airtable_records(DA_TABLE, fields):
+        f = rec.get("fields", {})
+        if (f.get(DA_STATUS) or "") != "Approved":
+            continue
+        gy = [g for g in (f.get(DA_GY) or []) if isinstance(g, str)]
+        years = sorted(int(g.split()[-1]) for g in gy if g.split()[-1].isdigit())
+        jobid = str(f.get(DA_JOBID) or "").strip()
+        for lvl, (pos_f, open_f, close_f, list_f) in DA_LEVELS.items():
+            pos = f.get(pos_f)
+            if not pos:
+                continue
+            open_iso = f.get(open_f) if open_f else None
+            out.append({
+                "level": lvl,
+                "class": years[0] if years else _window_class(lvl, open_iso),  # earliest targeted class
+                "firm": (f.get(DA_EMP) or "").strip() or "—",
+                "position": str(pos).strip(),
+                "open_iso": open_iso,
+                "close_iso": f.get(close_f) if close_f else None,
+                "jobid": jobid,
+            })
+    return out
+
+
+def _da_summer_record(row: dict, lvl: str) -> dict:
+    od = fmt_mdy(row["open_iso"])
+    return {
+        f"{lvl} Application Open Date": (f"Opens {od}" if od else "Opens TBD"),
+        "Employer": row["firm"],
+        f"{lvl} Job Listing": "Not yet open",
+        "Firm Profile": "—",
+        f"{lvl} Position": row["position"] or "—",
+        "Office Location": "—",
+        "Scholarship": "—",
+        "Application Close Date": fmt_mdy(row["close_iso"]) or "—",
+    }
+
+
+def _upcoming_key(rec: dict, lvl: str):
+    """Sort upcoming rows by open date ascending; undated last."""
+    s = str(rec.get(f"{lvl} Application Open Date", "")).replace("Opens ", "").strip()
+    try:
+        return (0, datetime.datetime.strptime(s, "%m/%d/%Y").date())
+    except ValueError:
+        return (1, datetime.date.max)
+
+
 def wire_summer_split(data: dict) -> None:
     rows = metabase_sql(MB_DB, SUMMER_SQL)
     out = {"1L": {"open": [], "upcoming": []}, "2L": {"open": [], "upcoming": []}}
@@ -457,15 +564,31 @@ def wire_summer_split(data: dict) -> None:
             mcur.add(r.get("job_id"))
         for lv in levels:
             out[lv]["upcoming" if upcoming else "open"].append(_summer_record(r, lv, upcoming))
+
+    # ── merge Airtable Direct-Apply survey jobs (Approved) — Tier-1 dedup vs Metabase by Job ID ──
+    live_ids = {str(r.get("job_id")) for r in rows if r.get("job_id") is not None}
+    seen = {(str(r.get("firm") or "").strip().lower(), str(r.get("position") or "").strip().lower()) for r in rows}
+    da_added = {"1L": 0, "2L": 0}
+    for row in direct_apply_rows():
+        if row["jobid"] and row["jobid"] in live_ids:
+            continue                                    # already live in Metabase → keep Metabase, drop Airtable
+        k2 = (row["firm"].strip().lower(), row["position"].strip().lower())
+        if k2 in seen:
+            continue                                    # exact firm+title already present → skip
+        # tracker's summer tables surface the incoming Class of 2029 as the "upcoming" section
+        if row["level"] == "1L" and row["class"] == 2029:
+            out["1L"]["upcoming"].append(_da_summer_record(row, "1L")); seen.add(k2); da_added["1L"] += 1
+        elif row["level"] == "2L" and row["class"] == 2029:
+            out["2L"]["upcoming"].append(_da_summer_record(row, "2L")); seen.add(k2); da_added["2L"] += 1
+
     for lv, key in (("1L", "summer1L"), ("2L", "summer2L")):
-        # open newest-first (already sorted desc), upcoming soonest-first
-        out[lv]["upcoming"].reverse()
+        out[lv]["upcoming"].sort(key=lambda rec, _lv=lv: _upcoming_key(rec, _lv))   # soonest-first (Metabase + Airtable)
         data["tables"][key] = out[lv]
     # m_cur: listings (both classes) opened this month; c2029_open: Class of 2029 (1L) listings open now
     data["overview"]["_lawfirmFlow"] = {"m_cur": len(mcur), "c2029_open": len(out["1L"]["open"])}
     print(f"  summer split: 1L {len(out['1L']['open'])} open/{len(out['1L']['upcoming'])} upcoming, "
-          f"2L {len(out['2L']['open'])} open/{len(out['2L']['upcoming'])} upcoming; "
-          f"opened this month {len(mcur)}, Class of 2029 open {len(out['1L']['open'])}")
+          f"2L {len(out['2L']['open'])} open/{len(out['2L']['upcoming'])} upcoming "
+          f"(+{da_added['1L']} 1L/+{da_added['2L']} 2L from Airtable survey); opened this month {len(mcur)}")
 
 
 # ── MARKET CHARTS (Metabase db 2, LIVE) ──────────────────────────────────────
