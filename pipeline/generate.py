@@ -608,13 +608,13 @@ WHERE j.DELETED_AT IS NULL
 
 
 def monthly12(rows, year: int, yr_key="yr", mo_key="mo", n_key="n") -> list:
-    """12-element Jan..Dec array of counts for `year`; the current partial month and
-    all future months are null (avoids a misleading dip at the in-progress month)."""
+    """12-element Jan..Dec array of counts for `year`. The current month shows its
+    month-to-date value; only strictly-future months are null."""
     by = {int(r[mo_key]): int(r[n_key]) for r in rows if int(r[yr_key]) == year}
     out = []
     for m in range(1, 13):
-        complete = year < TODAY.year or (year == TODAY.year and m < TODAY.month)
-        out.append(by.get(m, 0) if complete else None)
+        future = year > TODAY.year or (year == TODAY.year and m > TODAY.month)
+        out.append(None if future else by.get(m, 0))
     return out
 
 
@@ -797,13 +797,14 @@ GROUP BY yr, mo""")
 
 def cycle_series(by: dict, cycle_start_year: int, axis_start=6) -> list:
     """12-elem array on a cycle axis starting at `axis_start` month (6=Jun..May).
-    `by` = {(yr,mo): n}. Current partial month + future are null."""
+    `by` = {(yr,mo): n}. The current month shows its month-to-date value; only
+    strictly-future months are null."""
     out = []
     for i in range(12):
         mo = (axis_start - 1 + i) % 12 + 1
         yr = cycle_start_year + (1 if mo < axis_start else 0)
-        complete = (yr, mo) < (TODAY.year, TODAY.month)
-        out.append(by.get((yr, mo), 0) if complete else None)
+        future = (yr, mo) > (TODAY.year, TODAY.month)
+        out.append(None if future else by.get((yr, mo), 0))
     return out
 
 
