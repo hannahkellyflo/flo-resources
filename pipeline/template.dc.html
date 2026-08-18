@@ -560,7 +560,10 @@
                 <span style="font-size:15px;font-weight:600;color:#290A1B;">{{ upcomingCapLead }}</span><span style="font-size:14px;font-weight:500;color:#8A857C;">{{ upcomingCapRest }}</span>
               </div>
               <sc-if value="{{ upcomingHasRows }}">
-              <div onClick="{{ downloadUpcoming }}" style="display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #C8D0DF;background:#fff;color:#212121;font-size:13.5px;font-weight:600;cursor:pointer;" style-hover="border-color:#3E0C2D;color:#3E0C2D;">Download CSV<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></div>
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <a href="{{ summerFormUrl }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #C8D0DF;background:#fff;color:#212121;font-size:13.5px;font-weight:600;text-decoration:none;cursor:pointer;" style-hover="border-color:#3E0C2D;color:#3E0C2D;">Submit Yours<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
+                <div onClick="{{ downloadUpcoming }}" style="display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #C8D0DF;background:#fff;color:#212121;font-size:13.5px;font-weight:600;cursor:pointer;" style-hover="border-color:#3E0C2D;color:#3E0C2D;">Download CSV<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></div>
+              </div>
               </sc-if>
             </div>
             <div class="tscroll" style="overflow-x:auto;border-top:1px solid #EDEAE4;">
@@ -606,6 +609,7 @@
               <sc-if value="{{ openHasRows }}">
               <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                 <a href="{{ browseUrl }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 16px;border-radius:8px;background:#1E0A16;color:#fff;font-size:13.5px;font-weight:600;text-decoration:none;cursor:pointer;" style-hover="background:#3E0C2D;">Browse open jobs<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></a>
+                <a href="{{ summerFormUrl }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #C8D0DF;background:#fff;color:#212121;font-size:13.5px;font-weight:600;text-decoration:none;cursor:pointer;" style-hover="border-color:#3E0C2D;color:#3E0C2D;">Submit Yours<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
                 <div onClick="{{ downloadOpen }}" style="display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #C8D0DF;background:#fff;color:#212121;font-size:13.5px;font-weight:600;cursor:pointer;" style-hover="border-color:#3E0C2D;color:#3E0C2D;">Download CSV<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></div>
               </div>
               </sc-if>
@@ -655,7 +659,10 @@
               <span style="font-size:15px;font-weight:600;color:#290A1B;">{{ campusCapLead }}</span><span style="font-size:14px;font-weight:500;color:#8A857C;">{{ campusCapRest }}</span>
             </div>
             <sc-if value="{{ campusHasRows }}">
-            <div onClick="{{ downloadCampus }}" style="display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #C8D0DF;background:#fff;color:#212121;font-size:13.5px;font-weight:600;cursor:pointer;" style-hover="border-color:#3E0C2D;color:#3E0C2D;">Download CSV<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <a href="https://airtable.com/appi5xzw51C2e58PR/pagOm9eFYMNWCTrgr/form" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #C8D0DF;background:#fff;color:#212121;font-size:13.5px;font-weight:600;text-decoration:none;cursor:pointer;" style-hover="border-color:#3E0C2D;color:#3E0C2D;">Submit Yours<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
+              <div onClick="{{ downloadCampus }}" style="display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #C8D0DF;background:#fff;color:#212121;font-size:13.5px;font-weight:600;cursor:pointer;" style-hover="border-color:#3E0C2D;color:#3E0C2D;">Download CSV<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></div>
+            </div>
             </sc-if>
           </div>
           <div class="tscroll" style="overflow-x:auto;border-top:1px solid #EDEAE4;">
@@ -704,7 +711,10 @@
               <span style="font-size:15px;font-weight:600;color:#290A1B;">{{ examsCapLead }}</span><span style="font-size:14px;font-weight:500;color:#8A857C;">{{ examsCapRest }}</span>
             </div>
             <sc-if value="{{ examsHasRows }}">
-            <div onClick="{{ downloadExams }}" style="display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #C8D0DF;background:#fff;color:#212121;font-size:13.5px;font-weight:600;cursor:pointer;" style-hover="border-color:#3E0C2D;color:#3E0C2D;">Download CSV<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <a href="https://airtable.com/appi5xzw51C2e58PR/pagOm9eFYMNWCTrgr/form" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #C8D0DF;background:#fff;color:#212121;font-size:13.5px;font-weight:600;text-decoration:none;cursor:pointer;" style-hover="border-color:#3E0C2D;color:#3E0C2D;">Submit Yours<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
+              <div onClick="{{ downloadExams }}" style="display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #C8D0DF;background:#fff;color:#212121;font-size:13.5px;font-weight:600;cursor:pointer;" style-hover="border-color:#3E0C2D;color:#3E0C2D;">Download CSV<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></div>
+            </div>
             </sc-if>
           </div>
           <div class="tscroll" style="overflow-x:auto;border-top:1px solid #EDEAE4;">
@@ -754,6 +764,7 @@
             <sc-if value="{{ entry3lHasRows }}">
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
               <a href="{{ browseUrl }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 16px;border-radius:8px;background:#1E0A16;color:#fff;font-size:13.5px;font-weight:600;text-decoration:none;cursor:pointer;" style-hover="background:#3E0C2D;">Browse open jobs<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></a>
+              <a href="https://airtable.com/appi5xzw51C2e58PR/paglZjtjIJfxciRhL/form" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #C8D0DF;background:#fff;color:#212121;font-size:13.5px;font-weight:600;text-decoration:none;cursor:pointer;" style-hover="border-color:#3E0C2D;color:#3E0C2D;">Submit Yours<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
               <div onClick="{{ downloadEntry3l }}" style="display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #C8D0DF;background:#fff;color:#212121;font-size:13.5px;font-weight:600;cursor:pointer;" style-hover="border-color:#3E0C2D;color:#3E0C2D;">Download CSV<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></div>
             </div>
             </sc-if>
@@ -804,6 +815,7 @@
             <sc-if value="{{ piOpenHasRows }}">
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
               <a href="{{ browseUrl }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 16px;border-radius:8px;background:#1E0A16;color:#fff;font-size:13.5px;font-weight:600;text-decoration:none;cursor:pointer;" style-hover="background:#3E0C2D;">Browse open jobs<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></a>
+              <a href="https://airtable.com/appi5xzw51C2e58PR/pagP70ITDHapW1MZg/form" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #C8D0DF;background:#fff;color:#212121;font-size:13.5px;font-weight:600;text-decoration:none;cursor:pointer;" style-hover="border-color:#3E0C2D;color:#3E0C2D;">Submit Yours<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
               <div onClick="{{ downloadPIOpen }}" style="display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #C8D0DF;background:#fff;color:#212121;font-size:13.5px;font-weight:600;cursor:pointer;" style-hover="border-color:#3E0C2D;color:#3E0C2D;">Download CSV<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></div>
             </div>
             </sc-if>
@@ -1578,6 +1590,10 @@ class Component extends DCLogic {
     const downloadOpen = () => this.exportCsv(splitColumns, splitOpenRows, openFile);
     const downloadUpcoming = () => this.exportCsv(splitColumns, splitUpcomingRows, upcomingFile);
     const browseUrl = 'https://florecruit.com/v2/app/forward/jobs';
+    // "Submit Yours" -> segment-specific Airtable intake form (1L vs 2L differ; the rest are static per block)
+    const summerFormUrl = is2L
+      ? 'https://airtable.com/appi5xzw51C2e58PR/pagZyFa7VLKB9cRlT/form'
+      : 'https://airtable.com/appi5xzw51C2e58PR/pagtjtij7TUGKQ94E/form';
 
     // --- Campus Interview Programs (source: Airtable interface pagpQ77Kehi4LNBub → table tbl3TysOhuqGmnTp6). ---
     // 15 public columns in stakeholder order, horizontal scroll. No records yet — shows an empty state until the
@@ -2422,6 +2438,7 @@ class Component extends DCLogic {
       downloadOpen,
       downloadUpcoming,
       browseUrl,
+      summerFormUrl,
       showChart,
       showTable: !showChart && !isSplitApply && !isCampus && !isExams && !is3L && !isPI && !isLateralNP && !isPostClerk,
       showSplitTable: isSplitApply,
