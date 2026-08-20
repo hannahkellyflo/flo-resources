@@ -168,11 +168,14 @@
                   <div onClick="{{ openLawfirm }}" style="margin:20px -8px 0;padding:16px 8px 14px;border-top:1px solid #F1EEE8;border-radius:8px;cursor:pointer;transition:transform 130ms ease;" style-hover="transform:translateY(-2px);">
                     <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:10px;">Latest postings</div>
                     <sc-for list="{{ ovLfPostings }}" as="p" hint-placeholder-count="3">
-                      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:5px 0;">
+                      <a href="{{ p.href }}" target="_blank" rel="noopener" onClick="{{ stopLink }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:5px 0;text-decoration:none;" style-hover="opacity:0.62;">
                         <div><div style="font-size:14px;color:#1A1A1A;">{{ p.firm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ p.role }}</div></div>
                         <span style="font-size:13.5px;font-weight:600;color:#3E0C2D;white-space:nowrap;">{{ p.date }}</span>
-                      </div>
+                      </a>
                     </sc-for>
+                    <sc-if value="{{ ovLfHasMore }}">
+                    <div style="margin-top:9px;font-size:12.5px;font-weight:600;color:#3E0C2D;display:inline-flex;align-items:center;gap:4px;">See {{ ovLfMore }} more →</div>
+                    </sc-if>
                   </div>
                 </div>
               </div>
@@ -208,11 +211,16 @@
                     </svg>
                   </div>
                   <div style="margin-top:20px;padding:16px 0 20px;border-top:1px solid #F1EEE8;transition:transform 130ms ease;" style-hover="transform:translateY(-2px);">
-                    <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:9px;">Latest posting</div>
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-                      <div><div style="font-size:14px;color:#212121;">{{ ov3lFirm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ ov3lRole }}</div></div>
-                      <span style="font-size:13.5px;font-weight:600;color:#3E0C2D;white-space:nowrap;">{{ ov3lDate }}</span>
-                    </div>
+                    <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:9px;">Latest postings</div>
+                    <sc-for list="{{ ov3lPostings }}" as="p" hint-placeholder-count="3">
+                      <a href="{{ p.href }}" target="_blank" rel="noopener" onClick="{{ stopLink }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:5px 0;text-decoration:none;" style-hover="opacity:0.62;">
+                        <div><div style="font-size:14px;color:#212121;">{{ p.firm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ p.role }}</div></div>
+                        <span style="font-size:13.5px;font-weight:600;color:#3E0C2D;white-space:nowrap;">{{ p.date }}</span>
+                      </a>
+                    </sc-for>
+                    <sc-if value="{{ ov3lHasMore }}">
+                    <div style="margin-top:9px;font-size:12.5px;font-weight:600;color:#3E0C2D;display:inline-flex;align-items:center;gap:4px;">See {{ ov3lMore }} more →</div>
+                    </sc-if>
                   </div>
                 </div>
               </div>
@@ -239,11 +247,16 @@
                     </sc-for>
                   </div>
                   <div style="margin-top:20px;padding:16px 0 20px;border-top:1px solid #F1EEE8;transition:transform 130ms ease;" style-hover="transform:translateY(-2px);">
-                    <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:9px;">Latest posting</div>
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-                      <div><div style="font-size:14px;color:#212121;">{{ ovPiSFirm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ ovPiSRole }}</div></div>
-                      <span style="font-size:13.5px;font-weight:600;color:#0174BE;white-space:nowrap;">{{ ovPiSDate }}</span>
-                    </div>
+                    <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:9px;">Latest postings</div>
+                    <sc-for list="{{ ovPiSPostings }}" as="p" hint-placeholder-count="3">
+                      <a href="{{ p.href }}" target="_blank" rel="noopener" onClick="{{ stopLink }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:5px 0;text-decoration:none;" style-hover="opacity:0.62;">
+                        <div><div style="font-size:14px;color:#212121;">{{ p.firm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ p.role }}</div></div>
+                        <span style="font-size:13.5px;font-weight:600;color:#0174BE;white-space:nowrap;">{{ p.date }}</span>
+                      </a>
+                    </sc-for>
+                    <sc-if value="{{ ovPiSHasMore }}">
+                    <div style="margin-top:9px;font-size:12.5px;font-weight:600;color:#0174BE;display:inline-flex;align-items:center;gap:4px;">See {{ ovPiSMore }} more →</div>
+                    </sc-if>
                   </div>
                 </div>
               </div>
@@ -267,11 +280,16 @@
                     </sc-for>
                   </div>
                   <div style="margin-top:20px;padding:16px 0 20px;border-top:1px solid #F1EEE8;transition:transform 130ms ease;" style-hover="transform:translateY(-2px);">
-                    <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:9px;">Latest posting</div>
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-                      <div><div style="font-size:14px;color:#212121;">{{ ovPiEFirm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ ovPiERole }}</div></div>
-                      <span style="font-size:13.5px;font-weight:600;color:#0174BE;white-space:nowrap;">{{ ovPiEDate }}</span>
-                    </div>
+                    <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:9px;">Latest postings</div>
+                    <sc-for list="{{ ovPiEPostings }}" as="p" hint-placeholder-count="3">
+                      <a href="{{ p.href }}" target="_blank" rel="noopener" onClick="{{ stopLink }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:5px 0;text-decoration:none;" style-hover="opacity:0.62;">
+                        <div><div style="font-size:14px;color:#212121;">{{ p.firm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ p.role }}</div></div>
+                        <span style="font-size:13.5px;font-weight:600;color:#0174BE;white-space:nowrap;">{{ p.date }}</span>
+                      </a>
+                    </sc-for>
+                    <sc-if value="{{ ovPiEHasMore }}">
+                    <div style="margin-top:9px;font-size:12.5px;font-weight:600;color:#0174BE;display:inline-flex;align-items:center;gap:4px;">See {{ ovPiEMore }} more →</div>
+                    </sc-if>
                   </div>
                 </div>
               </div>
@@ -316,11 +334,16 @@
                     </sc-for>
                   </div>
                   <div style="margin-top:18px;padding:16px 0 18px;border-top:1px solid #F1EEE8;transition:transform 130ms ease;" style-hover="transform:translateY(-2px);">
-                    <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:9px;">Latest posting</div>
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-                      <div><div style="font-size:14px;color:#212121;">{{ ovJudFirm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ ovJudRole }}</div></div>
-                      <span style="font-size:13.5px;font-weight:600;color:#3E0C2D;white-space:nowrap;">{{ ovJudDate }}</span>
-                    </div>
+                    <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:9px;">Latest postings</div>
+                    <sc-for list="{{ ovJudPostings }}" as="p" hint-placeholder-count="3">
+                      <a href="{{ p.href }}" target="_blank" rel="noopener" onClick="{{ stopLink }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:5px 0;text-decoration:none;" style-hover="opacity:0.62;">
+                        <div><div style="font-size:14px;color:#212121;">{{ p.firm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ p.role }}</div></div>
+                        <span style="font-size:13.5px;font-weight:600;color:#3E0C2D;white-space:nowrap;">{{ p.date }}</span>
+                      </a>
+                    </sc-for>
+                    <sc-if value="{{ ovJudHasMore }}">
+                    <div style="margin-top:9px;font-size:12.5px;font-weight:600;color:#3E0C2D;display:inline-flex;align-items:center;gap:4px;">See {{ ovJudMore }} more →</div>
+                    </sc-if>
                   </div>
                 </div>
               </div>
@@ -368,11 +391,16 @@
                     </div>
                   </div>
                   <div style="margin-top:20px;padding:16px 0 20px;border-top:1px solid #F1EEE8;transition:transform 130ms ease;" style-hover="transform:translateY(-2px);">
-                    <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:9px;">Latest posting</div>
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-                      <div><div style="font-size:14px;color:#212121;">{{ ovLaFirm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ ovLaRole }}</div></div>
-                      <span style="font-size:13.5px;font-weight:600;color:#3E0C2D;white-space:nowrap;">{{ ovLaDate }}</span>
-                    </div>
+                    <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:9px;">Latest postings</div>
+                    <sc-for list="{{ ovLaPostings }}" as="p" hint-placeholder-count="3">
+                      <a href="{{ p.href }}" target="_blank" rel="noopener" onClick="{{ stopLink }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:5px 0;text-decoration:none;" style-hover="opacity:0.62;">
+                        <div><div style="font-size:14px;color:#212121;">{{ p.firm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ p.role }}</div></div>
+                        <span style="font-size:13.5px;font-weight:600;color:#3E0C2D;white-space:nowrap;">{{ p.date }}</span>
+                      </a>
+                    </sc-for>
+                    <sc-if value="{{ ovLaHasMore }}">
+                    <div style="margin-top:9px;font-size:12.5px;font-weight:600;color:#3E0C2D;display:inline-flex;align-items:center;gap:4px;">See {{ ovLaMore }} more →</div>
+                    </sc-if>
                   </div>
                 </div>
               </div>
@@ -420,11 +448,16 @@
                     </sc-for>
                   </div>
                   <div style="margin-top:20px;padding:16px 0 20px;border-top:1px solid #F1EEE8;transition:transform 130ms ease;" style-hover="transform:translateY(-2px);">
-                    <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:9px;">Latest posting</div>
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-                      <div><div style="font-size:14px;color:#212121;">{{ ovPiAFirm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ ovPiARole }}</div></div>
-                      <span style="font-size:13.5px;font-weight:600;color:#0174BE;white-space:nowrap;">{{ ovPiADate }}</span>
-                    </div>
+                    <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:9px;">Latest postings</div>
+                    <sc-for list="{{ ovPiAPostings }}" as="p" hint-placeholder-count="3">
+                      <a href="{{ p.href }}" target="_blank" rel="noopener" onClick="{{ stopLink }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:5px 0;text-decoration:none;" style-hover="opacity:0.62;">
+                        <div><div style="font-size:14px;color:#212121;">{{ p.firm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ p.role }}</div></div>
+                        <span style="font-size:13.5px;font-weight:600;color:#0174BE;white-space:nowrap;">{{ p.date }}</span>
+                      </a>
+                    </sc-for>
+                    <sc-if value="{{ ovPiAHasMore }}">
+                    <div style="margin-top:9px;font-size:12.5px;font-weight:600;color:#0174BE;display:inline-flex;align-items:center;gap:4px;">See {{ ovPiAMore }} more →</div>
+                    </sc-if>
                   </div>
                 </div>
               </div>
@@ -2337,6 +2370,13 @@ class Component extends DCLogic {
       ovLaMktVal: OV.lateralassoc.stats[1].value, ovLaMktSub: OV.lateralassoc.stats[1].sub,
       ovLaGradVal: OV.lateralassoc.stats[2].value, ovLaGradSub: OV.lateralassoc.stats[2].sub,
       ovLaFirm: OV.lateralassoc.latest.firm, ovLaRole: OV.lateralassoc.latest.role, ovLaDate: OV.lateralassoc.latest.date,
+      ovLfMore: OV.lawfirm.latestMore || 0, ovLfHasMore: (OV.lawfirm.latestMore || 0) > 0,
+      ov3lPostings: OV.entrylevel3l.latestList || [], ov3lMore: OV.entrylevel3l.latestMore || 0, ov3lHasMore: (OV.entrylevel3l.latestMore || 0) > 0,
+      ovPiSPostings: OV.pisummer.latestList || [], ovPiSMore: OV.pisummer.latestMore || 0, ovPiSHasMore: (OV.pisummer.latestMore || 0) > 0,
+      ovPiEPostings: OV.piextern.latestList || [], ovPiEMore: OV.piextern.latestMore || 0, ovPiEHasMore: (OV.piextern.latestMore || 0) > 0,
+      ovPiAPostings: OV.piattorney.latestList || [], ovPiAMore: OV.piattorney.latestMore || 0, ovPiAHasMore: (OV.piattorney.latestMore || 0) > 0,
+      ovJudPostings: OV.judicial.latestList || [], ovJudMore: OV.judicial.latestMore || 0, ovJudHasMore: (OV.judicial.latestMore || 0) > 0,
+      ovLaPostings: OV.lateralassoc.latestList || [], ovLaMore: OV.lateralassoc.latestMore || 0, ovLaHasMore: (OV.lateralassoc.latestMore || 0) > 0,
       ovLpVal: OV.lateralpartner.value,
       headerStats, headerStatsShow: headerStats.length > 0,
       upcomingCapLead: CAP.up[0], upcomingCapRest: CAP.up[1],

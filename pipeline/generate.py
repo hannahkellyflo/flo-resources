@@ -1234,27 +1234,64 @@ def _has_pay(comp) -> bool:
     return True
 
 
+def _parse_any_date(s):
+    """Parse the assorted date strings the tables carry (M/D/YYYY, 'Mon D, YYYY', ISO)."""
+    s = str(s or "").replace("Opens ", "").strip()
+    for fmt in ("%m/%d/%Y", "%b %d, %Y", "%Y-%m-%d"):
+        try:
+            return datetime.datetime.strptime(s, fmt).date()
+        except ValueError:
+            pass
+    return None
+
+
+def _posting(firm, role, d, list_cell):
+    """One card posting: firm/role/short-date + the Flo Forward job href (from the listing cell);
+    falls back to the Forward jobs page when a row has no specific listing link."""
+    href = (list_cell.get("href") if isinstance(list_cell, dict) else None) or "https://florecruit.com/v2/app/forward/jobs"
+    return {"firm": firm or "—", "role": role or "—", "date": d.strftime("%b %-d"), "href": href}
+
+
+def _latest_postings(rows, firm_k, role_k, date_k, list_k, k: int = 3) -> list:
+    """k most-recently-opened rows for a card, each carrying its job link (uniform-key tables)."""
+    posts = []
+    for r in rows:
+        d = _parse_any_date(r.get(date_k))
+        if d:
+            posts.append((d, _posting(r.get(firm_k), r.get(role_k), d, r.get(list_k))))
+    posts.sort(key=lambda x: x[0], reverse=True)
+    return [p for _, p in posts[:k]]
+
+
 def _lawfirm_latest_postings(t: dict, k: int = 3) -> list:
-    """k most recently opened law-firm summer roles (across 1L + 2L) for the card."""
+    """k most recently opened law-firm summer roles (across 1L + 2L) for the card, with job links."""
     posts = []
     for lv, key in (("1L", "summer1L"), ("2L", "summer2L")):
         for r in t.get(key, {}).get("open", []):
-            ds = str(r.get(f"{lv} Application Open Date", "")).replace("Opens ", "").strip()
-            try:
-                d = datetime.datetime.strptime(ds, "%m/%d/%Y").date()
-            except ValueError:
-                continue
-            posts.append((d, r.get("Employer", "—"), r.get(f"{lv} Position", "—")))
+            d = _parse_any_date(r.get(f"{lv} Application Open Date"))
+            if d:
+                posts.append((d, _posting(r.get("Employer"), r.get(f"{lv} Position"), d, r.get(f"{lv} Job Listing"))))
     posts.sort(key=lambda x: x[0], reverse=True)
-    return [{"firm": f, "role": role, "date": d.strftime("%b %-d")} for d, f, role in posts[:k]]
+    return [p for _, p in posts[:k]]
 
 
 def wire_overview_stats(data: dict) -> None:
     t, ov = data["tables"], data["overview"]
-    _latest = _lawfirm_latest_postings(t)
-    if _latest:
-        ov["cards"]["lawfirm"]["latestList"] = _latest
-        ov["cards"]["lawfirm"]["latest"] = _latest[0]
+    # Card "Latest postings" (top 3, each linking to its Flo Forward job) + "See N more" counts, per section.
+    def _set_latest(sub, postings, total):
+        c = ov["cards"].setdefault(sub, {})
+        c["latestList"] = postings
+        c["latest"] = postings[0] if postings else c.get("latest")
+        c["latestMore"] = max(0, total - len(postings))
+    _e3l = [r for r in t.get("entry3l", []) if isinstance(r.get("3L Job Listing"), dict)]
+    _set_latest("lawfirm", _lawfirm_latest_postings(t),
+                len(t.get("summer1L", {}).get("open", [])) + len(t.get("summer2L", {}).get("open", [])))
+    _set_latest("entrylevel3l", _latest_postings(_e3l, "Employer", "3L Position", "Last Updated", "3L Job Listing"), len(_e3l))
+    for _sub, _key in (("pisummer", "piSummerOpen"), ("piextern", "piExternOpen"), ("piattorney", "piAttorneyOpen")):
+        _rows = t.get(_key, [])
+        _set_latest(_sub, _latest_postings(_rows, "Organization", "Job Title", "Posted Date", "Apply Here"), len(_rows))
+    _set_latest("judicial", _latest_postings(t.get("pc", []), "Law Firm", "Position", "Open Date", "Job Listing"), len(t.get("pc", [])))
+    _set_latest("lateralassoc", _latest_postings(t.get("lateral", []), "Law Firm", "Position", "Open Date", "Job Listing"), len(t.get("lateral", [])))
 
     def pi(open_key, third_kind):
         recs = t.get(open_key, [])
