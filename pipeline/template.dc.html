@@ -111,19 +111,19 @@
       <div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:28px;">
 
-          <!-- WORLD: Entry-Level -->
-          <div style="background:#fff;border:1px solid #ECE7DE;border-radius:20px;padding:26px 24px 28px;box-shadow:0 4px 24px rgba(41,10,27,.06);">
-            <div style="position:sticky;top:0;z-index:4;background:#fff;padding:2px 0 11px;"><span onClick="{{ openStudentWorld }}" style="font-family:'Zalando Sans',sans-serif;font-weight:700;font-size:24px;letter-spacing:-0.02em;color:#290A1B;cursor:pointer;display:inline-flex;align-items:center;gap:8px;" style-hover="color:#3E0C2D;">Law Student Recruiting <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></span></div>
+          <!-- WORLD: Entry-Level (whole column clickable -> student tabbed view; cards/toggle guard via .ovblock) -->
+          <div onClick="{{ openStudentWorld }}" style="background:#fff;border:1px solid #ECE7DE;border-radius:20px;padding:26px 24px 28px;box-shadow:0 4px 24px rgba(41,10,27,.06);cursor:pointer;">
+            <div style="position:sticky;top:0;z-index:4;background:#fff;padding:2px 0 11px;"><span style="font-family:'Zalando Sans',sans-serif;font-weight:700;font-size:24px;letter-spacing:-0.02em;color:#290A1B;" style-hover="color:#3E0C2D;">Law Student Recruiting</span></div>
             <div style="font-size:14px;color:#7C766F;margin-bottom:18px;">Across law firms and public interest organizations</div>
             <div style="display:flex;flex-direction:column;gap:14px;">
-              <div style="position:sticky;top:40px;z-index:3;background:#fff;padding-top:2px;display:flex;gap:26px;border-bottom:1.5px solid #E8E4DC;margin-bottom:2px;">
+              <div class="ovblock" style="position:sticky;top:40px;z-index:3;background:#fff;padding-top:2px;display:flex;gap:26px;border-bottom:1.5px solid #E8E4DC;margin-bottom:2px;">
                 <sc-if value="{{ studentLawfirm }}"><div style="padding:7px 2px 11px;font-size:15px;font-weight:600;color:#192B92;border-bottom:2.5px solid #192B92;margin-bottom:-1.5px;cursor:pointer;white-space:nowrap;">Law Firms</div></sc-if>
                 <sc-if value="{{ studentPI }}"><div onClick="{{ onStudentLawfirm }}" style="padding:7px 2px 11px;font-size:15px;font-weight:600;color:#8A857C;border-bottom:2.5px solid transparent;margin-bottom:-1.5px;cursor:pointer;white-space:nowrap;" style-hover="color:#3E0C2D;">Law Firms</div></sc-if>
                 <sc-if value="{{ studentPI }}"><div style="padding:7px 2px 11px;font-size:15px;font-weight:600;color:#0174BE;border-bottom:2.5px solid #0174BE;margin-bottom:-1.5px;cursor:pointer;white-space:nowrap;">Public Interest</div></sc-if>
                 <sc-if value="{{ studentLawfirm }}"><div onClick="{{ onStudentPI }}" style="padding:7px 2px 11px;font-size:15px;font-weight:600;color:#8A857C;border-bottom:2.5px solid transparent;margin-bottom:-1.5px;cursor:pointer;white-space:nowrap;" style-hover="color:#0174BE;">Public Interest</div></sc-if>
               </div>
               <sc-if value="{{ studentLawfirm }}">
-              <div style="display:flex;flex-direction:column;gap:14px;">
+              <div class="ovblock" style="display:flex;flex-direction:column;gap:14px;">
               <!-- Law Firm Hiring — table preview -->
               <div style="background:#fff;border:1.5px solid #DBD7CF;border-radius:14px;padding:18px 20px;box-shadow:0 3px 12px rgba(0,0,0,.05);overflow:hidden;transition:border-color 120ms ease,box-shadow 120ms ease,transform 120ms ease;display:flex;flex-direction:column;flex:1;" style-hover="border-color:#1A1A1A;box-shadow:0 8px 22px rgba(26,26,26,.16);transform:translateY(-2px);">
                 <div onClick="{{ openLawfirm }}" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;background:#FAF9F6;margin:-18px -20px 0;padding:16px 20px 14px;cursor:pointer;">
@@ -227,7 +227,7 @@
               </div>
               </sc-if>
               <sc-if value="{{ studentPI }}">
-              <div style="display:flex;flex-direction:column;gap:14px;">
+              <div class="ovblock" style="display:flex;flex-direction:column;gap:14px;">
               <!-- Law Student Internships — table preview -->
               <div onClick="{{ openPISummer }}" style="background:#fff;border:1.5px solid #DBD7CF;border-radius:14px;padding:18px 20px;box-shadow:0 3px 12px rgba(0,0,0,.05);overflow:hidden;cursor:pointer;transition:border-color 120ms ease,box-shadow 120ms ease,transform 120ms ease;display:flex;flex-direction:column;flex:1;" style-hover="border-color:#0174BE;box-shadow:0 8px 22px rgba(1,116,190,.14);transform:translateY(-2px);">
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;background:#FAF9F6;margin:-18px -20px 0;padding:16px 20px 14px;">
@@ -298,19 +298,19 @@
             </div>
           </div>
 
-          <!-- WORLD: Lateral -->
-          <div style="background:#fff;border:1px solid #ECE7DE;border-radius:20px;padding:26px 24px 28px;box-shadow:0 4px 24px rgba(41,10,27,.06);">
-            <div style="position:sticky;top:0;z-index:4;background:#fff;padding:2px 0 11px;"><span onClick="{{ openAttorneyWorld }}" style="font-family:'Zalando Sans',sans-serif;font-weight:700;font-size:24px;letter-spacing:-0.02em;color:#290A1B;cursor:pointer;display:inline-flex;align-items:center;gap:8px;" style-hover="color:#3E0C2D;">Attorney Recruiting <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></span></div>
+          <!-- WORLD: Lateral (whole column clickable -> attorney tabbed view; cards/toggle guard via .ovblock) -->
+          <div onClick="{{ openAttorneyWorld }}" style="background:#fff;border:1px solid #ECE7DE;border-radius:20px;padding:26px 24px 28px;box-shadow:0 4px 24px rgba(41,10,27,.06);cursor:pointer;">
+            <div style="position:sticky;top:0;z-index:4;background:#fff;padding:2px 0 11px;"><span style="font-family:'Zalando Sans',sans-serif;font-weight:700;font-size:24px;letter-spacing:-0.02em;color:#290A1B;" style-hover="color:#3E0C2D;">Attorney Recruiting</span></div>
             <div style="font-size:14px;color:#7C766F;margin-bottom:18px;">For practicing attorneys including judicial clerks</div>
             <div style="display:flex;flex-direction:column;gap:14px;">
-              <div style="position:sticky;top:40px;z-index:3;background:#fff;padding-top:2px;display:flex;gap:26px;border-bottom:1.5px solid #E8E4DC;margin-bottom:2px;">
+              <div class="ovblock" style="position:sticky;top:40px;z-index:3;background:#fff;padding-top:2px;display:flex;gap:26px;border-bottom:1.5px solid #E8E4DC;margin-bottom:2px;">
                 <sc-if value="{{ attorneyLawfirm }}"><div style="padding:7px 2px 11px;font-size:15px;font-weight:600;color:#192B92;border-bottom:2.5px solid #192B92;margin-bottom:-1.5px;cursor:pointer;white-space:nowrap;">Law Firms</div></sc-if>
                 <sc-if value="{{ attorneyPI }}"><div onClick="{{ onAttorneyLawfirm }}" style="padding:7px 2px 11px;font-size:15px;font-weight:600;color:#8A857C;border-bottom:2.5px solid transparent;margin-bottom:-1.5px;cursor:pointer;white-space:nowrap;" style-hover="color:#3E0C2D;">Law Firms</div></sc-if>
                 <sc-if value="{{ attorneyPI }}"><div style="padding:7px 2px 11px;font-size:15px;font-weight:600;color:#0174BE;border-bottom:2.5px solid #0174BE;margin-bottom:-1.5px;cursor:pointer;white-space:nowrap;">Public Interest</div></sc-if>
                 <sc-if value="{{ attorneyLawfirm }}"><div onClick="{{ onAttorneyPI }}" style="padding:7px 2px 11px;font-size:15px;font-weight:600;color:#8A857C;border-bottom:2.5px solid transparent;margin-bottom:-1.5px;cursor:pointer;white-space:nowrap;" style-hover="color:#0174BE;">Public Interest</div></sc-if>
               </div>
               <sc-if value="{{ attorneyLawfirm }}">
-              <div style="display:flex;flex-direction:column;gap:14px;">
+              <div class="ovblock" style="display:flex;flex-direction:column;gap:14px;">
               <!-- Post-Judicial Clerkship Associates — table preview -->
               <div onClick="{{ openJudicial }}" style="background:#fff;border:1.5px solid #DBD7CF;border-radius:14px;padding:18px 20px;box-shadow:0 3px 12px rgba(0,0,0,.05);overflow:hidden;cursor:pointer;transition:border-color 120ms ease,box-shadow 120ms ease,transform 120ms ease;display:flex;flex-direction:column;flex:1;" style-hover="border-color:#1A1A1A;box-shadow:0 8px 22px rgba(26,26,26,.16);transform:translateY(-2px);">
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;background:#FAF9F6;margin:-18px -20px 0;padding:16px 20px 14px;">
@@ -428,7 +428,7 @@
               </div>
               </sc-if>
               <sc-if value="{{ attorneyPI }}">
-              <div style="display:flex;flex-direction:column;gap:14px;">
+              <div class="ovblock" style="display:flex;flex-direction:column;gap:14px;">
               <!-- Attorney Positions — table preview -->
               <div onClick="{{ openPIAttorney }}" style="background:#fff;border:1.5px solid #DBD7CF;border-radius:14px;padding:18px 20px;box-shadow:0 3px 12px rgba(0,0,0,.05);overflow:hidden;cursor:pointer;transition:border-color 120ms ease,box-shadow 120ms ease,transform 120ms ease;display:flex;flex-direction:column;flex:1;" style-hover="border-color:#0174BE;box-shadow:0 8px 22px rgba(1,116,190,.14);transform:translateY(-2px);">
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;background:#FAF9F6;margin:-18px -20px 0;padding:16px 20px 14px;">
@@ -2482,8 +2482,8 @@ class Component extends DCLogic {
       secSub,
       showSectionTabs,
       openWorld: this.openWorld,
-      openStudentWorld: () => this.openWorld('entry'),
-      openAttorneyWorld: () => this.openWorld('lateral'),
+      openStudentWorld: (ev) => { if (ev && ev.target && ev.target.closest && ev.target.closest('.ovblock')) return; this.openWorld('entry'); },
+      openAttorneyWorld: (ev) => { if (ev && ev.target && ev.target.closest && ev.target.closest('.ovblock')) return; this.openWorld('lateral'); },
       stageTabs,
       showTabs: sub.tabs.length > 1,
       sectionTitle: (showChart && is3LMarket) ? 'Market Data — 3L Entry-Level Hiring' : (showChart && isPCMarket) ? 'Market Data — Judicial Clerk Receptions' : (showChart && isLatMarket) ? 'Market Data — Lateral Non-Partner Hiring' : (showChart && isPartnerMarket) ? 'Market Data — Lateral Partner Hiring' : showChart ? 'Market Data — Law Student Recruiting' : (isCampus ? 'Campus Interview Programs' : (isExams ? 'Exams & Grades' : (is3L ? 'Class of 2027 Openings' : (isSplitApply ? splitTitle : sub.sectionTitle)))),
