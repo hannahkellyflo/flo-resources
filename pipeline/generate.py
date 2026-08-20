@@ -79,6 +79,44 @@ def apply_link(richtext: str | None):
     return {"text": "Apply", "href": m.group(0).rstrip(">")} if m else "—"
 
 
+# ── FIRM PROFILE LINKS (the "Firm Profile" column) ───────────────────────────
+# Live Flo Forward "base" profile URLs live in pipeline/firm-profiles.json (Firm -> Base URL only;
+# Tier/Status deliberately NOT stored — this repo is public). Table firm names are matched to the
+# CSV by normalized name, then a prefix fallback (a full legal name that STARTS with the brand, e.g.
+# "Baker, Donelson, Bearman, Caldwell & Berkowitz, PC" -> "Baker Donelson"). Verified no false
+# positives on the current data. No match -> muted "—" (grey, not clickable = "no profile yet").
+def _norm_firm(s: str) -> str:
+    s = (s or "").lower()
+    s = re.sub(r"\(.*?\)", "", s)
+    s = re.sub(r"&", " and ", s)
+    s = re.sub(r"\b(llp|llc|pllc|l\.l\.p|p\.c|pc|pa|lp|ltd|chartered|the)\b", "", s)
+    return re.sub(r"[^a-z0-9]+", "", s)
+
+
+def _load_firm_profiles():
+    try:
+        raw = json.loads((PIPE / "firm-profiles.json").read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {}, []
+    m = {_norm_firm(f): u for f, u in raw.items()}
+    return m, sorted(m, key=len, reverse=True)
+
+
+_FIRM_PROFILE_MAP, _FIRM_PROFILE_KEYS = _load_firm_profiles()
+
+
+def firm_profile_cell(firm_name):
+    """{text:'View profile', href} when the firm has a live Flo Forward profile, else '—' (muted grey)."""
+    n = _norm_firm(firm_name)
+    url = _FIRM_PROFILE_MAP.get(n)
+    if not url:
+        for cn in _FIRM_PROFILE_KEYS:
+            if len(cn) >= 6 and n.startswith(cn):
+                url = _FIRM_PROFILE_MAP[cn]
+                break
+    return {"text": "View profile", "href": url} if url else "—"
+
+
 # ── PUBLIC INTEREST (Airtable, LIVE) ─────────────────────────────────────────
 # Source: tblLw1ZX1As4nTKDl. Bucket by EARLIEST targeted JD grad year:
 #   min <= 2025 -> Attorney;  2026/2027 -> Entry-Level;  2028/2029 -> Internships.
@@ -447,7 +485,7 @@ def _summer_record(r: dict, lvl: str, upcoming: bool) -> dict:
         "Employer": r.get("firm") or "—",
         f"{lvl} Job Listing": ("Not yet open" if upcoming else
                                {"text": "Apply", "href": f"https://florecruit.com/v2/app/forward/jobs/{jid}"}),
-        "Firm Profile": "—",
+        "Firm Profile": firm_profile_cell(r.get("firm")),
         f"{lvl} Position": r.get("position") or "—",
         "Office Location": r.get("offices") or "—",
         "Scholarship": "—",
@@ -520,7 +558,7 @@ def _da_summer_record(row: dict, lvl: str) -> dict:
         f"{lvl} Application Open Date": (f"Opens {od}" if od else "Opens TBD"),
         "Employer": row["firm"],
         f"{lvl} Job Listing": "Not yet open",
-        "Firm Profile": "—",
+        "Firm Profile": firm_profile_cell(row["firm"]),
         f"{lvl} Position": row["position"] or "—",
         "Office Location": "—",
         "Scholarship": "—",
