@@ -168,7 +168,7 @@
                     <sc-for list="{{ ovLfPostings }}" as="p" hint-placeholder-count="3">
                       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:5px 0;">
                         <div><div style="font-size:14px;color:#1A1A1A;">{{ p.firm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ p.role }}</div></div>
-                        <span style="font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums;color:#3E0C2D;white-space:nowrap;">{{ p.date }}</span>
+                        <span style="font-size:13.5px;font-weight:600;color:#3E0C2D;white-space:nowrap;">{{ p.date }}</span>
                       </div>
                     </sc-for>
                   </div>
@@ -209,7 +209,7 @@
                     <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:9px;">Latest posting</div>
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
                       <div><div style="font-size:14px;color:#212121;">{{ ov3lFirm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ ov3lRole }}</div></div>
-                      <span style="font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums;color:#3E0C2D;white-space:nowrap;">{{ ov3lDate }}</span>
+                      <span style="font-size:13.5px;font-weight:600;color:#3E0C2D;white-space:nowrap;">{{ ov3lDate }}</span>
                     </div>
                   </div>
                 </div>
@@ -240,7 +240,7 @@
                     <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:9px;">Latest posting</div>
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
                       <div><div style="font-size:14px;color:#212121;">{{ ovPiSFirm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ ovPiSRole }}</div></div>
-                      <span style="font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums;color:#0174BE;white-space:nowrap;">{{ ovPiSDate }}</span>
+                      <span style="font-size:13.5px;font-weight:600;color:#0174BE;white-space:nowrap;">{{ ovPiSDate }}</span>
                     </div>
                   </div>
                 </div>
@@ -268,7 +268,7 @@
                     <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:9px;">Latest posting</div>
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
                       <div><div style="font-size:14px;color:#212121;">{{ ovPiEFirm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ ovPiERole }}</div></div>
-                      <span style="font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums;color:#0174BE;white-space:nowrap;">{{ ovPiEDate }}</span>
+                      <span style="font-size:13.5px;font-weight:600;color:#0174BE;white-space:nowrap;">{{ ovPiEDate }}</span>
                     </div>
                   </div>
                 </div>
@@ -317,7 +317,7 @@
                     <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:9px;">Latest posting</div>
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
                       <div><div style="font-size:14px;color:#212121;">{{ ovJudFirm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ ovJudRole }}</div></div>
-                      <span style="font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums;color:#3E0C2D;white-space:nowrap;">{{ ovJudDate }}</span>
+                      <span style="font-size:13.5px;font-weight:600;color:#3E0C2D;white-space:nowrap;">{{ ovJudDate }}</span>
                     </div>
                   </div>
                 </div>
@@ -369,7 +369,7 @@
                     <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:9px;">Latest posting</div>
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
                       <div><div style="font-size:14px;color:#212121;">{{ ovLaFirm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ ovLaRole }}</div></div>
-                      <span style="font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums;color:#3E0C2D;white-space:nowrap;">{{ ovLaDate }}</span>
+                      <span style="font-size:13.5px;font-weight:600;color:#3E0C2D;white-space:nowrap;">{{ ovLaDate }}</span>
                     </div>
                   </div>
                 </div>
@@ -421,7 +421,7 @@
                     <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;margin-bottom:9px;">Latest posting</div>
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
                       <div><div style="font-size:14px;color:#212121;">{{ ovPiAFirm }}</div><div style="font-size:12px;color:#9A948C;margin-top:1px;">{{ ovPiARole }}</div></div>
-                      <span style="font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums;color:#0174BE;white-space:nowrap;">{{ ovPiADate }}</span>
+                      <span style="font-size:13.5px;font-weight:600;color:#0174BE;white-space:nowrap;">{{ ovPiADate }}</span>
                     </div>
                   </div>
                 </div>
@@ -2227,15 +2227,17 @@ class Component extends DCLogic {
       const chart = (id, title, sub, series, yFix, ax) => ({ title, sub, svg: lineChart(series, id, yFix, ax), legend: series.map((s) => ({ label: s.label, color: s.color })) });
       const MO_JUL = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
       marketCharts = [
-        chart('appsubs', 'Flo Forward application submissions', 'All students · monthly', mkSA(D.appsubs, SY, SYC)),
-        chart('postings', 'Job postings listed on Flo Forward', 'Law student roles · monthly', mkSA(D.postings, SY, SYC)),
-        Object.assign(chart('outreach', 'Law firm outreach events on Flo', (hcBucket === '500plus' ? '500+ attorney firms' : 'Under 500 attorneys') + ' · monthly', mkSA(hcBucket === '500plus' ? D.outreach_500plus : D.outreach_u500, SY, SYC)), { hasHcToggle: true }),
-        chart('eventregs', 'Event registrations on Flo', 'Law firm events · monthly', mkSA(D.event_regs || {}, SY, SYC)),
-        chart('net', 'Law school networking events on Flo', sSub, mkSA(D.net_all, SY, SYC)),
-        Object.assign(chart('lf', 'Law firm student interview volume on Flo', (hcBucket === '500plus' ? '500+ attorney firms' : 'Under 500 attorneys') + ' · callback interviews, monthly', mkSA(hcBucket === '500plus' ? D.lf_500plus : D.lf_u500, SY, SYC)), { hasHcToggle: true }),
-        chart('ls', 'Law school student interview volume on Flo', sSub, mkSA(D.ls_all, SY, SYC)),
+        // order per Hannah 2026-08-17: accounts, firm views, outreach, networking, event regs, postings, app subs
         chart('accounts', 'Flo Forward account creation', 'Cumulative by graduating class · recruiting year Jul–Jun', mk(D.accounts, GY, GYC), null, MO_JUL),
         chart('firmviews', 'Flo Forward firm profile views', 'Candidate page views · monthly', mkSA(D.firm_views || {}, SY, SYC)),
+        Object.assign(chart('outreach', 'Law firm outreach events on Flo', (hcBucket === '500plus' ? '500+ attorney firms' : 'Under 500 attorneys') + ' · monthly', mkSA(hcBucket === '500plus' ? D.outreach_500plus : D.outreach_u500, SY, SYC)), { hasHcToggle: true }),
+        chart('net', 'Law school networking events on Flo', sSub, mkSA(D.net_all, SY, SYC)),
+        chart('eventregs', 'Event registrations on Flo', 'Law firm events · monthly', mkSA(D.event_regs || {}, SY, SYC)),
+        chart('postings', 'Job postings listed on Flo Forward', 'Law student roles · monthly', mkSA(D.postings, SY, SYC)),
+        chart('appsubs', 'Flo Forward application submissions', 'All students · monthly', mkSA(D.appsubs, SY, SYC)),
+        // interview-volume charts (not in Hannah's reorder list) kept at the end pending her call
+        Object.assign(chart('lf', 'Law firm student interview volume on Flo', (hcBucket === '500plus' ? '500+ attorney firms' : 'Under 500 attorneys') + ' · callback interviews, monthly', mkSA(hcBucket === '500plus' ? D.lf_500plus : D.lf_u500, SY, SYC)), { hasHcToggle: true }),
+        chart('ls', 'Law school student interview volume on Flo', sSub, mkSA(D.ls_all, SY, SYC)),
       ];
       }
     }
