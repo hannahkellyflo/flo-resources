@@ -113,7 +113,7 @@
 
           <!-- WORLD: Entry-Level -->
           <div style="background:#fff;border:1px solid #ECE7DE;border-radius:20px;padding:26px 24px 28px;box-shadow:0 4px 24px rgba(41,10,27,.06);">
-            <div style="position:sticky;top:0;z-index:4;background:#fff;font-family:'Zalando Sans',sans-serif;font-weight:700;font-size:24px;letter-spacing:-0.02em;color:#290A1B;padding:2px 0 11px;">Law Student Recruiting</div>
+            <div style="position:sticky;top:0;z-index:4;background:#fff;padding:2px 0 11px;"><span onClick="{{ openStudentWorld }}" style="font-family:'Zalando Sans',sans-serif;font-weight:700;font-size:24px;letter-spacing:-0.02em;color:#290A1B;cursor:pointer;display:inline-flex;align-items:center;gap:8px;" style-hover="color:#3E0C2D;">Law Student Recruiting <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></span></div>
             <div style="font-size:14px;color:#7C766F;margin-bottom:18px;">Across law firms and public interest organizations</div>
             <div style="display:flex;flex-direction:column;gap:14px;">
               <div style="position:sticky;top:40px;z-index:3;background:#fff;padding-top:2px;display:flex;gap:26px;border-bottom:1.5px solid #E8E4DC;margin-bottom:2px;">
@@ -300,7 +300,7 @@
 
           <!-- WORLD: Lateral -->
           <div style="background:#fff;border:1px solid #ECE7DE;border-radius:20px;padding:26px 24px 28px;box-shadow:0 4px 24px rgba(41,10,27,.06);">
-            <div style="position:sticky;top:0;z-index:4;background:#fff;font-family:'Zalando Sans',sans-serif;font-weight:700;font-size:24px;letter-spacing:-0.02em;color:#290A1B;padding:2px 0 11px;">Attorney Recruiting</div>
+            <div style="position:sticky;top:0;z-index:4;background:#fff;padding:2px 0 11px;"><span onClick="{{ openAttorneyWorld }}" style="font-family:'Zalando Sans',sans-serif;font-weight:700;font-size:24px;letter-spacing:-0.02em;color:#290A1B;cursor:pointer;display:inline-flex;align-items:center;gap:8px;" style-hover="color:#3E0C2D;">Attorney Recruiting <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></span></div>
             <div style="font-size:14px;color:#7C766F;margin-bottom:18px;">For practicing attorneys including judicial clerks</div>
             <div style="display:flex;flex-direction:column;gap:14px;">
               <div style="position:sticky;top:40px;z-index:3;background:#fff;padding-top:2px;display:flex;gap:26px;border-bottom:1.5px solid #E8E4DC;margin-bottom:2px;">
@@ -477,12 +477,25 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
         Back
       </div>
+      <!-- section tabs: switch between this column's sub-sections without returning to the overview -->
+      <sc-if value="{{ showSectionTabs }}">
+      <div style="display:flex;align-items:center;gap:22px;flex-wrap:wrap;border-bottom:1px solid #E4E0D8;margin:0 4px 20px;">
+        <sc-for list="{{ sectionTabs }}" as="st" hint-placeholder-count="4">
+          <sc-if value="{{ st.isActive }}">
+            <div style="padding:6px 2px 12px;font-size:15px;font-weight:600;color:#1A1A1A;border-bottom:2.5px solid #1A1A1A;margin-bottom:-1px;cursor:pointer;white-space:nowrap;">{{ st.name }}</div>
+          </sc-if>
+          <sc-if value="{{ st.isInactive }}">
+            <div onClick="{{ st.onClick }}" style="padding:6px 2px 12px;font-size:15px;font-weight:600;color:#8A857C;border-bottom:2.5px solid transparent;margin-bottom:-1px;cursor:pointer;white-space:nowrap;transition:color 120ms ease;" style-hover="color:#1A1A1A;">{{ st.name }}</div>
+          </sc-if>
+        </sc-for>
+      </div>
+      </sc-if>
       <div style="background:{{ dPanelBg }};border:{{ dPanelBorder }};box-shadow:{{ dPanelShadow }};border-radius:24px;padding:30px;">
         <!-- static section header (single tracker, no sibling switcher) -->
         <div style="border-bottom:2px solid {{ dRule }};margin-bottom:22px;padding-bottom:14px;display:flex;align-items:flex-end;justify-content:space-between;gap:28px;flex-wrap:wrap;">
           <div>
-            <div style="font-family:'Zalando Sans',sans-serif;font-weight:600;font-size:28px;letter-spacing:-0.02em;color:#1A1A1A;">{{ sectionTabs.0.name }}</div>
-            <div style="font-size:13.5px;color:#9A948C;margin-top:4px;">{{ sectionTabs.0.subtitle }}</div>
+            <div style="font-family:'Zalando Sans',sans-serif;font-weight:600;font-size:28px;letter-spacing:-0.02em;color:#1A1A1A;">{{ secName }}</div>
+            <div style="font-size:13.5px;color:#9A948C;margin-top:4px;">{{ secSub }}</div>
           </div>
           <sc-if value="{{ headerStatsShow }}">
           <div style="display:flex;gap:26px;align-items:flex-end;flex-wrap:wrap;">
@@ -1510,6 +1523,8 @@ class Component extends DCLogic {
   };
   selectTab = (tabId) => { this.setState({ tabId, search: '', sortCol: null, sortDir: 'asc', rowOpen: null, chartZoom: null }); this.scrollTop(); };
   goOverview = () => { this.setState({ view: 'overview' }); this.scrollTop(); };
+  // Column header -> aggregate tabbed page for that world (lands on the first section; section tabs switch subs).
+  openWorld = (worldId) => this.enterSub(worldId === 'lateral' ? 'judicial' : 'lawfirm');
 
   cardFor(subId) {
     const { SUBS } = this.data();
@@ -1531,7 +1546,13 @@ class Component extends DCLogic {
     const world = WORLDS[this.state.worldId];
     const sub = SUBS[this.state.subId];
 
-    const sectionTabs = [{ name: sub.name, subtitle: sub.secSubtitle, isActive: true, isInactive: false, onClick: () => {} }];
+    // Section tabs = all the current column's (world's) real sub-sections, so clicking a column header opens a
+    // tabbed page across sections (Hannah's "one page, section tabs"). Orphan 'publicinterest' is skipped.
+    const _secOrder = { entry: ['lawfirm', 'entrylevel3l', 'pisummer', 'piextern'], lateral: ['judicial', 'lateralassoc', 'lateralpartner', 'piattorney'] };
+    const _secIds = (_secOrder[this.state.worldId] || [this.state.subId]).filter((id) => SUBS[id]);
+    const sectionTabs = _secIds.map((id) => ({ name: SUBS[id].name, subId: id, isActive: id === this.state.subId, isInactive: id !== this.state.subId, onClick: () => this.selectSub(id) }));
+    const secName = sub.name, secSub = sub.secSubtitle;
+    const showSectionTabs = _secIds.length > 1;
 
     const stageTabs = sub.tabs.map((t) => {
       const active = t.id === this.state.tabId;
@@ -2457,6 +2478,12 @@ class Component extends DCLogic {
       onAttorneyLawfirm: () => this.setState({ attorneySection: 'lawfirm' }),
       onAttorneyPI: () => this.setState({ attorneySection: 'pi' }),
       sectionTabs,
+      secName,
+      secSub,
+      showSectionTabs,
+      openWorld: this.openWorld,
+      openStudentWorld: () => this.openWorld('entry'),
+      openAttorneyWorld: () => this.openWorld('lateral'),
       stageTabs,
       showTabs: sub.tabs.length > 1,
       sectionTitle: (showChart && is3LMarket) ? 'Market Data — 3L Entry-Level Hiring' : (showChart && isPCMarket) ? 'Market Data — Judicial Clerk Receptions' : (showChart && isLatMarket) ? 'Market Data — Lateral Non-Partner Hiring' : (showChart && isPartnerMarket) ? 'Market Data — Lateral Partner Hiring' : showChart ? 'Market Data — Law Student Recruiting' : (isCampus ? 'Campus Interview Programs' : (isExams ? 'Exams & Grades' : (is3L ? 'Class of 2027 Openings' : (isSplitApply ? splitTitle : sub.sectionTitle)))),
