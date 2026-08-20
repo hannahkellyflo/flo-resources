@@ -1256,6 +1256,11 @@ const buildRows = (records, labels, cfg) => {
 class Component extends DCLogic {
   state = { view: 'overview', worldId: 'entry', subId: 'lawfirm', tabId: '1lsummer', alerts: {}, search: '', sortCol: null, sortDir: 'asc', mktScope: 'all', hover: null, rowOpen: null, chartZoom: null, descExpanded: false, donutHover: null, gradHover: null };
 
+  // Navigating to a different view/section/tab should land at the TOP of the new page, not carry over the
+  // previous scroll position. enterSub/selectSub/selectTab/goOverview each scroll to top (this runtime doesn't
+  // invoke componentDidUpdate, so it's done inline per handler). Overlays/filters intentionally don't scroll.
+  scrollTop() { if (typeof window !== 'undefined' && window.scrollTo) window.scrollTo(0, 0); }
+
   onScopeAll = () => this.setState({ mktScope: 'all' });
   onScopeT15 = () => this.setState({ mktScope: 't15' });
   onSearch = (e) => this.setState({ search: (e && e.target ? e.target.value : '') });
@@ -1463,14 +1468,15 @@ class Component extends DCLogic {
     const tabs = SUBS[subId].tabs;
     const tabId = (targetTab && tabs.some(t => t.id === targetTab)) ? targetTab : tabs[0].id;
     this.setState({ view: 'world', worldId: this.worldOf(subId), subId, tabId, chartZoom: null });
-    if (typeof window !== 'undefined' && window.scrollTo) window.scrollTo(0, 0);
+    this.scrollTop();
   };
   selectSub = (subId) => {
     const { SUBS } = this.data();
     this.setState({ subId, tabId: SUBS[subId].tabs[0].id, chartZoom: null });
+    this.scrollTop();
   };
-  selectTab = (tabId) => this.setState({ tabId, search: '', sortCol: null, sortDir: 'asc', rowOpen: null, chartZoom: null });
-  goOverview = () => this.setState({ view: 'overview' });
+  selectTab = (tabId) => { this.setState({ tabId, search: '', sortCol: null, sortDir: 'asc', rowOpen: null, chartZoom: null }); this.scrollTop(); };
+  goOverview = () => { this.setState({ view: 'overview' }); this.scrollTop(); };
 
   cardFor(subId) {
     const { SUBS } = this.data();
