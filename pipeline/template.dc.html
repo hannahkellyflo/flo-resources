@@ -75,6 +75,26 @@
     .tk-main { padding: 0 16px !important; margin: 20px auto 56px !important; }
     /* card grids are auto-fit minmax(340px,…); the 340px floor is ~6px wider than the mobile column, so pin to one shrinkable column */
     .ovblock { grid-template-columns: minmax(0, 1fr) !important; }
+    /* ── Phase 2: data tables → stacked "label: value" cards (no horizontal scroll on mobile).
+       Each row becomes a card; each cell renders its column name (data-label) above the value. */
+    .tcard { min-height: 0 !important; }
+    .tscroll { max-height: none !important; overflow: visible !important; }
+    .tscroll table, .tscroll tbody, .tscroll tr, .tscroll td { display: block !important; width: auto !important; }
+    .tscroll thead { display: none !important; }
+    .tscroll tr { padding: 12px 2px !important; border-bottom: 1px solid #ECE9E3 !important; }
+    .tscroll tr:last-child { border-bottom: 0 !important; }
+    .tscroll td { padding: 5px 0 !important; border: 0 !important; white-space: normal !important; }
+    .tscroll td:not([data-label]) { display: none !important; }   /* the leading row-expand icon cell */
+    .tscroll td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 1px; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #A39D93; }
+    .tscroll td:hover { text-decoration: none !important; }   /* the whole card is the tap target; don't underline each line */
+    .tscroll td [style*="max-width"] { max-width: none !important; }   /* let wrapped/desc cells use full width */
+    /* Record-detail drawer → near-full-width sheet; stack its label/value pairs. */
+    .tk-drawer { width: 96% !important; border-radius: 14px 0 0 14px !important; }
+    .tk-field { grid-template-columns: 1fr !important; gap: 3px !important; }
+    /* Chart-zoom lightbox → trim the desktop 32px/26px padding so the chart isn't tiny on a phone. */
+    .tk-zoomwrap { padding: 10px !important; }
+    .tk-zoombox { padding: 16px 14px !important; width: 100% !important; max-height: 94vh !important; }
+    .tk-zoomlogo { display: none !important; }   /* hide the watermark on mobile; it collides with the long title */
   }
 </style>
 </helmet>
@@ -585,7 +605,7 @@
                 <sc-for list="{{ rows }}" as="row" hint-placeholder-count="3">
                   <tr>
                     <sc-for list="{{ row.cells }}" as="cell">
-                      <td style="padding:7px 14px;border-bottom:1px solid #EFEDE7;color:#212121;white-space:nowrap;vertical-align:middle;">
+                      <td data-label="{{ cell.label }}" style="padding:7px 14px;border-bottom:1px solid #EFEDE7;color:#212121;white-space:nowrap;vertical-align:middle;">
                         <sc-if value="{{ cell.isText }}"><span>{{ cell.text }}</span></sc-if>
                         <sc-if value="{{ cell.isLink }}"><a href="{{ cell.href }}" target="_blank" rel="noopener" style="color:#1C6FD6;font-weight:600;text-decoration:none;cursor:pointer;">{{ cell.text }}</a></sc-if>
                         <sc-if value="{{ cell.isMuted }}"><span style="color:#ACB3C3;">{{ cell.text }}</span></sc-if>
@@ -632,7 +652,7 @@
                     <tr onClick="{{ row.onOpen }}" class="campus-row">
                       <td style="padding:7px 0 7px 16px;border-bottom:1px solid #EFEDE7;vertical-align:middle;width:40px;"><span class="row-expand" title="Open full details"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg></span></td>
                       <sc-for list="{{ row.cells }}" as="cell">
-                        <td style="padding:7px 14px;border-bottom:1px solid #EFEDE7;color:#212121;white-space:nowrap;vertical-align:middle;">
+                        <td data-label="{{ cell.label }}" style="padding:7px 14px;border-bottom:1px solid #EFEDE7;color:#212121;white-space:nowrap;vertical-align:middle;">
                           <sc-if value="{{ cell.isText }}"><span>{{ cell.text }}</span></sc-if>
                           <sc-if value="{{ cell.isFirmLink }}"><a href="{{ cell.href }}" target="_blank" rel="noopener" onClick="{{ stopLink }}" title="View firm profile" style="color:#212121;font-weight:600;text-decoration:none;cursor:pointer;" style-hover="text-decoration:underline;color:#3E0C2D;">{{ cell.text }}</a></sc-if>
                           <sc-if value="{{ cell.isLink }}"><a href="{{ cell.href }}" target="_blank" rel="noopener" style="color:#1C6FD6;font-weight:600;text-decoration:none;cursor:pointer;">{{ cell.text }}</a></sc-if>
@@ -681,7 +701,7 @@
                     <tr onClick="{{ row.onOpen }}" class="campus-row">
                       <td style="padding:7px 0 7px 16px;border-bottom:1px solid #EFEDE7;vertical-align:middle;width:40px;"><span class="row-expand" title="Open full details"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg></span></td>
                       <sc-for list="{{ row.cells }}" as="cell">
-                        <td style="padding:7px 14px;border-bottom:1px solid #EFEDE7;color:#212121;white-space:nowrap;vertical-align:middle;">
+                        <td data-label="{{ cell.label }}" style="padding:7px 14px;border-bottom:1px solid #EFEDE7;color:#212121;white-space:nowrap;vertical-align:middle;">
                           <sc-if value="{{ cell.isText }}"><span>{{ cell.text }}</span></sc-if>
                           <sc-if value="{{ cell.isFirmLink }}"><a href="{{ cell.href }}" target="_blank" rel="noopener" onClick="{{ stopLink }}" title="View firm profile" style="color:#212121;font-weight:600;text-decoration:none;cursor:pointer;" style-hover="text-decoration:underline;color:#3E0C2D;">{{ cell.text }}</a></sc-if>
                           <sc-if value="{{ cell.isLink }}"><a href="{{ cell.href }}" target="_blank" rel="noopener" style="color:#1C6FD6;font-weight:600;text-decoration:none;cursor:pointer;">{{ cell.text }}</a></sc-if>
@@ -787,7 +807,7 @@
                       <span class="row-expand" title="Open full details"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg></span>
                     </td>
                     <sc-for list="{{ row.cells }}" as="cell">
-                      <td style="padding:7px 14px;border-bottom:1px solid #EFEDE7;color:#212121;white-space:nowrap;vertical-align:middle;">
+                      <td data-label="{{ cell.label }}" style="padding:7px 14px;border-bottom:1px solid #EFEDE7;color:#212121;white-space:nowrap;vertical-align:middle;">
                         <sc-if value="{{ cell.isText }}"><span>{{ cell.text }}</span></sc-if>
                         <sc-if value="{{ cell.isLink }}"><a href="{{ cell.href }}" target="_blank" rel="noopener" onClick="{{ stopLink }}" style="color:#1C6FD6;font-weight:600;text-decoration:none;cursor:pointer;">{{ cell.text }}</a></sc-if>
                         <sc-if value="{{ cell.isMuted }}"><span style="color:#ACB3C3;">{{ cell.text }}</span></sc-if>
@@ -837,7 +857,7 @@
                   <tr onClick="{{ row.onOpen }}" class="campus-row">
                     <td style="padding:7px 0 7px 16px;border-bottom:1px solid #EFEDE7;vertical-align:top;width:40px;"><span class="row-expand" title="Open full details"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg></span></td>
                     <sc-for list="{{ row.cells }}" as="cell">
-                      <td style="padding:7px 14px;border-bottom:1px solid #EFEDE7;color:#212121;white-space:nowrap;vertical-align:top;">
+                      <td data-label="{{ cell.label }}" style="padding:7px 14px;border-bottom:1px solid #EFEDE7;color:#212121;white-space:nowrap;vertical-align:top;">
                         <sc-if value="{{ cell.isText }}"><span>{{ cell.text }}</span></sc-if>
                         <sc-if value="{{ cell.isFirmLink }}"><a href="{{ cell.href }}" target="_blank" rel="noopener" onClick="{{ stopLink }}" title="View firm profile" style="color:#212121;font-weight:600;text-decoration:none;cursor:pointer;" style-hover="text-decoration:underline;color:#3E0C2D;">{{ cell.text }}</a></sc-if>
                         <sc-if value="{{ cell.isLink }}"><a href="{{ cell.href }}" target="_blank" rel="noopener" style="color:#1C6FD6;font-weight:600;text-decoration:none;cursor:pointer;">{{ cell.text }}</a></sc-if>
@@ -891,7 +911,7 @@
                       <span class="row-expand" title="Open full details"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg></span>
                     </td>
                     <sc-for list="{{ row.cells }}" as="cell">
-                      <td style="padding:7px 14px;border-bottom:1px solid #EFEDE7;color:#212121;white-space:nowrap;vertical-align:top;">
+                      <td data-label="{{ cell.label }}" style="padding:7px 14px;border-bottom:1px solid #EFEDE7;color:#212121;white-space:nowrap;vertical-align:top;">
                         <sc-if value="{{ cell.isText }}"><span>{{ cell.text }}</span></sc-if>
                         <sc-if value="{{ cell.isLink }}"><a href="{{ cell.href }}" target="_blank" rel="noopener" onClick="{{ stopLink }}" style="color:#1C6FD6;font-weight:600;text-decoration:none;cursor:pointer;">{{ cell.text }}</a></sc-if>
                         <sc-if value="{{ cell.isMuted }}"><span style="color:#ACB3C3;">{{ cell.text }}</span></sc-if>
@@ -939,7 +959,7 @@
                       <span class="row-expand" title="Open full details"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg></span>
                     </td>
                     <sc-for list="{{ row.cells }}" as="cell">
-                      <td style="padding:7px 14px;border-bottom:1px solid #EFEDE7;color:#5C606B;white-space:nowrap;vertical-align:top;">
+                      <td data-label="{{ cell.label }}" style="padding:7px 14px;border-bottom:1px solid #EFEDE7;color:#5C606B;white-space:nowrap;vertical-align:top;">
                         <sc-if value="{{ cell.isText }}"><span>{{ cell.text }}</span></sc-if>
                         <sc-if value="{{ cell.isLink }}"><a href="{{ cell.href }}" target="_blank" rel="noopener" onClick="{{ stopLink }}" style="color:#8A857C;font-weight:600;text-decoration:underline;cursor:pointer;">{{ cell.text }}</a></sc-if>
                         <sc-if value="{{ cell.isMuted }}"><span style="color:#ACB3C3;">{{ cell.text }}</span></sc-if>
@@ -992,7 +1012,7 @@
                       <span class="row-expand" title="Open full details"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg></span>
                     </td>
                     <sc-for list="{{ row.cells }}" as="cell">
-                      <td style="padding:7px 14px;border-bottom:1px solid #EFEDE7;color:#212121;white-space:nowrap;vertical-align:middle;">
+                      <td data-label="{{ cell.label }}" style="padding:7px 14px;border-bottom:1px solid #EFEDE7;color:#212121;white-space:nowrap;vertical-align:middle;">
                         <sc-if value="{{ cell.isText }}"><span>{{ cell.text }}</span></sc-if>
                         <sc-if value="{{ cell.isLink }}"><a href="{{ cell.href }}" target="_blank" rel="noopener" onClick="{{ stopLink }}" style="color:#1C6FD6;font-weight:600;text-decoration:none;cursor:pointer;">{{ cell.text }}</a></sc-if>
                         <sc-if value="{{ cell.isMuted }}"><span style="color:#ACB3C3;">{{ cell.text }}</span></sc-if>
@@ -1046,7 +1066,7 @@
                       <span class="row-expand" title="Open full details"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg></span>
                     </td>
                     <sc-for list="{{ row.cells }}" as="cell">
-                      <td style="padding:7px 14px;border-bottom:1px solid #EFEDE7;color:#212121;white-space:nowrap;vertical-align:top;">
+                      <td data-label="{{ cell.label }}" style="padding:7px 14px;border-bottom:1px solid #EFEDE7;color:#212121;white-space:nowrap;vertical-align:top;">
                         <sc-if value="{{ cell.isText }}"><span>{{ cell.text }}</span></sc-if>
                         <sc-if value="{{ cell.isLink }}"><a href="{{ cell.href }}" target="_blank" rel="noopener" onClick="{{ stopLink }}" style="color:#1C6FD6;font-weight:600;text-decoration:none;cursor:pointer;">{{ cell.text }}</a></sc-if>
                         <sc-if value="{{ cell.isMuted }}"><span style="color:#ACB3C3;">{{ cell.text }}</span></sc-if>
@@ -1070,7 +1090,7 @@
         <!-- Record detail panel (Airtable-style expanded record) — shared by Campus Programs + Exams & Grades -->
         <sc-if value="{{ showRowPanel }}">
         <div onClick="{{ recDetail.onClose }}" style="position:absolute;inset:0;background:rgba(20,10,16,.30);z-index:40;border-radius:16px;"></div>
-        <div style="position:absolute;top:0;right:0;height:100%;width:min(560px,86%);background:#fff;z-index:41;box-shadow:-14px 0 44px rgba(0,0,0,.18);display:flex;flex-direction:column;border-radius:14px;overflow:hidden;">
+        <div class="tk-drawer" style="position:absolute;top:0;right:0;height:100%;width:min(560px,86%);background:#fff;z-index:41;box-shadow:-14px 0 44px rgba(0,0,0,.18);display:flex;flex-direction:column;border-radius:14px;overflow:hidden;">
           <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 22px;border-bottom:1px solid #EDEAE4;flex:0 0 auto;">
             <div style="display:flex;align-items:center;gap:8px;">
               <div onClick="{{ recDetail.onPrev }}" title="Previous" style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;cursor:pointer;color:#5C606B;" style-hover="background:#F0EDE6;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg></div>
@@ -1085,7 +1105,7 @@
             <div style="font-family:'Zalando Sans',sans-serif;font-weight:600;font-size:11.5px;letter-spacing:0.04em;text-transform:uppercase;color:#8A857C;margin-bottom:14px;">Details</div>
             <div style="display:flex;flex-direction:column;gap:11px;">
               <sc-for list="{{ recDetail.fields }}" as="f" hint-placeholder-count="6">
-                <div style="display:grid;grid-template-columns:168px 1fr;gap:20px;align-items:start;">
+                <div class="tk-field" style="display:grid;grid-template-columns:168px 1fr;gap:20px;align-items:start;">
                   <div style="font-size:12.5px;color:#8A857C;font-weight:500;line-height:1.45;">{{ f.label }}</div>
                   <div style="font-size:13.5px;color:#212121;line-height:1.45;word-break:break-word;">
                     <sc-if value="{{ f.isLink }}"><a href="{{ f.href }}" target="_blank" rel="noopener" style="color:#1C6FD6;font-weight:600;text-decoration:none;">{{ f.value }}</a></sc-if>
@@ -1107,9 +1127,9 @@
 
         <!-- Chart enlarge (click-to-zoom lightbox) -->
         <sc-if value="{{ showChartZoom }}">
-        <div onClick="{{ closeChartZoom }}" style="position:fixed;inset:0;background:rgba(20,10,16,.55);z-index:60;display:flex;align-items:center;justify-content:center;padding:32px;">
-          <div onClick="{{ stopModal }}" style="position:relative;background:#fff;border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.32);width:min(1040px,96%);max-height:92vh;overflow:auto;padding:24px 26px;">
-            <svg width="30" height="19.6" viewBox="0 0 221 144" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Flo" style="position:absolute;top:22px;right:104px;display:block;opacity:0.5;"><path d="M89.6736 26.4288H73.2543C69.4519 26.4288 66.1447 29.1584 64.8211 33.0793L61.844 42.4562H81.8524L73.2543 69.7392H53.2458L30.4253 141.697H0L22.6555 69.7392H7.60788L16.2061 42.4562H31.2537L35.3861 29.4955C41.0072 11.5959 56.2229 0 73.4193 0H98.3061L89.6736 26.4288Z" fill="#261025"/><path d="M103.936 141.697H91.8809C74.6845 141.697 66.8711 130.102 72.679 112.199L108.912 0H139.337L104.397 108.618C103.216 112.539 104.783 115.269 108.585 115.269H112.668L103.936 141.697Z" fill="#261025"/><path d="M180.343 40.2918C153.06 40.2918 130.24 60.2435 124.123 91.958C118.004 122.822 133.88 143.624 163.48 143.624C191.093 143.624 213.419 123.846 219.7 91.958C225.819 61.0945 209.943 40.2918 180.346 40.2918H180.343ZM189.272 91.958C185.634 106.794 176.871 115.317 166.286 115.317C155.701 115.317 150.743 106.961 154.546 91.958C158.183 77.1219 167.114 68.5992 177.531 68.5992C187.948 68.5992 192.909 77.1251 189.272 91.958Z" fill="#261025"/></svg>
+        <div onClick="{{ closeChartZoom }}" class="tk-zoomwrap" style="position:fixed;inset:0;background:rgba(20,10,16,.55);z-index:60;display:flex;align-items:center;justify-content:center;padding:32px;">
+          <div onClick="{{ stopModal }}" class="tk-zoombox" style="position:relative;background:#fff;border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.32);width:min(1040px,96%);max-height:92vh;overflow:auto;padding:24px 26px;">
+            <svg class="tk-zoomlogo" width="30" height="19.6" viewBox="0 0 221 144" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Flo" style="position:absolute;top:22px;right:104px;display:block;opacity:0.5;"><path d="M89.6736 26.4288H73.2543C69.4519 26.4288 66.1447 29.1584 64.8211 33.0793L61.844 42.4562H81.8524L73.2543 69.7392H53.2458L30.4253 141.697H0L22.6555 69.7392H7.60788L16.2061 42.4562H31.2537L35.3861 29.4955C41.0072 11.5959 56.2229 0 73.4193 0H98.3061L89.6736 26.4288Z" fill="#261025"/><path d="M103.936 141.697H91.8809C74.6845 141.697 66.8711 130.102 72.679 112.199L108.912 0H139.337L104.397 108.618C103.216 112.539 104.783 115.269 108.585 115.269H112.668L103.936 141.697Z" fill="#261025"/><path d="M180.343 40.2918C153.06 40.2918 130.24 60.2435 124.123 91.958C118.004 122.822 133.88 143.624 163.48 143.624C191.093 143.624 213.419 123.846 219.7 91.958C225.819 61.0945 209.943 40.2918 180.346 40.2918H180.343ZM189.272 91.958C185.634 106.794 176.871 115.317 166.286 115.317C155.701 115.317 150.743 106.961 154.546 91.958C158.183 77.1219 167.114 68.5992 177.531 68.5992C187.948 68.5992 192.909 77.1251 189.272 91.958Z" fill="#261025"/></svg>
             <div class="share-wrap">
               <div title="Share" style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;cursor:pointer;color:#5C606B;" style-hover="background:#F0EDE6;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg></div>
               <div class="share-menu">
@@ -1175,7 +1195,7 @@
                 <sc-for list="{{ openRows2028 }}" as="row" hint-placeholder-count="2">
                   <tr>
                     <sc-for list="{{ row.cells }}" as="cell">
-                      <td style="padding:7px 14px;border-bottom:1px solid #EFEDE7;color:#212121;white-space:nowrap;vertical-align:middle;">
+                      <td data-label="{{ cell.label }}" style="padding:7px 14px;border-bottom:1px solid #EFEDE7;color:#212121;white-space:nowrap;vertical-align:middle;">
                         <sc-if value="{{ cell.isText }}"><span>{{ cell.text }}</span></sc-if>
                         <sc-if value="{{ cell.isLink }}"><a href="{{ cell.href }}" target="_blank" rel="noopener" style="color:#1C6FD6;font-weight:600;text-decoration:none;cursor:pointer;">{{ cell.text }}</a></sc-if>
                         <sc-if value="{{ cell.isMuted }}"><span style="color:#ACB3C3;">{{ cell.text }}</span></sc-if>
@@ -1307,23 +1327,28 @@ const buildRows = (records, labels, cfg) => {
   cfg = cfg || {};
   return (records || []).map((rec) => ({
     cells: labels.map((label, i) => {
-      const v = rec[label];
-      if (v && typeof v === 'object' && v.href != null) return { text: v.text, isLink: true, href: v.href };
-      if (cfg.bool && cfg.bool[i]) return v ? { text: 'Yes', isText: true } : { text: 'No', isMuted: true };
-      if (v == null || v === '' || v === '—') return { text: '—', isMuted: true };
-      // Firm-name column: link to the firm's Flo Forward profile (new tab) when one exists, else plain text.
-      // The profile URL rides along on the record's 'Firm Profile' field (set by the pipeline) even when
-      // that column isn't displayed. isFirmLink stops row-click propagation so it opens the profile, not the detail view.
-      if (cfg.firm && cfg.firm[i]) {
-        const fp = rec['Firm Profile'];
-        const fh = (fp && typeof fp === 'object' && fp.href) ? fp.href : null;
-        return fh ? { text: v, isFirmLink: true, href: fh } : { text: v, isText: true };
-      }
-      if (cfg.pills && cfg.pills[i]) return { text: v, isPill: true };
-      if (cfg.desc && cfg.desc[i]) return { text: v, isDesc: true };
-      if (cfg.wraps && cfg.wraps[i]) return { text: v, isWrap: true };
-      if (cfg.muted && cfg.muted[i]) return { text: v, isMuted: true };
-      return { text: v, isText: true };
+      // `label` is attached to every cell so the mobile stacked-card view can show it as a data-label.
+      const c = (() => {
+        const v = rec[label];
+        if (v && typeof v === 'object' && v.href != null) return { text: v.text, isLink: true, href: v.href };
+        if (cfg.bool && cfg.bool[i]) return v ? { text: 'Yes', isText: true } : { text: 'No', isMuted: true };
+        if (v == null || v === '' || v === '—') return { text: '—', isMuted: true };
+        // Firm-name column: link to the firm's Flo Forward profile (new tab) when one exists, else plain text.
+        // The profile URL rides along on the record's 'Firm Profile' field (set by the pipeline) even when
+        // that column isn't displayed. isFirmLink stops row-click propagation so it opens the profile, not the detail view.
+        if (cfg.firm && cfg.firm[i]) {
+          const fp = rec['Firm Profile'];
+          const fh = (fp && typeof fp === 'object' && fp.href) ? fp.href : null;
+          return fh ? { text: v, isFirmLink: true, href: fh } : { text: v, isText: true };
+        }
+        if (cfg.pills && cfg.pills[i]) return { text: v, isPill: true };
+        if (cfg.desc && cfg.desc[i]) return { text: v, isDesc: true };
+        if (cfg.wraps && cfg.wraps[i]) return { text: v, isWrap: true };
+        if (cfg.muted && cfg.muted[i]) return { text: v, isMuted: true };
+        return { text: v, isText: true };
+      })();
+      c.label = label;
+      return c;
     }),
   }));
 };
