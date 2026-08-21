@@ -1304,8 +1304,46 @@ const buildRows = (records, labels, cfg) => {
     }),
   }));
 };
+// ---- URL routing ------------------------------------------------------------------------
+// Navigation lives in component state. This runtime doesn't invoke componentDidUpdate, so each
+// nav handler syncs the URL inline -- the same reason scrollTop() is called per handler.
+// Path shape: /tracker/<world>/<section>/<tab>, e.g. /tracker/student/lawfirm/2lsummer.
+// site/vercel.json rewrites /tracker/* to this page so a deep link survives a refresh.
+const ROUTE_BASE = '/tracker';
+const WORLD_SLUG = { entry: 'student', lateral: 'attorney' };
+const SLUG_WORLD = { student: 'entry', attorney: 'lateral' };
+const GROUP_SLUG = { 'Law Firm': 'lawfirm', 'Public Interest': 'publicinterest' };
+// Readable stand-ins for the internal ids, which are historical. Anything without an entry
+// falls back to its raw id, so a new section or tab still gets a working URL with nothing to
+// remember here (`fall3l` relies on that).
+const SECTION_SLUG = {
+  lawfirm: 'summer', entrylevel3l: '3l',
+  pisummer: 'intern', piextern: 'entrylevel',
+  judicial: 'postclerk', lateralassoc: 'nonpartner', lateralpartner: 'partner',
+  piattorney: 'positions',
+};
+const TAB_SLUG = {
+  '1lsummer': '1l', '2lsummer': '2l', entry3l: 'jobs', lawfirmapply: 'apply', lateral: 'searches',
+};
+
 class Component extends DCLogic {
-  state = { view: 'overview', worldId: 'entry', subId: 'lawfirm', tabId: '1lsummer', worldFocus: null, alerts: {}, search: '', sortCol: null, sortDir: 'asc', mktScope: 'all', hover: null, rowOpen: null, chartZoom: null, descExpanded: false, donutHover: null, gradHover: null };
+  state = Object.assign(
+    { view: 'overview', worldId: 'entry', subId: 'lawfirm', tabId: '1lsummer', worldFocus: null, alerts: {}, search: '', sortCol: null, sortDir: 'asc', mktScope: 'all', hover: null, rowOpen: null, chartZoom: null, descExpanded: false, donutHover: null, gradHover: null },
+    this.routeState() || {}
+  );
+
+  constructor(...args) {
+    super(...args);
+    // Normalize the entry URL (an unknown deep link collapses to /tracker) and keep the back
+    // button in step. Wired here rather than in componentDidMount, which this runtime skips.
+    this.syncUrl(null, true);
+    if (typeof window !== 'undefined' && window.addEventListener) {
+      // The runtime may re-instantiate on a hot re-boot; don't stack listeners.
+      if (window.__dcTrackerPop) window.removeEventListener('popstate', window.__dcTrackerPop);
+      window.__dcTrackerPop = this.onPopState;
+      window.addEventListener('popstate', this.onPopState);
+    }
+  }
 
   // Navigating to a different view/section/tab should land at the TOP of the new page, not carry over the
   // previous scroll position. enterSub/selectSub/selectTab/goOverview each scroll to top (this runtime doesn't
@@ -1420,7 +1458,7 @@ class Component extends DCLogic {
         sectionTitle: 'Attorney Position Details',
         tabs: [ { id: 'jobs', label: 'Search Details' } ],
       },
-      publicinterest: {
+      fall3l: {
         name: '3L Fall Associates',
         group: 'Law Firm',
         secSubtitle: 'Law firm entry-level recruiting - Class of 2027',
@@ -1478,7 +1516,7 @@ class Component extends DCLogic {
     };
 
     const WORLDS = {
-      entry: { label: 'Law Student Recruiting', subIds: ['lawfirm', 'entrylevel3l', 'publicinterest', 'pisummer', 'piextern'] },
+      entry: { label: 'Law Student Recruiting', subIds: ['lawfirm', 'entrylevel3l', 'fall3l', 'pisummer', 'piextern'] },
       lateral: { label: 'Attorney Recruiting', subIds: ['judicial', 'lateralassoc', 'lateralpartner', 'piattorney'] },
     };
 
@@ -1487,7 +1525,7 @@ class Component extends DCLogic {
         { tag: 'Timelines', title: 'The 2027 OCI calendar, explained', read: '6 min read' },
         { tag: 'Trends', title: 'Why 1L summer recruiting keeps moving earlier', read: '5 min read' },
       ],
-      publicinterest: [
+      fall3l: [
         { tag: 'Guide', title: '3L recruiting: what changed for the Class of 2026', read: '5 min read' },
         { tag: 'Timelines', title: 'When entry-level postings tend to go live', read: '4 min read' },
       ],
@@ -1511,27 +1549,119 @@ class Component extends DCLogic {
   }
 
   worldOf(subId) {
-    return subId === 'lawfirm' || subId === 'entrylevel3l' || subId === 'publicinterest' || subId === 'pisummer' || subId === 'piextern' ? 'entry' : 'lateral';
+    return subId === 'lawfirm' || subId === 'entrylevel3l' || subId === 'fall3l' || subId === 'pisummer' || subId === 'piextern' ? 'entry' : 'lateral';
   }
+
+  // Path segments after ROUTE_BASE, or null when this page isn't served from there (a local
+  // file://, a bare static server). Null turns routing off entirely: the dashboard then
+  // behaves exactly as it did before any of this existed.
+  routeTail() {
+    if (typeof window === 'undefined' || !window.location) return null;
+    const path = window.location.pathname.replace(/\/index\.html?$/i, '');
+    if (path === ROUTE_BASE) return [];
+    if (path.indexOf(ROUTE_BASE + '/') === 0) return path.slice(ROUTE_BASE.length + 1).split('/').filter(Boolean);
+    return null;
+  }
+
+  sectionSlug(subId) { return SECTION_SLUG[subId] || subId; }
+  tabSlug(tabId) { return TAB_SLUG[tabId] || tabId; }
+  groupSlug(subId) {
+    const { SUBS } = this.data();
+    const sub = SUBS[subId];
+    return (sub && GROUP_SLUG[sub.group]) || 'other';
+  }
+
+  // [world] | [world, group] | [world, group, section] | [world, group, section, tab]
+  // -> a state patch, or null when the path names something that doesn't exist. The group
+  // segment is verified against the section's own `group`, so a section can't be reached
+  // under the wrong one.
+  routeMatch(tail) {
+    if (!tail || !tail.length) return { view: 'overview', worldFocus: null };
+    const worldId = SLUG_WORLD[tail[0]];
+    if (!worldId) return null;
+    // A group on its own isn't a distinct view (the focused grid shows both groups), so it
+    // resolves to the world and syncUrl normalizes the path on the way in.
+    if (tail.length <= 2) return { view: 'overview', worldFocus: worldId };
+    if (tail.length > 4) return null;
+    const { SUBS, WORLDS } = this.data();
+    const subId = (WORLDS[worldId].subIds || []).filter((id) => SUBS[id])
+      .find((id) => this.sectionSlug(id) === tail[2] && this.groupSlug(id) === tail[1]);
+    if (!subId) return null;
+    const sub = SUBS[subId];
+    let tabId = sub.tabs[0].id;
+    if (tail.length === 4) {
+      const tab = sub.tabs.find((candidate) => this.tabSlug(candidate.id) === tail[3]);
+      if (!tab) return null;
+      tabId = tab.id;
+    }
+    // worldFocus mirrors how you'd have arrived by clicking, so Back/overview lands on the
+    // world's card grid rather than all the way out to the landing page.
+    return { view: 'world', worldId, worldFocus: worldId, subId, tabId };
+  }
+
+  routeState() {
+    const tail = this.routeTail();
+    return tail === null ? null : this.routeMatch(tail);
+  }
+
+  routePath(st) {
+    if (st.view === 'world' && WORLD_SLUG[st.worldId]) {
+      const { SUBS } = this.data();
+      const sub = SUBS[st.subId];
+      if (!sub) return ROUTE_BASE;
+      const base = ROUTE_BASE + '/' + WORLD_SLUG[st.worldId] + '/' + this.groupSlug(st.subId) + '/' + this.sectionSlug(st.subId);
+      // The default tab is left off, so the section's own URL is the short one.
+      return st.tabId === sub.tabs[0].id ? base : base + '/' + this.tabSlug(st.tabId);
+    }
+    return WORLD_SLUG[st.worldFocus] ? ROUTE_BASE + '/' + WORLD_SLUG[st.worldFocus] : ROUTE_BASE;
+  }
+
+  // Called by the nav handlers with the same patch they hand setState, since setState is async
+  // and this.state would still be the previous view. `replace` normalizes the initial URL.
+  syncUrl(patch, replace) {
+    if (this.routeTail() === null) return;
+    const hist = typeof window !== 'undefined' && window.history;
+    if (!hist || !hist.pushState) return;
+    const next = this.routePath(Object.assign({}, this.state, patch || {}));
+    if (!replace && next === window.location.pathname) return;
+    try {
+      hist[replace ? 'replaceState' : 'pushState']({ dcRoute: next }, '', next + window.location.search + window.location.hash);
+    } catch (err) {
+      // file:// and some sandboxed embeds reject history writes; in-page nav still works.
+    }
+  }
+
+  onPopState = () => {
+    const tail = this.routeTail();
+    if (tail === null) return;
+    const st = this.routeMatch(tail) || { view: 'overview', worldFocus: null };
+    // Match the click handlers: a new view starts with filters and open rows cleared.
+    this.setState(Object.assign({ search: '', sortCol: null, sortDir: 'asc', rowOpen: null, chartZoom: null }, st));
+    this.scrollTop();
+  };
 
   enterSub = (subId, targetTab) => {
     const { SUBS } = this.data();
     const tabs = SUBS[subId].tabs;
     const tabId = (targetTab && tabs.some(t => t.id === targetTab)) ? targetTab : tabs[0].id;
-    this.setState({ view: 'world', worldId: this.worldOf(subId), subId, tabId, chartZoom: null });
+    const patch = { view: 'world', worldId: this.worldOf(subId), subId, tabId, chartZoom: null };
+    this.setState(patch);
+    this.syncUrl(patch);
     this.scrollTop();
   };
   selectSub = (subId) => {
     const { SUBS } = this.data();
-    this.setState({ subId, tabId: SUBS[subId].tabs[0].id, chartZoom: null });
+    const patch = { subId, tabId: SUBS[subId].tabs[0].id, chartZoom: null };
+    this.setState(patch);
+    this.syncUrl(patch);
     this.scrollTop();
   };
-  selectTab = (tabId) => { this.setState({ tabId, search: '', sortCol: null, sortDir: 'asc', rowOpen: null, chartZoom: null }); this.scrollTop(); };
-  goOverview = () => { this.setState({ view: 'overview' }); this.scrollTop(); };
+  selectTab = (tabId) => { this.setState({ tabId, search: '', sortCol: null, sortDir: 'asc', rowOpen: null, chartZoom: null }); this.syncUrl({ tabId }); this.scrollTop(); };
+  goOverview = () => { this.setState({ view: 'overview' }); this.syncUrl({ view: 'overview' }); this.scrollTop(); };
   // Column header -> aggregate tabbed page for that world (lands on the first section; section tabs switch subs).
   // Column click -> focus that world's full card grid (Law Firms | Public Interest), staying on the overview.
-  openWorld = (worldId) => { this.setState({ worldFocus: worldId }); this.scrollTop(); };
-  backToLanding = () => { this.setState({ worldFocus: null }); this.scrollTop(); };
+  openWorld = (worldId) => { this.setState({ worldFocus: worldId }); this.syncUrl({ worldFocus: worldId }); this.scrollTop(); };
+  backToLanding = () => { this.setState({ worldFocus: null }); this.syncUrl({ worldFocus: null }); this.scrollTop(); };
 
   cardFor(subId) {
     const { SUBS } = this.data();
@@ -1549,12 +1679,13 @@ class Component extends DCLogic {
         toggle: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setState((s) => ({ alerts: { ...s.alerts, [id]: !s.alerts[id] } })); },
       };
     };
-    const alert = { lawfirm: mkAlert('lawfirm'), publicinterest: mkAlert('publicinterest'), pisummer: mkAlert('pisummer'), piextern: mkAlert('piextern'), judicial: mkAlert('judicial'), lateralassoc: mkAlert('lateralassoc'), lateralpartner: mkAlert('lateralpartner') };
+    const alert = { lawfirm: mkAlert('lawfirm'), fall3l: mkAlert('fall3l'), pisummer: mkAlert('pisummer'), piextern: mkAlert('piextern'), judicial: mkAlert('judicial'), lateralassoc: mkAlert('lateralassoc'), lateralpartner: mkAlert('lateralpartner') };
     const world = WORLDS[this.state.worldId];
     const sub = SUBS[this.state.subId];
 
     // Section tabs = all the current column's (world's) real sub-sections, so clicking a column header opens a
-    // tabbed page across sections (Hannah's "one page, section tabs"). Orphan 'publicinterest' is skipped.
+    // tabbed page across sections (Hannah's "one page, section tabs"). 'fall3l' is deliberately
+    // skipped for now: it has a URL but no section tab and no overview card yet.
     const _secOrder = { entry: ['lawfirm', 'entrylevel3l', 'pisummer', 'piextern'], lateral: ['judicial', 'lateralassoc', 'lateralpartner', 'piattorney'] };
     const _secIds = (_secOrder[this.state.worldId] || [this.state.subId]).filter((id) => SUBS[id]);
     const sectionTabs = _secIds.map((id) => ({ name: SUBS[id].name, subId: id, isActive: id === this.state.subId, isInactive: id !== this.state.subId, onClick: () => this.selectSub(id) }));
@@ -2541,7 +2672,7 @@ class Component extends DCLogic {
       openPISummer: () => this.enterSub('pisummer'),
       openPIExtern: () => this.enterSub('piextern'),
       openPIAttorney: () => this.enterSub('piattorney'),
-      openPublicInterest: () => this.enterSub('publicinterest'),
+      openFall3l: () => this.enterSub('fall3l'),
       piSummerCardStats: DATA.overview.piCardStats.summer.filter((s) => { const n = parseFloat(s.value); return isNaN(n) || n !== 0; }),
       piExternCardStats: DATA.overview.piCardStats.extern.filter((s) => { const n = parseFloat(s.value); return isNaN(n) || n !== 0; }),
       piAttorneyCardStats: DATA.overview.piCardStats.attorney.filter((s) => { const n = parseFloat(s.value); return isNaN(n) || n !== 0; }),
@@ -2558,7 +2689,7 @@ class Component extends DCLogic {
       open3LData: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.enterSub('entrylevel3l', 'market'); },
       openLateralData: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.enterSub('lateralassoc', 'market'); },
       openJudicialData: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.enterSub('judicial', 'market'); },
-      openPublicInterestData: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.enterSub('publicinterest', 'market'); },
+      openFall3lData: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.enterSub('fall3l', 'market'); },
       studentLawfirm: this.state.studentSection !== 'pi',
       studentPI: this.state.studentSection === 'pi',
       onStudentLawfirm: () => this.setState({ studentSection: 'lawfirm' }),
