@@ -125,7 +125,7 @@ PI_TABLE = "tblLw1ZX1As4nTKDl"
 PI_F = {"org": "fldKjqVMve8XOBQNs", "title": "fldsjcEMbh9O0LAg9", "apply": "fld9FL1tdAoo5xfd2",
         "loc": "fldrMW9cz2ybhiKkW", "comp": "fldWr5bZXbAL3CWvG", "gov": "fldvnrDSFimercAG3",
         "desc": "fldsI4862SJND6miB", "open": "fldRxM0vfBGih8w1l", "close": "fldNqRfq3gXeerGWG",
-        "grad": "fldJMdOy91wy7ByAq"}
+        "grad": "fldJMdOy91wy7ByAq", "status": "fldFlo8b1HptTZdTt"}
 
 
 def pi_bucket(grad_cells) -> str:
@@ -157,25 +157,41 @@ def pi_record(f: dict) -> dict:
     }
 
 
+def _pi_status(cell) -> str:
+    # singleSelect: REST returns the plain name string; MCP returns {"name": ...}
+    if isinstance(cell, dict):
+        return cell.get("name", "")
+    return cell or ""
+
+
 def wire_public_interest(data: dict) -> None:
     recs = airtable_records(PI_TABLE, list(PI_F.values()))
     buckets = {b: {"open": [], "past": []} for b in ("summer", "extern", "attorney")}
     for r in recs:
         f = r.get("fields", {})   # REST API keys fields under "fields" (by field id via returnFieldsByFieldId)
-        rec = pi_record(f)
-        rec["Posted Date"] = fmt_date(r.get("createdTime"))
-        # open vs past by close date (past kept only for 30 days after close)
-        close = f.get(PI_F["close"])
-        state = "open"
-        if close:
-            try:
-                cd = datetime.date.fromisoformat(close[:10])
-                if cd < TODAY:
-                    state = "past" if (TODAY - cd).days <= 30 else "drop"
-            except ValueError:
-                pass
+        # Status (Airtable singleSelect) drives visibility, NOT the close date (Hannah 2026-08-21):
+        #   Posted  -> "open now" table
+        #   Closed  -> "closed in the last 30 days" table (dropped once >30 days past its close date)
+        #   Pending / Archived / anything else -> not public
+        status = _pi_status(f.get(PI_F["status"]))
+        if status == "Posted":
+            state = "open"
+        elif status == "Closed":
+            state = "past"
+            close = f.get(PI_F["close"])
+            if close:
+                try:
+                    cd = datetime.date.fromisoformat(close[:10])
+                    if cd < TODAY and (TODAY - cd).days > 30:
+                        state = "drop"
+                except ValueError:
+                    pass
+        else:
+            continue
         if state == "drop":
             continue
+        rec = pi_record(f)
+        rec["Posted Date"] = fmt_date(r.get("createdTime"))
         buckets[pi_bucket(f.get(PI_F["grad"]))][state].append(rec)
     m = {"summer": "piSummer", "extern": "piExtern", "attorney": "piAttorney"}
     for b, key in m.items():
