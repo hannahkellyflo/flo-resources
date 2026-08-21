@@ -1304,8 +1304,33 @@ const buildRows = (records, labels, cfg) => {
     }),
   }));
 };
+// ---- URL routing ------------------------------------------------------------------------
+// Navigation lives in component state. This runtime doesn't invoke componentDidUpdate, so each
+// nav handler syncs the URL inline -- the same reason scrollTop() is called per handler.
+// Path shape: /tracker/<world>/<section>/<tab>, e.g. /tracker/student/lawfirm/2lsummer.
+// site/vercel.json rewrites /tracker/* to this page so a deep link survives a refresh.
+const ROUTE_BASE = '/tracker';
+const WORLD_SLUG = { entry: 'student', lateral: 'attorney' };
+const SLUG_WORLD = { student: 'entry', attorney: 'lateral' };
+
 class Component extends DCLogic {
-  state = { view: 'overview', worldId: 'entry', subId: 'lawfirm', tabId: '1lsummer', worldFocus: null, alerts: {}, search: '', sortCol: null, sortDir: 'asc', mktScope: 'all', hover: null, rowOpen: null, chartZoom: null, descExpanded: false, donutHover: null, gradHover: null };
+  state = Object.assign(
+    { view: 'overview', worldId: 'entry', subId: 'lawfirm', tabId: '1lsummer', worldFocus: null, alerts: {}, search: '', sortCol: null, sortDir: 'asc', mktScope: 'all', hover: null, rowOpen: null, chartZoom: null, descExpanded: false, donutHover: null, gradHover: null },
+    this.routeState() || {}
+  );
+
+  constructor(...args) {
+    super(...args);
+    // Normalize the entry URL (an unknown deep link collapses to /tracker) and keep the back
+    // button in step. Wired here rather than in componentDidMount, which this runtime skips.
+    this.syncUrl(null, true);
+    if (typeof window !== 'undefined' && window.addEventListener) {
+      // The runtime may re-instantiate on a hot re-boot; don't stack listeners.
+      if (window.__dcTrackerPop) window.removeEventListener('popstate', window.__dcTrackerPop);
+      window.__dcTrackerPop = this.onPopState;
+      window.addEventListener('popstate', this.onPopState);
+    }
+  }
 
   // Navigating to a different view/section/tab should land at the TOP of the new page, not carry over the
   // previous scroll position. enterSub/selectSub/selectTab/goOverview each scroll to top (this runtime doesn't
@@ -1514,24 +1539,96 @@ class Component extends DCLogic {
     return subId === 'lawfirm' || subId === 'entrylevel3l' || subId === 'publicinterest' || subId === 'pisummer' || subId === 'piextern' ? 'entry' : 'lateral';
   }
 
+  // Path segments after ROUTE_BASE, or null when this page isn't served from there (a local
+  // file://, a bare static server). Null turns routing off entirely: the dashboard then
+  // behaves exactly as it did before any of this existed.
+  routeTail() {
+    if (typeof window === 'undefined' || !window.location) return null;
+    const path = window.location.pathname.replace(/\/index\.html?$/i, '');
+    if (path === ROUTE_BASE) return [];
+    if (path.indexOf(ROUTE_BASE + '/') === 0) return path.slice(ROUTE_BASE.length + 1).split('/').filter(Boolean);
+    return null;
+  }
+
+  // [world] | [world, section] | [world, section, tab] -> a state patch, or null when the path
+  // names something that doesn't exist (a stale or hand-typed link falls back to the overview).
+  routeMatch(tail) {
+    if (!tail || !tail.length) return { view: 'overview', worldFocus: null };
+    const worldId = SLUG_WORLD[tail[0]];
+    if (!worldId) return null;
+    if (tail.length === 1) return { view: 'overview', worldFocus: worldId };
+    if (tail.length > 3) return null;
+    const { SUBS } = this.data();
+    const subId = tail[1], sub = SUBS[subId];
+    if (!sub || this.worldOf(subId) !== worldId) return null;
+    let tabId = sub.tabs[0].id;
+    if (tail.length === 3) {
+      if (!sub.tabs.some((tab) => tab.id === tail[2])) return null;
+      tabId = tail[2];
+    }
+    // worldFocus mirrors how you'd have arrived by clicking, so Back/overview lands on the
+    // world's card grid rather than all the way out to the landing page.
+    return { view: 'world', worldId, worldFocus: worldId, subId, tabId };
+  }
+
+  routeState() {
+    const tail = this.routeTail();
+    return tail === null ? null : this.routeMatch(tail);
+  }
+
+  routePath(st) {
+    if (st.view === 'world' && WORLD_SLUG[st.worldId]) {
+      return ROUTE_BASE + '/' + WORLD_SLUG[st.worldId] + '/' + st.subId + '/' + st.tabId;
+    }
+    return WORLD_SLUG[st.worldFocus] ? ROUTE_BASE + '/' + WORLD_SLUG[st.worldFocus] : ROUTE_BASE;
+  }
+
+  // Called by the nav handlers with the same patch they hand setState, since setState is async
+  // and this.state would still be the previous view. `replace` normalizes the initial URL.
+  syncUrl(patch, replace) {
+    if (this.routeTail() === null) return;
+    const hist = typeof window !== 'undefined' && window.history;
+    if (!hist || !hist.pushState) return;
+    const next = this.routePath(Object.assign({}, this.state, patch || {}));
+    if (!replace && next === window.location.pathname) return;
+    try {
+      hist[replace ? 'replaceState' : 'pushState']({ dcRoute: next }, '', next + window.location.search + window.location.hash);
+    } catch (err) {
+      // file:// and some sandboxed embeds reject history writes; in-page nav still works.
+    }
+  }
+
+  onPopState = () => {
+    const tail = this.routeTail();
+    if (tail === null) return;
+    const st = this.routeMatch(tail) || { view: 'overview', worldFocus: null };
+    // Match the click handlers: a new view starts with filters and open rows cleared.
+    this.setState(Object.assign({ search: '', sortCol: null, sortDir: 'asc', rowOpen: null, chartZoom: null }, st));
+    this.scrollTop();
+  };
+
   enterSub = (subId, targetTab) => {
     const { SUBS } = this.data();
     const tabs = SUBS[subId].tabs;
     const tabId = (targetTab && tabs.some(t => t.id === targetTab)) ? targetTab : tabs[0].id;
-    this.setState({ view: 'world', worldId: this.worldOf(subId), subId, tabId, chartZoom: null });
+    const patch = { view: 'world', worldId: this.worldOf(subId), subId, tabId, chartZoom: null };
+    this.setState(patch);
+    this.syncUrl(patch);
     this.scrollTop();
   };
   selectSub = (subId) => {
     const { SUBS } = this.data();
-    this.setState({ subId, tabId: SUBS[subId].tabs[0].id, chartZoom: null });
+    const patch = { subId, tabId: SUBS[subId].tabs[0].id, chartZoom: null };
+    this.setState(patch);
+    this.syncUrl(patch);
     this.scrollTop();
   };
-  selectTab = (tabId) => { this.setState({ tabId, search: '', sortCol: null, sortDir: 'asc', rowOpen: null, chartZoom: null }); this.scrollTop(); };
-  goOverview = () => { this.setState({ view: 'overview' }); this.scrollTop(); };
+  selectTab = (tabId) => { this.setState({ tabId, search: '', sortCol: null, sortDir: 'asc', rowOpen: null, chartZoom: null }); this.syncUrl({ tabId }); this.scrollTop(); };
+  goOverview = () => { this.setState({ view: 'overview' }); this.syncUrl({ view: 'overview' }); this.scrollTop(); };
   // Column header -> aggregate tabbed page for that world (lands on the first section; section tabs switch subs).
   // Column click -> focus that world's full card grid (Law Firms | Public Interest), staying on the overview.
-  openWorld = (worldId) => { this.setState({ worldFocus: worldId }); this.scrollTop(); };
-  backToLanding = () => { this.setState({ worldFocus: null }); this.scrollTop(); };
+  openWorld = (worldId) => { this.setState({ worldFocus: worldId }); this.syncUrl({ worldFocus: worldId }); this.scrollTop(); };
+  backToLanding = () => { this.setState({ worldFocus: null }); this.syncUrl({ worldFocus: null }); this.scrollTop(); };
 
   cardFor(subId) {
     const { SUBS } = this.data();
