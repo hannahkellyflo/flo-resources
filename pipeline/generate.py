@@ -604,6 +604,14 @@ def wire_summer_split(data: dict) -> None:
             levels.append("1L")           # Class of 2029
         if int(r.get("g2L") or 0):
             levels.append("2L")           # Class of 2028
+        # A grad-2029 role whose TITLE marks it as a 2L program or a Summer-2028 role is the Class of
+        # 2029's *2L* summer (next cycle), not a 1L Summer 2027 role — show it on the 2L tab, not the 1L
+        # tab (Hannah 2026-08-21). Scoped to the 1L bucket so legit Class-of-2029 1L roles are untouched.
+        _title = str(r.get("position") or "").lower()
+        if "1L" in levels and (re.search(r"\b2l\b", _title) or "2028" in _title):
+            levels = [lv for lv in levels if lv != "1L"]
+            if "2L" not in levels:
+                levels.append("2L")
         if not levels:
             continue                       # targets neither 2028 nor 2029 -> not a 1L/2L Summer 2027 role
         od = r.get("open_date")
