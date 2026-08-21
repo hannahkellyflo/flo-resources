@@ -39,8 +39,17 @@ Icons are generated from the Flo mark that is already inline in the template and
 site root (`site/favicon.ico`, `favicon-{16,32,48,192,512}.png`, `apple-touch-icon.png`). The
 16–48px sizes use a tighter crop so the wordmark stays legible at tab size.
 
-There is no `og:image` yet, so link previews unfurl as text (title + description) rather than a
-card with a picture. That needs a designed 1200×630 asset.
+### The link-preview image
+
+Drop a 1200×630 PNG at `site/og-image.png` and the next `build.py` run wires it up on its own:
+`og:image` with its real width and height (read from the PNG header, so no Pillow dependency in
+CI), plus `twitter:card` upgrading from `summary` to `summary_large_image` — a full-width card
+instead of a small thumbnail. With no file present the tags are omitted entirely rather than
+emitted pointing at a missing file, which would break the unfurl outright.
+
+Keep it under ~300KB. X allows up to 5MB and LinkedIn recommends under 1MB, but WhatsApp
+silently declines to unfurl much above 300KB. PNG rather than JPEG (the image carries text) and
+not WebP or AVIF, where unfurler support is still uneven.
 
 ## URLs inside the tracker
 
