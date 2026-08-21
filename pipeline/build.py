@@ -9,13 +9,15 @@ Inputs (all in this pipeline/ dir):
 Output:
   ../site/tracker/index.html  (Vercel serves this at /tracker)
 
+The written page is HEAD (title/icons/link-preview tags, defined below) + shell + body.
+
 The artifact carries the app body twice: as the escaped __DC_SRC__ payload AND as the
 raw inline <x-dc> body that support.js actually renders. This build writes BOTH from the
 current template+data (a stale inline body ships a broken page).
 
 Usage:  python3 build.py
 """
-import json, pathlib
+import json, pathlib, struct
 
 PIPE = pathlib.Path(__file__).parent
 TEMPLATE = PIPE / "template.dc.html"
@@ -24,6 +26,76 @@ SHELL = PIPE / "artifact-shell.html"
 OUT = PIPE.parent / "site" / "tracker" / "index.html"
 
 DATA_MARKER = "/* __DATA_INJECT__ */{}/* __DATA_INJECT__ */"
+
+# Document head. The shell starts straight at <script>, so without this the page ships no
+# title, no icon, no charset and no link-preview tags. It lives here rather than in
+# artifact-shell.html (which is regenerated wholesale) or the template's <helmet> block --
+# helmet is appended by JS after boot, which browsers honour but crawlers and link unfurlers
+# never see. HTML5 implies <head> for leading meta/title, so no wrapper tags are needed.
+TITLE = "Legal Recruiting Tracker | Flo Forward"
+DESCRIPTION = (
+    "Market updates and trends across entry-level and lateral attorney recruiting, updated "
+    "every weekday. Now supporting both law firm and public interest recruiting insights."
+)
+# Every /tracker/* path is served this same document by the vercel.json rewrite, so they are
+# all one canonical page -- without this, crawlers would treat each deep link as a duplicate.
+CANONICAL = "https://resources.joinflo.com/tracker"
+SITE = "https://resources.joinflo.com"
+# Optional. Drop a 1200x630 PNG at site/og-image.png and the link-preview tags below start
+# including it, and the Twitter card upgrades from a small thumbnail to a full-width one.
+# Absent, the tags are simply omitted -- never emitted pointing at a file that isn't there,
+# which would break the unfurl outright.
+OG_IMAGE_FILE = "og-image.png"
+
+
+def png_size(path):
+    """(width, height) from a PNG's IHDR, or None. Avoids a Pillow dependency in CI."""
+    try:
+        head = path.open("rb").read(24)
+    except OSError:
+        return None
+    if head[:8] != b"\x89PNG\r\n\x1a\n" or head[12:16] != b"IHDR":
+        return None
+    return struct.unpack(">II", head[16:24])
+
+
+def og_image_tags(site_dir):
+    img = site_dir / OG_IMAGE_FILE
+    size = png_size(img)
+    if size is None:
+        # No image: a plain summary card, title and description only.
+        return '<meta name="twitter:card" content="summary">\n'
+    width, height = size
+    return (
+        f'<meta property="og:image" content="{SITE}/{OG_IMAGE_FILE}">\n'
+        f'<meta property="og:image:type" content="image/png">\n'
+        f'<meta property="og:image:width" content="{width}">\n'
+        f'<meta property="og:image:height" content="{height}">\n'
+        f'<meta property="og:image:alt" content="{TITLE}">\n'
+        f'<meta name="twitter:card" content="summary_large_image">\n'
+        f'<meta name="twitter:image" content="{SITE}/{OG_IMAGE_FILE}">\n'
+    )
+
+# NB: deliberately no <!doctype html>. Adding one flips the document from quirks mode to
+# standards mode, which shifts the existing layout (page height +10px, some elements ~4px).
+# Metadata parsing doesn't depend on a doctype, so the tags below work without it. Adding
+# the doctype is a separate change that needs a visual review of its own.
+HEAD_TEMPLATE = """<meta charset="utf-8">
+<title>{TITLE}</title>
+<meta name="description" content="{DESCRIPTION}">
+<link rel="canonical" href="{CANONICAL}">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Flo Forward">
+<meta property="og:title" content="{TITLE}">
+<meta property="og:description" content="{DESCRIPTION}">
+<meta property="og:url" content="{CANONICAL}">
+{og_image_tags}<meta name="twitter:title" content="{TITLE}">
+<meta name="twitter:description" content="{DESCRIPTION}">
+"""
 
 
 def extract_body(dc_text: str) -> str:
@@ -54,8 +126,12 @@ def build() -> None:
     shell = shell[:s0] + enc + shell[j + 1:]
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(shell + body, encoding="utf-8")
-    print(f"built {OUT} ({len(shell) + len(body):,} bytes; body {len(body):,})")
+    page = HEAD_TEMPLATE.format(
+        TITLE=TITLE, DESCRIPTION=DESCRIPTION, CANONICAL=CANONICAL,
+        og_image_tags=og_image_tags(OUT.parent.parent),
+    ) + shell + body
+    OUT.write_text(page, encoding="utf-8")
+    print(f"built {OUT} ({len(page):,} bytes; body {len(body):,})")
 
 
 if __name__ == "__main__":
