@@ -75,19 +75,8 @@
     .tk-main { padding: 0 16px !important; margin: 20px auto 56px !important; }
     /* card grids are auto-fit minmax(340px,…); the 340px floor is ~6px wider than the mobile column, so pin to one shrinkable column */
     .ovblock { grid-template-columns: minmax(0, 1fr) !important; }
-    /* ── Phase 2: data tables → stacked "label: value" cards (no horizontal scroll on mobile).
-       Each row becomes a card; each cell renders its column name (data-label) above the value. */
-    .tcard { min-height: 0 !important; }
-    .tscroll { max-height: none !important; overflow: visible !important; }
-    .tscroll table, .tscroll tbody, .tscroll tr, .tscroll td { display: block !important; width: auto !important; }
-    .tscroll thead { display: none !important; }
-    .tscroll tr { padding: 12px 2px !important; border-bottom: 1px solid #ECE9E3 !important; }
-    .tscroll tr:last-child { border-bottom: 0 !important; }
-    .tscroll td { padding: 5px 0 !important; border: 0 !important; white-space: normal !important; }
-    .tscroll td:not([data-label]) { display: none !important; }   /* the leading row-expand icon cell */
-    .tscroll td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 1px; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #A39D93; }
-    .tscroll td:hover { text-decoration: none !important; }   /* the whole card is the tap target; don't underline each line */
-    .tscroll td [style*="max-width"] { max-width: none !important; }   /* let wrapped/desc cells use full width */
+    /* Data tables keep the desktop horizontal-scroll behavior on mobile (Hannah preferred it over stacked
+       cards, since tapping a row opens the full-width record sheet). No table overrides here on purpose. */
     /* Record-detail drawer → near-full-width sheet; stack its label/value pairs. */
     .tk-drawer { width: 96% !important; border-radius: 14px 0 0 14px !important; }
     .tk-field { grid-template-columns: 1fr !important; gap: 3px !important; }
