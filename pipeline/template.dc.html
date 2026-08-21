@@ -30,6 +30,11 @@
   .mkt-pt { cursor: pointer; }
   .mkt-pt .mkt-tip { opacity: 0; transition: opacity 100ms ease; pointer-events: none; }
   .mkt-pt:hover .mkt-tip { opacity: 1; }
+  .share-wrap { position: absolute; top: 16px; right: 58px; }
+  .share-menu { position: absolute; top: 40px; right: 0; background: #fff; border: 1px solid #E4E0D8; border-radius: 10px; box-shadow: 0 10px 28px rgba(41,10,27,.16); padding: 6px; min-width: 176px; opacity: 0; visibility: hidden; transform: translateY(-4px); transition: opacity 120ms ease, transform 120ms ease, visibility 120ms; z-index: 6; }
+  .share-wrap:hover .share-menu { opacity: 1; visibility: visible; transform: translateY(0); }
+  .share-item { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 7px; font-size: 13.5px; font-weight: 500; color: #212121; cursor: pointer; white-space: nowrap; }
+  .share-item:hover { background: #F4F1EB; }
   .campus-row { cursor: pointer; transition: background 120ms ease; }
   .campus-row:hover { background: #FBFAF6; }
   .campus-row .row-expand { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 7px; color: #B4ADA2; opacity: 0; transition: opacity 120ms ease, background 120ms ease, color 120ms ease; }
@@ -1089,7 +1094,14 @@
         <sc-if value="{{ showChartZoom }}">
         <div onClick="{{ closeChartZoom }}" style="position:fixed;inset:0;background:rgba(20,10,16,.55);z-index:60;display:flex;align-items:center;justify-content:center;padding:32px;">
           <div onClick="{{ stopModal }}" style="position:relative;background:#fff;border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.32);width:min(1040px,96%);max-height:92vh;overflow:auto;padding:24px 26px;">
-            <svg width="30" height="19.6" viewBox="0 0 221 144" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Flo" style="position:absolute;top:22px;right:62px;display:block;opacity:0.5;"><path d="M89.6736 26.4288H73.2543C69.4519 26.4288 66.1447 29.1584 64.8211 33.0793L61.844 42.4562H81.8524L73.2543 69.7392H53.2458L30.4253 141.697H0L22.6555 69.7392H7.60788L16.2061 42.4562H31.2537L35.3861 29.4955C41.0072 11.5959 56.2229 0 73.4193 0H98.3061L89.6736 26.4288Z" fill="#261025"/><path d="M103.936 141.697H91.8809C74.6845 141.697 66.8711 130.102 72.679 112.199L108.912 0H139.337L104.397 108.618C103.216 112.539 104.783 115.269 108.585 115.269H112.668L103.936 141.697Z" fill="#261025"/><path d="M180.343 40.2918C153.06 40.2918 130.24 60.2435 124.123 91.958C118.004 122.822 133.88 143.624 163.48 143.624C191.093 143.624 213.419 123.846 219.7 91.958C225.819 61.0945 209.943 40.2918 180.346 40.2918H180.343ZM189.272 91.958C185.634 106.794 176.871 115.317 166.286 115.317C155.701 115.317 150.743 106.961 154.546 91.958C158.183 77.1219 167.114 68.5992 177.531 68.5992C187.948 68.5992 192.909 77.1251 189.272 91.958Z" fill="#261025"/></svg>
+            <svg width="30" height="19.6" viewBox="0 0 221 144" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Flo" style="position:absolute;top:22px;right:104px;display:block;opacity:0.5;"><path d="M89.6736 26.4288H73.2543C69.4519 26.4288 66.1447 29.1584 64.8211 33.0793L61.844 42.4562H81.8524L73.2543 69.7392H53.2458L30.4253 141.697H0L22.6555 69.7392H7.60788L16.2061 42.4562H31.2537L35.3861 29.4955C41.0072 11.5959 56.2229 0 73.4193 0H98.3061L89.6736 26.4288Z" fill="#261025"/><path d="M103.936 141.697H91.8809C74.6845 141.697 66.8711 130.102 72.679 112.199L108.912 0H139.337L104.397 108.618C103.216 112.539 104.783 115.269 108.585 115.269H112.668L103.936 141.697Z" fill="#261025"/><path d="M180.343 40.2918C153.06 40.2918 130.24 60.2435 124.123 91.958C118.004 122.822 133.88 143.624 163.48 143.624C191.093 143.624 213.419 123.846 219.7 91.958C225.819 61.0945 209.943 40.2918 180.346 40.2918H180.343ZM189.272 91.958C185.634 106.794 176.871 115.317 166.286 115.317C155.701 115.317 150.743 106.961 154.546 91.958C158.183 77.1219 167.114 68.5992 177.531 68.5992C187.948 68.5992 192.909 77.1251 189.272 91.958Z" fill="#261025"/></svg>
+            <div class="share-wrap">
+              <div title="Share" style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;cursor:pointer;color:#5C606B;" style-hover="background:#F0EDE6;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg></div>
+              <div class="share-menu">
+                <div class="share-item" onClick="{{ copyChartLink }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5C606B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>Copy link</div>
+                <div class="share-item" onClick="{{ downloadChartPng }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5C606B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>Download PNG</div>
+              </div>
+            </div>
             <div onClick="{{ closeChartZoom }}" title="Close" style="position:absolute;top:16px;right:16px;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;cursor:pointer;color:#5C606B;" style-hover="background:#F0EDE6;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>
             <div style="font-family:'Zalando Sans',sans-serif;font-weight:700;font-size:20px;letter-spacing:-0.01em;color:#290A1B;padding-right:40px;">{{ zoomChart.title }}</div>
             <div style="font-size:12.5px;color:#9A948C;margin-top:3px;">{{ zoomChart.sub }}</div>
@@ -1098,7 +1110,7 @@
                 <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#5C606B;"><span style="width:9px;height:9px;border-radius:50%;background:{{ lg.color }};"></span>{{ lg.label }}</span>
               </sc-for>
             </div>
-            <div style="margin-top:16px;">{{ zoomChart.svg }}</div>
+            <div class="zoom-chart" style="margin-top:16px;">{{ zoomChart.svg }}</div>
           </div>
         </div>
         </sc-if>
@@ -1859,6 +1871,37 @@ class Component extends DCLogic {
       labels.forEach((lb, i) => { kids.push(e('text', { key: 'l' + i, x: X(i), y: 53, textAnchor: 'middle', fontSize: 7, fontWeight: i === hi ? 700 : 600, fill: i === hi ? '#192B92' : '#BCB5AB', fontFamily: 'Zalando Sans,sans-serif' }, lb)); });
       return e('svg', { viewBox: '0 0 ' + VBW + ' ' + VBH, width: '100%', style: { display: 'block', height: 'auto' } }, kids);
     };
+    // Chart share (zoom lightbox): download PNG (with Flo logo) now; copy-link is a placeholder until deep-linking lands.
+    const FLO_LOGO = '<path d="M89.6736 26.4288H73.2543C69.4519 26.4288 66.1447 29.1584 64.8211 33.0793L61.844 42.4562H81.8524L73.2543 69.7392H53.2458L30.4253 141.697H0L22.6555 69.7392H7.60788L16.2061 42.4562H31.2537L35.3861 29.4955C41.0072 11.5959 56.2229 0 73.4193 0H98.3061L89.6736 26.4288Z" fill="#261025"/><path d="M103.936 141.697H91.8809C74.6845 141.697 66.8711 130.102 72.679 112.199L108.912 0H139.337L104.397 108.618C103.216 112.539 104.783 115.269 108.585 115.269H112.668L103.936 141.697Z" fill="#261025"/><path d="M180.343 40.2918C153.06 40.2918 130.24 60.2435 124.123 91.958C118.004 122.822 133.88 143.624 163.48 143.624C191.093 143.624 213.419 123.846 219.7 91.958C225.819 61.0945 209.943 40.2918 180.346 40.2918H180.343ZM189.272 91.958C185.634 106.794 176.871 115.317 166.286 115.317C155.701 115.317 150.743 106.961 154.546 91.958C158.183 77.1219 167.114 68.5992 177.531 68.5992C187.948 68.5992 192.909 77.1251 189.272 91.958Z" fill="#261025"/>';
+    const downloadChartPng = () => {
+      const host = document.querySelector('.zoom-chart');
+      const svg = host && host.querySelector('svg');
+      if (!svg) return;
+      const vb = (svg.getAttribute('viewBox') || '0 0 780 232').split(/\s+/).map(Number);
+      const W = vb[2], H = vb[3];
+      const logo = '<g transform="translate(' + (W - 60) + ',10) scale(0.26)" fill-opacity="0.5">' + FLO_LOGO + '</g>';
+      const wrapped = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '"><style>.mkt-tip{opacity:0}</style><rect width="100%" height="100%" fill="#ffffff"/>' + svg.innerHTML + logo + '</svg>';
+      const img = new Image();
+      img.onload = () => {
+        const s = 2, cv = document.createElement('canvas');
+        cv.width = W * s; cv.height = H * s;
+        const ctx = cv.getContext('2d'); ctx.setTransform(s, 0, 0, s, 0, 0);
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+        ctx.drawImage(img, 0, 0, W, H);
+        cv.toBlob((blob) => {
+          if (!blob) return;
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          const nm = (zoomChart && zoomChart.title ? zoomChart.title : 'flo-chart').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase();
+          a.download = nm + '.png';
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+        }, 'image/png');
+      };
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(wrapped);
+    };
+    // TODO: replace with a deep-link to this exact chart once hash-routing lands (currently copies the page URL).
+    const copyChartLink = () => { if (navigator.clipboard) navigator.clipboard.writeText(window.location.href); };
     const payCfg = {
       title: 'Median summer associate weekly pay',
       sub: 'By primary market · ' + activeTab.label + ' · 2027 cycle',
@@ -2430,6 +2473,8 @@ class Component extends DCLogic {
       tableChart,
       zoomChart,
       showChartZoom,
+      downloadChartPng,
+      copyChartLink,
       closeChartZoom: () => this.setState({ chartZoom: null }),
       stopModal: (e) => { if (e && e.stopPropagation) e.stopPropagation(); },
       show3LMkt: is3LMarket,
