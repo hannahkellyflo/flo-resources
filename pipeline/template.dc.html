@@ -495,19 +495,6 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
         Back
       </div>
-      <!-- section tabs: switch between this column's sub-sections without returning to the overview -->
-      <sc-if value="{{ showSectionTabs }}">
-      <div style="display:flex;align-items:center;gap:22px;flex-wrap:wrap;border-bottom:1px solid #E4E0D8;margin:0 4px 20px;">
-        <sc-for list="{{ sectionTabs }}" as="st" hint-placeholder-count="4">
-          <sc-if value="{{ st.isActive }}">
-            <div style="padding:6px 2px 12px;font-size:15px;font-weight:600;color:#1A1A1A;border-bottom:2.5px solid #1A1A1A;margin-bottom:-1px;cursor:pointer;white-space:nowrap;">{{ st.name }}</div>
-          </sc-if>
-          <sc-if value="{{ st.isInactive }}">
-            <div onClick="{{ st.onClick }}" style="padding:6px 2px 12px;font-size:15px;font-weight:600;color:#8A857C;border-bottom:2.5px solid transparent;margin-bottom:-1px;cursor:pointer;white-space:nowrap;transition:color 120ms ease;" style-hover="color:#1A1A1A;">{{ st.name }}</div>
-          </sc-if>
-        </sc-for>
-      </div>
-      </sc-if>
       <div style="background:{{ dPanelBg }};border:{{ dPanelBorder }};box-shadow:{{ dPanelShadow }};border-radius:24px;padding:30px;">
         <!-- static section header (single tracker, no sibling switcher) -->
         <div style="border-bottom:2px solid {{ dRule }};margin-bottom:22px;padding-bottom:14px;display:flex;align-items:flex-end;justify-content:space-between;gap:28px;flex-wrap:wrap;">
