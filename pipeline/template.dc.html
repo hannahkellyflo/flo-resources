@@ -1880,28 +1880,50 @@ class Component extends DCLogic {
       const vb = (svg.getAttribute('viewBox') || '0 0 780 232').split(/\s+/).map(Number);
       const W = vb[2], CH = vb[3];
       const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      const headerH = 58, padX = 8;
+      const P = 26; // bleed padding on all four edges
       const title = zoomChart && zoomChart.title ? zoomChart.title : '';
       const sub = zoomChart && zoomChart.sub ? zoomChart.sub : '';
-      // Logo scaled ~0.15 (down from 0.26) so it reads as a small mark, top-right of the header band.
-      const logo = '<g transform="translate(' + (W - 38) + ',12) scale(0.15)" fill-opacity="0.5">' + FLO_LOGO + '</g>';
-      const head = '<text x="' + padX + '" y="26" font-family="Zalando Sans,sans-serif" font-size="18" font-weight="700" fill="#290A1B">' + esc(title) + '</text>' +
-        '<text x="' + padX + '" y="45" font-family="Zalando Sans,sans-serif" font-size="12.5" fill="#9A948C">' + esc(sub) + '</text>';
-      const H = CH + headerH;
-      const wrapped = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '"><style>.mkt-tip{opacity:0}</style><rect width="100%" height="100%" fill="#ffffff"/>' + head + logo + '<g transform="translate(0,' + headerH + ')">' + svg.innerHTML + '</g></svg>';
+      const Wt = W + P * 2;
+      const titleY = P + 20, subY = titleY + 19;
+      // Legend/key — flow colored dot + label left→right, wrap at the chart's right edge.
+      const leg = (zoomChart && zoomChart.legend) || [];
+      const legendTop = subY + 14, rowH = 20;
+      let legendSvg = '', legendRows = 0;
+      if (leg.length) {
+        let cx = P, row = 0;
+        leg.forEach((lg) => {
+          const label = String(lg.label == null ? '' : lg.label);
+          const itemW = 14 + label.length * 6.3 + 18;
+          if (cx > P && (cx + itemW - 18) > (P + W)) { row++; cx = P; }
+          const baseY = legendTop + row * rowH + 11;
+          legendSvg += '<circle cx="' + (cx + 4.5) + '" cy="' + (baseY - 3.5) + '" r="4.5" fill="' + (lg.color || '#999') + '"/>';
+          legendSvg += '<text x="' + (cx + 14) + '" y="' + baseY + '" font-family="Zalando Sans,sans-serif" font-size="12" font-weight="600" fill="#5C606B">' + esc(label) + '</text>';
+          cx += itemW;
+        });
+        legendRows = row + 1;
+      }
+      const chartY = legendRows ? (legendTop + legendRows * rowH + 8) : (subY + 14);
+      const H = chartY + CH + P;
+      // Logo scaled 0.1125 (25% smaller than 0.15) — small mark, top-right inside the padding.
+      const logo = '<g transform="translate(' + (Wt - P - 26) + ',' + P + ') scale(0.1125)" fill-opacity="0.5">' + FLO_LOGO + '</g>';
+      const head = '<text x="' + P + '" y="' + titleY + '" font-family="Zalando Sans,sans-serif" font-size="18" font-weight="700" fill="#290A1B">' + esc(title) + '</text>' +
+        '<text x="' + P + '" y="' + subY + '" font-family="Zalando Sans,sans-serif" font-size="12.5" fill="#9A948C">' + esc(sub) + '</text>';
+      const wrapped = '<svg xmlns="http://www.w3.org/2000/svg" width="' + Wt + '" height="' + H + '" viewBox="0 0 ' + Wt + ' ' + H + '"><style>.mkt-tip{opacity:0}</style><rect width="100%" height="100%" fill="#ffffff"/>' + head + legendSvg + logo + '<g transform="translate(' + P + ',' + chartY + ')">' + svg.innerHTML + '</g></svg>';
       const img = new Image();
       img.onload = () => {
         const s = 2, cv = document.createElement('canvas');
-        cv.width = W * s; cv.height = H * s;
+        cv.width = Wt * s; cv.height = H * s;
         const ctx = cv.getContext('2d'); ctx.setTransform(s, 0, 0, s, 0, 0);
-        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
-        ctx.drawImage(img, 0, 0, W, H);
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, Wt, H);
+        ctx.drawImage(img, 0, 0, Wt, H);
         cv.toBlob((blob) => {
           if (!blob) return;
           const a = document.createElement('a');
           a.href = URL.createObjectURL(blob);
           const nm = (zoomChart && zoomChart.title ? zoomChart.title : 'flo-chart').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase();
-          a.download = nm + '.png';
+          const dt = new Date(), z = (n) => String(n).padStart(2, '0');
+          const dstr = dt.getFullYear() + '-' + z(dt.getMonth() + 1) + '-' + z(dt.getDate());
+          a.download = nm + '-' + dstr + '.png';
           document.body.appendChild(a); a.click(); document.body.removeChild(a);
           setTimeout(() => URL.revokeObjectURL(a.href), 2000);
         }, 'image/png');
