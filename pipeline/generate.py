@@ -333,10 +333,14 @@ JOIN ORG o ON o.ID = j.ORG_ID
 LEFT JOIN JOB_HIRING_TYPE jht ON jht.JOB_ID = j.ID
 LEFT JOIN HIRING_TYPE ht ON ht.ID = jht.HIRING_TYPE_ID
 WHERE j.FORWARD_PUBLISHING_STATUS = 'PUBLISHED' AND j.DELETED_AT IS NULL
-  -- Drop listings whose application deadline has passed but were never unpublished (status stays
-  -- PUBLISHED). Firms often let the close date lapse without flipping the status, leaving stale
-  -- "closed" roles on the lateral / post-clerkship / 3L tables. Rolling roles (no close date) stay.
-  AND (j.CLOSE_DATE IS NULL OR j.CLOSE_DATE >= NOW())
+  -- FORWARD_PUBLISHING_STATUS='PUBLISHED' is effectively permanent (a published link never dies), so it
+  -- decides what's eligible to POST but NOT when to take a listing DOWN. Takedown logic (Hannah 2026-08-21):
+  --   has a close date -> drop once the deadline passes;
+  --   no close date    -> drop 6 months after it opened (default staleness cutoff for rolling roles).
+  -- Applies to the _JOB_SELECT tables only (lateral non-partner, judicial clerk, 3L entry-level); the
+  -- student summer tables use SUMMER_SQL + their own seasonal timeline. (No rows have both dates null.)
+  AND ((j.CLOSE_DATE IS NOT NULL AND j.CLOSE_DATE >= NOW())
+       OR (j.CLOSE_DATE IS NULL AND j.OPEN_DATE >= DATE_SUB(NOW(), INTERVAL 6 MONTH)))
   -- ATS + MANUAL_ENTRY (both are real Forward postings; ATS-only was an over-filter
   -- inherited from the attorney base — it dropped MANUAL_ENTRY 3L roles like Latham).
   -- lateral/pc are tag-gated so unaffected; entry3l gains its MANUAL_ENTRY roles.
