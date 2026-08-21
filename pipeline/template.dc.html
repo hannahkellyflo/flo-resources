@@ -1125,7 +1125,7 @@
             <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;">
               <div style="font-family:'Zalando Sans',sans-serif;font-weight:600;font-size:15.5px;letter-spacing:-0.01em;color:#290A1B;">{{ tableChart.title }}</div>
               <sc-if value="{{ tableChart.showMarketLink }}">
-              <div onClick="{{ tableChart.onMarket }}" style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#4D8EFF;cursor:pointer;flex-shrink:0;white-space:nowrap;" style-hover="color:#192B92;">From Market Data <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
+              <div onClick="{{ tableChart.onMarket }}" style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#4D8EFF;cursor:pointer;flex-shrink:0;white-space:nowrap;" style-hover="color:#192B92;">Explore marketing data <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
               </sc-if>
             </div>
             <div style="font-size:12px;color:#9A948C;margin-top:2px;">{{ tableChart.sub }}</div>
@@ -2424,16 +2424,16 @@ class Component extends DCLogic {
         tableChart = { title: 'Job postings listed on Flo Forward', sub: 'Law student roles · monthly', svg: lineChart(s, 'tcpost'), legend: _lg(s), showMarketLink: true, onMarket: () => this.selectTab('market') };
       } else if (_sid === 'lawfirm' && _tid === '2lsummer') {
         const s = mkSA(D.lf_u500, SY, SYC);
-        tableChart = { title: 'Law firm student interview volume on Flo', sub: 'Callback interviews · under-500-attorney firms · monthly', svg: lineChart(s, 'tclf'), legend: _lg(s) };
+        tableChart = { title: 'Law firm student interview volume on Flo', sub: 'Callback interviews · under-500-attorney firms · monthly', svg: lineChart(s, 'tclf'), legend: _lg(s), showMarketLink: true, onMarket: () => this.selectTab('market') };
       } else if (_sid === 'lawfirm' && _tid === 'campus') {
         const s = mkSA(D.ls_all, SY, SYC);
-        tableChart = { title: 'Law school student interview volume on Flo', sub: 'On-campus interviews · monthly', svg: lineChart(s, 'tcls'), legend: _lg(s) };
+        tableChart = { title: 'Law school student interview volume on Flo', sub: 'On-campus interviews · monthly', svg: lineChart(s, 'tcls'), legend: _lg(s), showMarketLink: true, onMarket: () => this.selectTab('market') };
       } else if (_sid === 'entrylevel3l' && _tid === 'entry3l') {
         const s = [{ label: '2025-26', color: '#FC97C2', points: DATA.charts.threeL.timeline['2026'] }, { label: '2026-27', color: '#4DA54C', points: DATA.charts.threeL.timeline['2027'] }];
-        tableChart = { title: '3L entry-level postings on Flo by month', sub: 'By open date · recruiting cycle Jun–May · year over year', svg: lineChart(s, 'tc3l', 0, MO_3Lt), legend: [{ label: 'Class of 2026 (Listed 2025-2026)', color: '#FC97C2' }, { label: 'Class of 2027 (Listed 2026-2027)', color: '#4DA54C' }] };
+        tableChart = { title: '3L entry-level postings on Flo by month', sub: 'By open date · recruiting cycle Jun–May · year over year', svg: lineChart(s, 'tc3l', 0, MO_3Lt), legend: [{ label: 'Class of 2026 (Listed 2025-2026)', color: '#FC97C2' }, { label: 'Class of 2027 (Listed 2026-2027)', color: '#4DA54C' }], showMarketLink: true, onMarket: () => this.selectTab('market') };
       } else if (_sid === 'lateralassoc' && _tid === 'lateral') {
         const s = [{ label: '2025', color: '#4D8EFF', points: DATA.charts.lateral.timeline['2025'] }, { label: '2026', color: '#192B92', points: DATA.charts.lateral.timeline['2026'] }];
-        tableChart = { title: 'Lateral non-partner listings on Flo by month', sub: 'By open date · calendar year · unique searches per month', svg: lineChart(s, 'tclat', 0, CAL), legend: [{ label: '2025', color: '#4D8EFF' }, { label: '2026', color: '#192B92' }] };
+        tableChart = { title: 'Lateral non-partner listings on Flo by month', sub: 'By open date · calendar year · unique searches per month', svg: lineChart(s, 'tclat', 0, CAL), legend: [{ label: '2025', color: '#4D8EFF' }, { label: '2026', color: '#192B92' }], showMarketLink: true, onMarket: () => this.selectTab('market') };
       }
     }
     // Market-data charts render one per row, capped at ~760px (they're authored at a 520px viewBox, so full page
