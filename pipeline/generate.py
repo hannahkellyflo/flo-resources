@@ -1293,6 +1293,22 @@ def wire_overview_stats(data: dict) -> None:
     _set_latest("judicial", _latest_postings(t.get("pc", []), "Law Firm", "Position", "Open Date", "Job Listing"), len(t.get("pc", [])))
     _set_latest("lateralassoc", _latest_postings(t.get("lateral", []), "Law Firm", "Position", "Open Date", "Job Listing"), len(t.get("lateral", [])))
 
+    # Card preview sparklines (LIVE): current recruiting year (navy) + prior year (grey), monthly, with the
+    # CURRENT month highlighted (index `hi`). The client renders the SVG from these arrays.
+    _cch, _y, _m = data.get("charts", {}), TODAY.year, TODAY.month
+    _appsubs = _cch.get("lawStudent", {}).get("appsubs", {})
+
+    def _sepaug(cy_start):  # Sep(cy_start)–Aug(cy_start+1), from the Jul–Jun cycle arrays
+        cur = (_appsubs.get(f"{cy_start}-{cy_start+1}") or [None] * 12)
+        nxt = (_appsubs.get(f"{cy_start+1}-{cy_start+2}") or [None] * 12)
+        return list(cur[2:12]) + [nxt[0] if len(nxt) > 0 else None, nxt[1] if len(nxt) > 1 else None]
+
+    _cyS = _y if _m >= 9 else _y - 1  # Sep–Aug recruiting cycle currently in progress
+    ov["cards"].setdefault("lawfirm", {})["spark"] = {"prior": _sepaug(_cyS - 1), "cur": _sepaug(_cyS), "hi": (_m - 9) % 12}
+    _tl = _cch.get("threeL", {}).get("timeline", {})
+    _cyJun = _y if _m >= 6 else _y - 1  # Jun–May 3L cycle; timeline keys = class year = cyJun+1
+    ov["cards"].setdefault("entrylevel3l", {})["spark"] = {"prior": (_tl.get(str(_cyJun)) or [None] * 12), "cur": (_tl.get(str(_cyJun + 1)) or [None] * 12), "hi": (_m - 6) % 12}
+
     def pi(open_key, third_kind):
         recs = t.get(open_key, [])
         n = len(recs)
