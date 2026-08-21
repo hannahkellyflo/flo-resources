@@ -77,6 +77,9 @@
     .ovblock { grid-template-columns: minmax(0, 1fr) !important; }
     /* Data tables keep the desktop horizontal-scroll behavior on mobile (Hannah preferred it over stacked
        cards, since tapping a row opens the full-width record sheet). No table overrides here on purpose. */
+    /* Table card header: stack the status pill above the descriptor so the pill keeps its shape and the
+       three pieces (pill / class year / role descriptor) read cleanly instead of jumbling on wrap. */
+    .tk-caphead { flex-direction: column !important; align-items: flex-start !important; gap: 6px !important; }
     /* Record-detail drawer → near-full-width sheet; stack its label/value pairs. */
     .tk-drawer { width: 96% !important; border-radius: 14px 0 0 14px !important; }
     .tk-field { grid-template-columns: 1fr !important; gap: 3px !important; }
@@ -614,9 +617,9 @@
         <div style="display:flex;flex-direction:column;gap:22px;">
           <div class="tcard" style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;display:flex;flex-direction:column;">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 20px;flex-wrap:wrap;">
-              <div style="display:flex;align-items:center;gap:10px;">
+              <div class="tk-caphead" style="display:flex;align-items:center;gap:10px;">
                 <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:#FCEBD5;color:#A15E11;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;">Upcoming</span>
-                <span style="font-size:15px;font-weight:600;color:#290A1B;">{{ upcomingCapLead }}</span><span style="font-size:14px;font-weight:500;color:#8A857C;">{{ upcomingCapRest }}</span>
+                <span class="tk-captext"><span style="font-size:15px;font-weight:600;color:#290A1B;">{{ upcomingCapLead }}</span><span style="font-size:14px;font-weight:500;color:#8A857C;">{{ upcomingCapRest }}</span></span>
               </div>
               <sc-if value="{{ upcomingHasRows }}">
               <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -662,9 +665,9 @@
 
           <div class="tcard" style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;display:flex;flex-direction:column;">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 20px;flex-wrap:wrap;">
-              <div style="display:flex;align-items:center;gap:10px;">
+              <div class="tk-caphead" style="display:flex;align-items:center;gap:10px;">
                 <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:#DCF3E4;color:#1B7F4D;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;">Open now</span>
-                <span style="font-size:15px;font-weight:600;color:#290A1B;">{{ openCapLead }}</span><span style="font-size:14px;font-weight:500;color:#8A857C;">{{ openCapRest }}</span>
+                <span class="tk-captext"><span style="font-size:15px;font-weight:600;color:#290A1B;">{{ openCapLead }}</span><span style="font-size:14px;font-weight:500;color:#8A857C;">{{ openCapRest }}</span></span>
               </div>
               <sc-if value="{{ openHasRows }}">
               <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -715,9 +718,9 @@
         <sc-if value="{{ showCampus }}">
         <div class="tcard" style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;display:flex;flex-direction:column;">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 20px;flex-wrap:wrap;">
-            <div style="display:flex;align-items:center;gap:10px;">
+            <div class="tk-caphead" style="display:flex;align-items:center;gap:10px;">
               <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:#E3E8FB;color:#3A4CB0;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;">Campus Programs</span>
-              <span style="font-size:15px;font-weight:600;color:#290A1B;">{{ campusCapLead }}</span><span style="font-size:14px;font-weight:500;color:#8A857C;">{{ campusCapRest }}</span>
+              <span class="tk-captext"><span style="font-size:15px;font-weight:600;color:#290A1B;">{{ campusCapLead }}</span><span style="font-size:14px;font-weight:500;color:#8A857C;">{{ campusCapRest }}</span></span>
             </div>
             <sc-if value="{{ campusHasRows }}">
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -767,9 +770,9 @@
         <sc-if value="{{ showExams }}">
         <div class="tcard" style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;display:flex;flex-direction:column;">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 20px;flex-wrap:wrap;">
-            <div style="display:flex;align-items:center;gap:10px;">
+            <div class="tk-caphead" style="display:flex;align-items:center;gap:10px;">
               <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:#F3E3F0;color:#8A3E7C;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;">Exams &amp; Grades</span>
-              <span style="font-size:15px;font-weight:600;color:#290A1B;">{{ examsCapLead }}</span><span style="font-size:14px;font-weight:500;color:#8A857C;">{{ examsCapRest }}</span>
+              <span class="tk-captext"><span style="font-size:15px;font-weight:600;color:#290A1B;">{{ examsCapLead }}</span><span style="font-size:14px;font-weight:500;color:#8A857C;">{{ examsCapRest }}</span></span>
             </div>
             <sc-if value="{{ examsHasRows }}">
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -818,9 +821,9 @@
         <sc-if value="{{ show3L }}">
         <div class="tcard" style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;display:flex;flex-direction:column;">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 20px;flex-wrap:wrap;">
-            <div style="display:flex;align-items:center;gap:10px;">
+            <div class="tk-caphead" style="display:flex;align-items:center;gap:10px;">
               <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:#DCF3E4;color:#1B7F4D;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;">Open now</span>
-              <span style="font-size:15px;font-weight:600;color:#290A1B;">{{ entry3lCapLead }}</span><span style="font-size:14px;font-weight:500;color:#8A857C;">{{ entry3lCapRest }}</span>
+              <span class="tk-captext"><span style="font-size:15px;font-weight:600;color:#290A1B;">{{ entry3lCapLead }}</span><span style="font-size:14px;font-weight:500;color:#8A857C;">{{ entry3lCapRest }}</span></span>
             </div>
             <sc-if value="{{ entry3lHasRows }}">
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -870,9 +873,9 @@
         <sc-if value="{{ showPI }}">
         <div class="tcard" style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;display:flex;flex-direction:column;">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 20px;flex-wrap:wrap;">
-            <div style="display:flex;align-items:center;gap:10px;">
+            <div class="tk-caphead" style="display:flex;align-items:center;gap:10px;">
               <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:#DCF3E4;color:#1B7F4D;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;">Open now</span>
-              <span style="font-size:15px;font-weight:600;color:#290A1B;">{{ piCapLead }}</span><span style="font-size:14px;font-weight:500;color:#8A857C;">{{ piCapRest }}</span>
+              <span class="tk-captext"><span style="font-size:15px;font-weight:600;color:#290A1B;">{{ piCapLead }}</span><span style="font-size:14px;font-weight:500;color:#8A857C;">{{ piCapRest }}</span></span>
             </div>
             <sc-if value="{{ piOpenHasRows }}">
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -922,7 +925,7 @@
         <!-- Public Interest — Past Roles (recently closed; auto-removed 30 days after close date) -->
         <div class="tcard" style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;display:flex;flex-direction:column;margin-top:22px;">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 20px;flex-wrap:wrap;">
-            <div style="display:flex;align-items:center;gap:10px;">
+            <div class="tk-caphead" style="display:flex;align-items:center;gap:10px;">
               <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:#ECE9E3;color:#7D766C;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;">Past roles</span>
               <span style="font-size:14px;color:#7D8491;">Closed in the last 30 days · removed 30 days after close date</span>
             </div>
@@ -972,9 +975,9 @@
         <sc-if value="{{ showLateralNP }}">
         <div class="tcard" style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;display:flex;flex-direction:column;">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 20px;flex-wrap:wrap;">
-            <div style="display:flex;align-items:center;gap:10px;">
+            <div class="tk-caphead" style="display:flex;align-items:center;gap:10px;">
               <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:#DCF3E4;color:#1B7F4D;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;">Open now</span>
-              <span style="font-size:15px;font-weight:600;color:#290A1B;">{{ lateralCapLead }}</span><span style="font-size:14px;font-weight:500;color:#8A857C;">{{ lateralCapRest }}</span>
+              <span class="tk-captext"><span style="font-size:15px;font-weight:600;color:#290A1B;">{{ lateralCapLead }}</span><span style="font-size:14px;font-weight:500;color:#8A857C;">{{ lateralCapRest }}</span></span>
             </div>
             <sc-if value="{{ lateralHasRows }}">
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -1026,9 +1029,9 @@
         <sc-if value="{{ showPostClerk }}">
         <div class="tcard" style="background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 2px rgba(41,10,27,.05);overflow:hidden;display:flex;flex-direction:column;">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 20px;flex-wrap:wrap;">
-            <div style="display:flex;align-items:center;gap:10px;">
+            <div class="tk-caphead" style="display:flex;align-items:center;gap:10px;">
               <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:#DCF3E4;color:#1B7F4D;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;">Open now</span>
-              <span style="font-size:15px;font-weight:600;color:#290A1B;">{{ pcCapLead }}</span><span style="font-size:14px;font-weight:500;color:#8A857C;">{{ pcCapRest }}</span>
+              <span class="tk-captext"><span style="font-size:15px;font-weight:600;color:#290A1B;">{{ pcCapLead }}</span><span style="font-size:14px;font-weight:500;color:#8A857C;">{{ pcCapRest }}</span></span>
             </div>
             <sc-if value="{{ pcHasRows }}">
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
