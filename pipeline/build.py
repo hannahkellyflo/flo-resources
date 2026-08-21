@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build legal-recruiting-tracker/index.html from the template + data.json.
+"""Build site/tracker/index.html from the template + data.json.
 
 Inputs (all in this pipeline/ dir):
   template.dc.html     - the app (contains the `const DATA = /* __DATA_INJECT__ */{}/* __DATA_INJECT__ */;` marker)
@@ -7,7 +7,7 @@ Inputs (all in this pipeline/ dir):
   artifact-shell.html  - stable inlined React + ReactDOM + support.js + the __DC_SRC__ slot (rarely changes)
 
 Output:
-  ../legal-recruiting-tracker/index.html  (Vercel serves this)
+  ../site/tracker/index.html  (Vercel serves this at /tracker)
 
 The artifact carries the app body twice: as the escaped __DC_SRC__ payload AND as the
 raw inline <x-dc> body that support.js actually renders. This build writes BOTH from the
@@ -21,7 +21,7 @@ PIPE = pathlib.Path(__file__).parent
 TEMPLATE = PIPE / "template.dc.html"
 DATA_JSON = PIPE / "data.json"
 SHELL = PIPE / "artifact-shell.html"
-OUT = PIPE.parent / "legal-recruiting-tracker" / "index.html"
+OUT = PIPE.parent / "site" / "tracker" / "index.html"
 
 DATA_MARKER = "/* __DATA_INJECT__ */{}/* __DATA_INJECT__ */"
 
@@ -53,6 +53,7 @@ def build() -> None:
     assert i >= 0 and j > s0, "__DC_SRC__ slot not found in shell"
     shell = shell[:s0] + enc + shell[j + 1:]
 
+    OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(shell + body, encoding="utf-8")
     print(f"built {OUT} ({len(shell) + len(body):,} bytes; body {len(body):,})")
 
