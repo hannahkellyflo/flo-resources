@@ -1313,11 +1313,11 @@ const ROUTE_BASE = '/tracker';
 const WORLD_SLUG = { entry: 'student', lateral: 'attorney' };
 const SLUG_WORLD = { student: 'entry', attorney: 'lateral' };
 const GROUP_SLUG = { 'Law Firm': 'lawfirm', 'Public Interest': 'publicinterest' };
-// Readable stand-ins for the internal ids, which are historical and in places misleading
-// (`publicinterest` holds law-firm content). Anything without an entry falls back to its raw
-// id, so a new section or tab still gets a working URL with nothing to remember here.
+// Readable stand-ins for the internal ids, which are historical. Anything without an entry
+// falls back to its raw id, so a new section or tab still gets a working URL with nothing to
+// remember here (`fall3l` relies on that).
 const SECTION_SLUG = {
-  lawfirm: 'summer', entrylevel3l: '3l', publicinterest: 'fall3l',
+  lawfirm: 'summer', entrylevel3l: '3l',
   pisummer: 'intern', piextern: 'entrylevel',
   judicial: 'postclerk', lateralassoc: 'nonpartner', lateralpartner: 'partner',
   piattorney: 'positions',
@@ -1458,7 +1458,7 @@ class Component extends DCLogic {
         sectionTitle: 'Attorney Position Details',
         tabs: [ { id: 'jobs', label: 'Search Details' } ],
       },
-      publicinterest: {
+      fall3l: {
         name: '3L Fall Associates',
         group: 'Law Firm',
         secSubtitle: 'Law firm entry-level recruiting - Class of 2027',
@@ -1516,7 +1516,7 @@ class Component extends DCLogic {
     };
 
     const WORLDS = {
-      entry: { label: 'Law Student Recruiting', subIds: ['lawfirm', 'entrylevel3l', 'publicinterest', 'pisummer', 'piextern'] },
+      entry: { label: 'Law Student Recruiting', subIds: ['lawfirm', 'entrylevel3l', 'fall3l', 'pisummer', 'piextern'] },
       lateral: { label: 'Attorney Recruiting', subIds: ['judicial', 'lateralassoc', 'lateralpartner', 'piattorney'] },
     };
 
@@ -1525,7 +1525,7 @@ class Component extends DCLogic {
         { tag: 'Timelines', title: 'The 2027 OCI calendar, explained', read: '6 min read' },
         { tag: 'Trends', title: 'Why 1L summer recruiting keeps moving earlier', read: '5 min read' },
       ],
-      publicinterest: [
+      fall3l: [
         { tag: 'Guide', title: '3L recruiting: what changed for the Class of 2026', read: '5 min read' },
         { tag: 'Timelines', title: 'When entry-level postings tend to go live', read: '4 min read' },
       ],
@@ -1549,7 +1549,7 @@ class Component extends DCLogic {
   }
 
   worldOf(subId) {
-    return subId === 'lawfirm' || subId === 'entrylevel3l' || subId === 'publicinterest' || subId === 'pisummer' || subId === 'piextern' ? 'entry' : 'lateral';
+    return subId === 'lawfirm' || subId === 'entrylevel3l' || subId === 'fall3l' || subId === 'pisummer' || subId === 'piextern' ? 'entry' : 'lateral';
   }
 
   // Path segments after ROUTE_BASE, or null when this page isn't served from there (a local
@@ -1679,12 +1679,13 @@ class Component extends DCLogic {
         toggle: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setState((s) => ({ alerts: { ...s.alerts, [id]: !s.alerts[id] } })); },
       };
     };
-    const alert = { lawfirm: mkAlert('lawfirm'), publicinterest: mkAlert('publicinterest'), pisummer: mkAlert('pisummer'), piextern: mkAlert('piextern'), judicial: mkAlert('judicial'), lateralassoc: mkAlert('lateralassoc'), lateralpartner: mkAlert('lateralpartner') };
+    const alert = { lawfirm: mkAlert('lawfirm'), fall3l: mkAlert('fall3l'), pisummer: mkAlert('pisummer'), piextern: mkAlert('piextern'), judicial: mkAlert('judicial'), lateralassoc: mkAlert('lateralassoc'), lateralpartner: mkAlert('lateralpartner') };
     const world = WORLDS[this.state.worldId];
     const sub = SUBS[this.state.subId];
 
     // Section tabs = all the current column's (world's) real sub-sections, so clicking a column header opens a
-    // tabbed page across sections (Hannah's "one page, section tabs"). Orphan 'publicinterest' is skipped.
+    // tabbed page across sections (Hannah's "one page, section tabs"). 'fall3l' is deliberately
+    // skipped for now: it has a URL but no section tab and no overview card yet.
     const _secOrder = { entry: ['lawfirm', 'entrylevel3l', 'pisummer', 'piextern'], lateral: ['judicial', 'lateralassoc', 'lateralpartner', 'piattorney'] };
     const _secIds = (_secOrder[this.state.worldId] || [this.state.subId]).filter((id) => SUBS[id]);
     const sectionTabs = _secIds.map((id) => ({ name: SUBS[id].name, subId: id, isActive: id === this.state.subId, isInactive: id !== this.state.subId, onClick: () => this.selectSub(id) }));
@@ -2671,7 +2672,7 @@ class Component extends DCLogic {
       openPISummer: () => this.enterSub('pisummer'),
       openPIExtern: () => this.enterSub('piextern'),
       openPIAttorney: () => this.enterSub('piattorney'),
-      openPublicInterest: () => this.enterSub('publicinterest'),
+      openFall3l: () => this.enterSub('fall3l'),
       piSummerCardStats: DATA.overview.piCardStats.summer.filter((s) => { const n = parseFloat(s.value); return isNaN(n) || n !== 0; }),
       piExternCardStats: DATA.overview.piCardStats.extern.filter((s) => { const n = parseFloat(s.value); return isNaN(n) || n !== 0; }),
       piAttorneyCardStats: DATA.overview.piCardStats.attorney.filter((s) => { const n = parseFloat(s.value); return isNaN(n) || n !== 0; }),
@@ -2688,7 +2689,7 @@ class Component extends DCLogic {
       open3LData: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.enterSub('entrylevel3l', 'market'); },
       openLateralData: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.enterSub('lateralassoc', 'market'); },
       openJudicialData: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.enterSub('judicial', 'market'); },
-      openPublicInterestData: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.enterSub('publicinterest', 'market'); },
+      openFall3lData: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.enterSub('fall3l', 'market'); },
       studentLawfirm: this.state.studentSection !== 'pi',
       studentPI: this.state.studentSection === 'pi',
       onStudentLawfirm: () => this.setState({ studentSection: 'lawfirm' }),

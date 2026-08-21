@@ -46,9 +46,10 @@ default:
 | `/tracker/attorney/publicinterest/positions` | Attorney Positions |
 
 `group` is the section's own `group` field (`Law Firm` / `Public Interest`), and it is
-verified on the way in — a section can't be reached under the wrong group. Note that
-`3L Fall Associates` sits under `lawfirm` despite its internal id being `publicinterest`;
-the id is historical and the `group` field is what's correct.
+verified on the way in — a section can't be reached under the wrong group. `3L Fall Associates`
+sits under `lawfirm` because that is its group: it is law-firm direct-apply content, despite
+the `pi*` naming of the genuinely public-interest sections around it. It has a URL but no
+section tab and no overview card yet, so it isn't reachable by clicking.
 
 Slugs live in `SECTION_SLUG` / `TAB_SLUG` in `pipeline/template.dc.html`. Anything without
 an entry falls back to its raw id, so a new section or tab still gets a working URL with
