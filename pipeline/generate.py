@@ -333,6 +333,10 @@ JOIN ORG o ON o.ID = j.ORG_ID
 LEFT JOIN JOB_HIRING_TYPE jht ON jht.JOB_ID = j.ID
 LEFT JOIN HIRING_TYPE ht ON ht.ID = jht.HIRING_TYPE_ID
 WHERE j.FORWARD_PUBLISHING_STATUS = 'PUBLISHED' AND j.DELETED_AT IS NULL
+  -- Drop listings whose application deadline has passed but were never unpublished (status stays
+  -- PUBLISHED). Firms often let the close date lapse without flipping the status, leaving stale
+  -- "closed" roles on the lateral / post-clerkship / 3L tables. Rolling roles (no close date) stay.
+  AND (j.CLOSE_DATE IS NULL OR j.CLOSE_DATE >= NOW())
   -- ATS + MANUAL_ENTRY (both are real Forward postings; ATS-only was an over-filter
   -- inherited from the attorney base — it dropped MANUAL_ENTRY 3L roles like Latham).
   -- lateral/pc are tag-gated so unaffected; entry3l gains its MANUAL_ENTRY roles.
