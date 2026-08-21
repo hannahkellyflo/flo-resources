@@ -18,19 +18,41 @@ Deploy on Vercel with **Root Directory = `site`** (Framework preset: *Other*).
 
 ## URLs inside the tracker
 
-The tracker is one page, but its views are addressable:
+The tracker is one page, but its views are addressable. The shape is
+`/tracker/{world}/{group}/{section}/{tab}`, with the tab left off when it's the section's
+default:
 
 | URL | View |
 | --- | --- |
 | `/tracker` | Landing page, both columns |
 | `/tracker/student` | Law Student Recruiting card grid |
 | `/tracker/attorney` | Attorney Recruiting card grid |
-| `/tracker/student/lawfirm/2lsummer` | A section, on a specific tab |
+| `/tracker/student/lawfirm/summer` | 1L–2L Summer Associates (1L Summer) |
+| `/tracker/student/lawfirm/summer/2l` | ” (2L Summer) |
+| `/tracker/student/lawfirm/summer/campus` | ” (Campus Programs) |
+| `/tracker/student/lawfirm/summer/examsgrades` | ” (Exams & Grades) |
+| `/tracker/student/lawfirm/summer/market` | ” (Market Data) |
+| `/tracker/student/lawfirm/3l` | 3L Entry-Level Associates (Job Details) |
+| `/tracker/student/lawfirm/3l/market` | ” (Market Data) |
+| `/tracker/student/lawfirm/fall3l` | 3L Fall Associates (Law Firm Direct Apply) |
+| `/tracker/student/lawfirm/fall3l/market` | ” (Market Data) |
+| `/tracker/student/publicinterest/intern` | Law Student Internships |
+| `/tracker/student/publicinterest/entrylevel` | Entry-Level Positions |
+| `/tracker/attorney/lawfirm/postclerk` | Post-Judicial Clerkship (Job Details) |
+| `/tracker/attorney/lawfirm/postclerk/market` | ” (Market Data) |
+| `/tracker/attorney/lawfirm/nonpartner` | Lateral Non-Partners (Search Details) |
+| `/tracker/attorney/lawfirm/nonpartner/market` | ” (Market Data) |
+| `/tracker/attorney/lawfirm/partner` | Lateral Partners (Market Data) |
+| `/tracker/attorney/publicinterest/positions` | Attorney Positions |
 
-The path is `/tracker/{world}/{section}/{tab}`, where `world` is `student` (internally
-`entry`) or `attorney` (internally `lateral`), and `section`/`tab` are the `SUBS` and `tabs`
-ids from `pipeline/template.dc.html`. Add a section or tab there and its URL works with no
-further wiring — nothing maps ids to slugs.
+`group` is the section's own `group` field (`Law Firm` / `Public Interest`), and it is
+verified on the way in — a section can't be reached under the wrong group. Note that
+`3L Fall Associates` sits under `lawfirm` despite its internal id being `publicinterest`;
+the id is historical and the `group` field is what's correct.
+
+Slugs live in `SECTION_SLUG` / `TAB_SLUG` in `pipeline/template.dc.html`. Anything without
+an entry falls back to its raw id, so a new section or tab still gets a working URL with
+nothing to add — the maps only exist to make the URLs readable.
 
 Two pieces make this work, and both matter:
 
@@ -41,8 +63,10 @@ Two pieces make this work, and both matter:
 - `site/vercel.json` rewrites `/tracker/*` to `tracker/index.html`, so refreshing or sharing
   a deep link serves the page instead of a 404.
 
-An unknown path (`/tracker/student/bogus`) falls back to the landing page and normalizes the
-URL. Served from anywhere other than `/tracker` — a local `file://`, a bare static server —
+An unknown path, or a real section under the wrong group, falls back to the landing page and
+normalizes the URL; so does a group with no section (`/tracker/student/lawfirm`), since the
+focused grid shows both groups. An explicitly named default tab canonicalizes to the short
+form. Served from anywhere other than `/tracker` — a local `file://`, a bare static server —
 routing switches off and the dashboard behaves as it did before it existed.
 
 ## /tracker — Legal Recruiting Tracker
