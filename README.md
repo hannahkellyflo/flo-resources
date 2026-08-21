@@ -16,6 +16,32 @@ site/
 
 Deploy on Vercel with **Root Directory = `site`** (Framework preset: *Other*).
 
+## Page metadata and icons
+
+`build.py` prepends a document head (`HEAD` in that file) to the page it writes: title,
+description, canonical URL, link-preview tags, and icon links. The shell starts straight at
+`<script>`, so without this the page ships no title, no icon and no charset.
+
+It lives in `build.py` rather than in `artifact-shell.html` (regenerated wholesale) or the
+template's `<helmet>` block — helmet is appended by JS after boot, which browsers honour but
+crawlers and link unfurlers never see, so OG tags there would not unfurl.
+
+Two deliberate choices worth keeping:
+
+- **No `<!doctype html>`.** Adding one flips the page from quirks mode to standards mode and
+  shifts the existing layout (page height +10px, some elements ~4px). Metadata parsing doesn't
+  need a doctype. Adding it is a separate change that wants a visual review of its own.
+- **A fixed canonical to `/tracker`.** Every `/tracker/*` path is served this same document by
+  the `vercel.json` rewrite, so they are one page; without the canonical, crawlers would treat
+  each deep link as a duplicate.
+
+Icons are generated from the Flo mark that is already inline in the template and live at the
+site root (`site/favicon.ico`, `favicon-{16,32,48,192,512}.png`, `apple-touch-icon.png`). The
+16–48px sizes use a tighter crop so the wordmark stays legible at tab size.
+
+There is no `og:image` yet, so link previews unfurl as text (title + description) rather than a
+card with a picture. That needs a designed 1200×630 asset.
+
 ## URLs inside the tracker
 
 The tracker is one page, but its views are addressable. The shape is
