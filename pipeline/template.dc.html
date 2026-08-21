@@ -1878,9 +1878,17 @@ class Component extends DCLogic {
       const svg = host && host.querySelector('svg');
       if (!svg) return;
       const vb = (svg.getAttribute('viewBox') || '0 0 780 232').split(/\s+/).map(Number);
-      const W = vb[2], H = vb[3];
-      const logo = '<g transform="translate(' + (W - 60) + ',10) scale(0.26)" fill-opacity="0.5">' + FLO_LOGO + '</g>';
-      const wrapped = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '"><style>.mkt-tip{opacity:0}</style><rect width="100%" height="100%" fill="#ffffff"/>' + svg.innerHTML + logo + '</svg>';
+      const W = vb[2], CH = vb[3];
+      const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const headerH = 58, padX = 8;
+      const title = zoomChart && zoomChart.title ? zoomChart.title : '';
+      const sub = zoomChart && zoomChart.sub ? zoomChart.sub : '';
+      // Logo scaled ~0.15 (down from 0.26) so it reads as a small mark, top-right of the header band.
+      const logo = '<g transform="translate(' + (W - 38) + ',12) scale(0.15)" fill-opacity="0.5">' + FLO_LOGO + '</g>';
+      const head = '<text x="' + padX + '" y="26" font-family="Zalando Sans,sans-serif" font-size="18" font-weight="700" fill="#290A1B">' + esc(title) + '</text>' +
+        '<text x="' + padX + '" y="45" font-family="Zalando Sans,sans-serif" font-size="12.5" fill="#9A948C">' + esc(sub) + '</text>';
+      const H = CH + headerH;
+      const wrapped = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '"><style>.mkt-tip{opacity:0}</style><rect width="100%" height="100%" fill="#ffffff"/>' + head + logo + '<g transform="translate(0,' + headerH + ')">' + svg.innerHTML + '</g></svg>';
       const img = new Image();
       img.onload = () => {
         const s = 2, cv = document.createElement('canvas');
