@@ -303,7 +303,7 @@
           <div onClick="{{ openAttorneyWorld }}" style="background:#fff;border:1px solid #ECE7DE;border-radius:20px;padding:26px 24px 28px;box-shadow:0 4px 24px rgba(41,10,27,.06);cursor:pointer;">
             <div style="position:sticky;top:0;z-index:4;background:#fff;padding:2px 0 11px;"><span style="font-family:'Zalando Sans',sans-serif;font-weight:700;font-size:24px;letter-spacing:-0.02em;color:#290A1B;" style-hover="color:#3E0C2D;">Attorney Recruiting</span></div>
             <div style="font-size:14px;color:#7C766F;margin-bottom:18px;">For practicing attorneys including judicial clerks</div>
-            <div style="display:flex;flex-direction:column;gap:16px;">
+            <div style="display:{{ latContentDisplay }};grid-template-columns:repeat(2,1fr);flex-direction:column;align-items:start;gap:16px;">
               <sc-if value="{{ landingMode }}">
               <div class="ovblock" style="position:sticky;top:40px;z-index:3;background:#fff;padding-top:2px;display:flex;gap:26px;border-bottom:1.5px solid #E8E4DC;margin-bottom:2px;">
                 <sc-if value="{{ attorneyLawfirm }}"><div style="padding:7px 2px 11px;font-size:15px;font-weight:600;color:#192B92;border-bottom:2.5px solid #192B92;margin-bottom:-1.5px;cursor:pointer;white-space:nowrap;">Law Firms</div></sc-if>
@@ -312,9 +312,8 @@
                 <sc-if value="{{ attorneyLawfirm }}"><div onClick="{{ onAttorneyPI }}" style="padding:7px 2px 11px;font-size:15px;font-weight:600;color:#8A857C;border-bottom:2.5px solid transparent;margin-bottom:-1.5px;cursor:pointer;white-space:nowrap;" style-hover="color:#0174BE;">Public Interest</div></sc-if>
               </div>
               </sc-if>
-              <sc-if value="{{ latFocused }}"><div style="font-size:15px;font-weight:700;color:#192B92;padding-bottom:10px;border-bottom:1.5px solid #E8E4DC;">Law Firms</div></sc-if>
               <sc-if value="{{ showAttyLF }}">
-              <div class="ovblock" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;">
+              <div class="ovblock" style="display:{{ attyCardDisplay }};grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;">
               <!-- Post-Judicial Clerkship Associates — table preview -->
               <div onClick="{{ openJudicial }}" style="background:#fff;border:1.5px solid #DBD7CF;border-radius:14px;padding:18px 20px;box-shadow:0 3px 12px rgba(0,0,0,.05);overflow:hidden;cursor:pointer;transition:border-color 120ms ease,box-shadow 120ms ease,transform 120ms ease;display:flex;flex-direction:column;flex:1;" style-hover="border-color:#1A1A1A;box-shadow:0 8px 22px rgba(26,26,26,.16);transform:translateY(-2px);">
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;background:#FAF9F6;margin:-18px -20px 0;padding:16px 20px 14px;">
@@ -431,9 +430,8 @@
               </div>
               </div>
               </sc-if>
-              <sc-if value="{{ latFocused }}"><div style="font-size:15px;font-weight:700;color:#0174BE;padding-bottom:10px;border-bottom:1.5px solid #E8E4DC;">Public Interest</div></sc-if>
               <sc-if value="{{ showAttyPI }}">
-              <div class="ovblock" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;">
+              <div class="ovblock" style="display:{{ attyCardDisplay }};grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;">
               <!-- Attorney Positions — table preview -->
               <div onClick="{{ openPIAttorney }}" style="background:#fff;border:1.5px solid #DBD7CF;border-radius:14px;padding:18px 20px;box-shadow:0 3px 12px rgba(0,0,0,.05);overflow:hidden;cursor:pointer;transition:border-color 120ms ease,box-shadow 120ms ease,transform 120ms ease;display:flex;flex-direction:column;flex:1;" style-hover="border-color:#0174BE;box-shadow:0 8px 22px rgba(1,116,190,.14);transform:translateY(-2px);">
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;background:#FAF9F6;margin:-18px -20px 0;padding:16px 20px 14px;">
@@ -2502,6 +2500,7 @@ class Component extends DCLogic {
       ovGridCols: this.state.worldFocus ? '1fr' : '1fr 1fr',
       entryContentDisplay: this.state.worldFocus === 'entry' ? 'grid' : 'flex',
       latContentDisplay: this.state.worldFocus === 'lateral' ? 'grid' : 'flex',
+      attyCardDisplay: this.state.worldFocus === 'lateral' ? 'contents' : 'grid',
       backToLanding: this.backToLanding,
       sectionTabs,
       secName,
