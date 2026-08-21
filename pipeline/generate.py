@@ -415,6 +415,7 @@ def wire_entry3l(data: dict) -> None:
     rows = metabase_sql(MB_DB, _JOB_SELECT % ENTRY3L_WHERE)
     table = [{
         "Employer": r.get("firm") or "—",
+        "Firm Profile": firm_profile_cell(r.get("firm")),   # not a displayed column; the firm-name cell links to it
         "3L Position": r.get("position") or "—",
         "3L Job Listing": {"text": "View listing",
                            "href": f"https://florecruit.com/v2/app/forward/jobs/{r.get('job_id')}"},
@@ -439,6 +440,7 @@ def wire_entry3l(data: dict) -> None:
         seen.add(k2); da_added += 1
         table.append({
             "Employer": row["firm"],
+            "Firm Profile": firm_profile_cell(row["firm"]),
             "3L Position": row["position"] or "—",
             "3L Job Listing": "Not yet open",           # upcoming — no live listing/apply link yet
             "Offices": "—",

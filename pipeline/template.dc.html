@@ -622,6 +622,7 @@
                       <sc-for list="{{ row.cells }}" as="cell">
                         <td style="padding:7px 14px;border-bottom:1px solid #EFEDE7;color:#212121;white-space:nowrap;vertical-align:middle;">
                           <sc-if value="{{ cell.isText }}"><span>{{ cell.text }}</span></sc-if>
+                          <sc-if value="{{ cell.isFirmLink }}"><a href="{{ cell.href }}" target="_blank" rel="noopener" onClick="{{ stopLink }}" title="View firm profile" style="color:#212121;font-weight:600;text-decoration:none;cursor:pointer;" style-hover="text-decoration:underline;color:#3E0C2D;">{{ cell.text }}</a></sc-if>
                           <sc-if value="{{ cell.isLink }}"><a href="{{ cell.href }}" target="_blank" rel="noopener" style="color:#1C6FD6;font-weight:600;text-decoration:none;cursor:pointer;">{{ cell.text }}</a></sc-if>
                           <sc-if value="{{ cell.isMuted }}"><span style="color:#ACB3C3;">{{ cell.text }}</span></sc-if>
                           <sc-if value="{{ cell.isCheck }}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5C606B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="8.5 12.4 11 14.8 15.5 9.6"></polyline></svg></sc-if>
@@ -670,6 +671,7 @@
                       <sc-for list="{{ row.cells }}" as="cell">
                         <td style="padding:7px 14px;border-bottom:1px solid #EFEDE7;color:#212121;white-space:nowrap;vertical-align:middle;">
                           <sc-if value="{{ cell.isText }}"><span>{{ cell.text }}</span></sc-if>
+                          <sc-if value="{{ cell.isFirmLink }}"><a href="{{ cell.href }}" target="_blank" rel="noopener" onClick="{{ stopLink }}" title="View firm profile" style="color:#212121;font-weight:600;text-decoration:none;cursor:pointer;" style-hover="text-decoration:underline;color:#3E0C2D;">{{ cell.text }}</a></sc-if>
                           <sc-if value="{{ cell.isLink }}"><a href="{{ cell.href }}" target="_blank" rel="noopener" style="color:#1C6FD6;font-weight:600;text-decoration:none;cursor:pointer;">{{ cell.text }}</a></sc-if>
                           <sc-if value="{{ cell.isMuted }}"><span style="color:#ACB3C3;">{{ cell.text }}</span></sc-if>
                           <sc-if value="{{ cell.isCheck }}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5C606B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="8.5 12.4 11 14.8 15.5 9.6"></polyline></svg></sc-if>
@@ -825,6 +827,7 @@
                     <sc-for list="{{ row.cells }}" as="cell">
                       <td style="padding:7px 14px;border-bottom:1px solid #EFEDE7;color:#212121;white-space:nowrap;vertical-align:top;">
                         <sc-if value="{{ cell.isText }}"><span>{{ cell.text }}</span></sc-if>
+                        <sc-if value="{{ cell.isFirmLink }}"><a href="{{ cell.href }}" target="_blank" rel="noopener" onClick="{{ stopLink }}" title="View firm profile" style="color:#212121;font-weight:600;text-decoration:none;cursor:pointer;" style-hover="text-decoration:underline;color:#3E0C2D;">{{ cell.text }}</a></sc-if>
                         <sc-if value="{{ cell.isLink }}"><a href="{{ cell.href }}" target="_blank" rel="noopener" style="color:#1C6FD6;font-weight:600;text-decoration:none;cursor:pointer;">{{ cell.text }}</a></sc-if>
                         <sc-if value="{{ cell.isMuted }}"><span style="color:#ACB3C3;">{{ cell.text }}</span></sc-if>
                         <sc-if value="{{ cell.isWrap }}"><div style="max-width:260px;white-space:normal;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">{{ cell.text }}</div></sc-if>
@@ -1296,6 +1299,14 @@ const buildRows = (records, labels, cfg) => {
       if (v && typeof v === 'object' && v.href != null) return { text: v.text, isLink: true, href: v.href };
       if (cfg.bool && cfg.bool[i]) return v ? { text: 'Yes', isText: true } : { text: 'No', isMuted: true };
       if (v == null || v === '' || v === '—') return { text: '—', isMuted: true };
+      // Firm-name column: link to the firm's Flo Forward profile (new tab) when one exists, else plain text.
+      // The profile URL rides along on the record's 'Firm Profile' field (set by the pipeline) even when
+      // that column isn't displayed. isFirmLink stops row-click propagation so it opens the profile, not the detail view.
+      if (cfg.firm && cfg.firm[i]) {
+        const fp = rec['Firm Profile'];
+        const fh = (fp && typeof fp === 'object' && fp.href) ? fp.href : null;
+        return fh ? { text: v, isFirmLink: true, href: fh } : { text: v, isText: true };
+      }
       if (cfg.pills && cfg.pills[i]) return { text: v, isPill: true };
       if (cfg.desc && cfg.desc[i]) return { text: v, isDesc: true };
       if (cfg.wraps && cfg.wraps[i]) return { text: v, isWrap: true };
@@ -1729,8 +1740,8 @@ class Component extends DCLogic {
     }));
     const splitOpenSrc = is2L ? DATA.tables.summer2L.open : DATA.tables.summer1L.open;
     const splitUpcomingSrc = is2L ? DATA.tables.summer2L.upcoming : DATA.tables.summer1L.upcoming;
-    const splitOpenRows = sortRows(buildRows(splitOpenSrc, splitColumns, {}).filter(matchRow));  // open: links auto, em-dash muted
-    const splitUpcomingRows = sortRows(buildRows(splitUpcomingSrc, splitColumns, { muted: { 2: true } }).filter(matchRow));  // upcoming: only 'Not yet open' (col 2) muted; open date stays full-color (real data)
+    const splitOpenRows = sortRows(buildRows(splitOpenSrc, splitColumns, { firm: { 1: true } }).filter(matchRow));  // open: links auto, em-dash muted; Employer (col 1) → firm-profile link
+    const splitUpcomingRows = sortRows(buildRows(splitUpcomingSrc, splitColumns, { muted: { 2: true }, firm: { 1: true } }).filter(matchRow));  // upcoming: only 'Not yet open' (col 2) muted; open date stays full-color (real data); Employer (col 1) → firm-profile link
     splitUpcomingRows.forEach((r, i) => { r.onOpen = () => this.setState({ rowOpen: i }); });
     splitOpenRows.forEach((r, i) => { r.onOpen = () => this.setState({ rowOpen: splitUpcomingRows.length + i }); });
     const sortColumns = splitColumns.map((label, i) => ({
@@ -1825,7 +1836,7 @@ class Component extends DCLogic {
     const is3L = this.state.subId === 'entrylevel3l' && activeTab.id === 'entry3l';
     const entry3lColLabels = ['Employer', '3L Position', '3L Job Listing', 'Offices', 'Practices, If Specified', 'Bar Admission, If Required', 'Last Updated'];
     const J = (id) => 'https://florecruit.com/v2/app/forward/jobs/' + id;
-    const entry3lRowsAll = buildRows(DATA.tables.entry3l, entry3lColLabels, { muted: { 6: true } });
+    const entry3lRowsAll = buildRows(DATA.tables.entry3l, entry3lColLabels, { muted: { 6: true }, firm: { 0: true } });
     const entry3lMatch = (r) => { if (!q) return true; return [0, 1, 3].some((i) => { const c = r.cells[i]; return !!(c && c.text && String(c.text).toLowerCase().indexOf(q) !== -1); }); };
     wrapCols(entry3lRowsAll, [1, 3]); // wrap 3L Position + Offices
     const entry3lRows = sortRows(entry3lRowsAll.filter(entry3lMatch));
