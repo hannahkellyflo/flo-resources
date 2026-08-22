@@ -30,7 +30,7 @@ jobs:
       - name: Post daily digest to Elizabeth (Slack)
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          SLACK_TARGET: ${{ secrets.SLACK_TARGET }}
+          SLACK_TARGET: ${{ secrets.SLACK_TARGET_EG }}   # Elizabeth Greiner's DM (U07NGSKSP1N)
         run: python digest/slack_notify.py
 
       - name: Commit advanced watermark
