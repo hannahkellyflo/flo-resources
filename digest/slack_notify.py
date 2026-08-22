@@ -162,7 +162,7 @@ def post(message):
 
 
 def main(argv):
-    message, _ = build(argv)
+    message, meta = build(argv)
     if message is None:
         print("Not enough bot-refresh history to diff.")
         return
