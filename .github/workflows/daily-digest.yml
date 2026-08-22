@@ -1,0 +1,47 @@
+name: Daily recruiting-tracker Slack digest
+
+# The data refresh runs at 11:00 UTC on weekdays (refresh-tracker.yml). This runs an hour
+# later so it always sees the day's fresh data.json commit. Weekdays only — Monday's run
+# diffs from the last watermark (Friday's refresh), so the whole weekend is captured.
+on:
+  schedule:
+    - cron: "0 12 * * 1-5"   # weekdays, 12:00 UTC (~1h after the data refresh)
+  workflow_dispatch: {}         # allow a manual run
+
+permissions:
+  contents: write               # to commit the advanced watermark
+
+concurrency:
+  group: daily-digest
+  cancel-in-progress: false
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # the differ walks data.json commit history
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Post daily digest to Elizabeth (Slack)
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_TARGET: ${{ secrets.SLACK_TARGET_EG }}   # Elizabeth Greiner's DM (U07NGSKSP1N)
+        run: python digest/slack_notify.py
+
+      - name: Commit advanced watermark
+        run: |
+          if [[ -n "$(git status --porcelain .recruiting-digest/)" ]]; then
+            git config user.name "flo-tracker-bot"
+            git config user.email "bot@joinflo.com"
+            git add .recruiting-digest/
+            git commit -m "chore: advance digest watermark [skip ci]"
+            git pull --rebase --autostash
+            git push
+          else
+            echo "No watermark change (dry-run without secrets, or nothing new)."
+          fi
