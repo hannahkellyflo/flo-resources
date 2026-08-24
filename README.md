@@ -16,6 +16,40 @@ site/
 
 Deploy on Vercel with **Root Directory = `site`** (Framework preset: *Other*).
 
+## Two variants from one template
+
+`build.py` builds the same template twice, from the `VARIANTS` table in that file:
+
+| Variant | URL | Differences |
+| --- | --- | --- |
+| `web` | `/tracker` | The public marketing page |
+| `app` | `/app/tracker` | For users arriving from inside the Flo application |
+
+**Never fork `template.dc.html`.** It is 881KB of markup plus the whole `Component` class; a
+copy would drift within weeks and every data change would need applying twice. Put differences
+behind the injected `VARIANT` config instead, so both builds stay in step — including on the
+daily refresh, which rebuilds both.
+
+The template receives `VARIANT` through an injection marker, exactly like `DATA`. From it come
+`IS_APP`, `ROUTE_BASE` (so routing works under either base) and the `isApp` / `showHero` render
+flags. Three switch points exist for per-variant differences:
+
+- **UI:** gate blocks on a render flag, the way the hero is gated on `showHero`. The template
+  already uses `sc-if` extensively, so this is its native idiom.
+- **Links:** add a `[from, to]` prefix pair to `APP_LINK_REWRITES`. Every outbound link funnels
+  through `LINK()` — data-driven table cells, hand-authored rows, overview postings and the
+  browse-jobs button — so one entry redirects them all. Currently identity, i.e. the app
+  variant links to the same places the public page does.
+- **Design:** put CSS in a variant's `css` field in `build.py`. It is appended after the body,
+  so it wins over the runtime's own styles without fighting specificity.
+
+In the app variant the landing view is the Law Student grid rather than the two-column
+overview, so the overview keeps its own path (`/app/tracker/overview`) and stays reachable.
+Everything below that is identical: `/app/tracker/student/lawfirm/summer/2l` and so on.
+
+The app variant is `noindex, nofollow` and canonicals to the public page — it is the same
+content, so without that the two would compete in search.
+
 ## Page metadata and icons
 
 `build.py` prepends a document head (`HEAD` in that file) to the page it writes: title,
