@@ -1305,7 +1305,7 @@ const buildRows = (records, labels, cfg) => {
       if (cfg.firm && cfg.firm[i]) {
         const fp = rec['Firm Profile'];
         const fh = (fp && typeof fp === 'object' && fp.href) ? fp.href : null;
-        return fh ? { text: v, isFirmLink: true, href: fh } : { text: v, isText: true };
+        return fh ? { text: v, isFirmLink: true, href: LINK(fh) } : { text: v, isText: true };
       }
       if (cfg.pills && cfg.pills[i]) return { text: v, isPill: true };
       if (cfg.desc && cfg.desc[i]) return { text: v, isDesc: true };
@@ -1330,19 +1330,46 @@ const ROUTE_BASE = VARIANT.routeBase;
 // overview, so the overview needs a path of its own to stay reachable.
 const OVERVIEW_SLUG = 'overview';
 
-// Table and posting links point at the public Flo Forward app by default. Inside the host
-// application they need to resolve to in-app routes instead; this is the single place that
-// rewrite happens. Add a [from, to] prefix pair and every link follows -- data-driven cells,
-// hand-authored rows and overview postings all funnel through linkFor().
-const APP_LINK_REWRITES = [
-  // ['https://florecruit.com/v2/app/forward/', '/forward/'],
+// Table and posting links point at the public Flo Forward app. Inside the host application
+// they must resolve to that school's own admin routes, which embed the school's slug.
+//
+// This page is served from resources.joinflo.com -- a different origin from the application --
+// so it cannot read the app's URL to discover the slug (and an iframe cannot read its
+// parent's location either). The app passes it explicitly instead:
+//
+//     /app/tracker?school=uniproductdemo
+//
+// The param survives in-page navigation because syncUrl carries location.search through.
+// Absent or malformed, every link falls back to its public Flo Forward URL -- degraded but
+// working, never broken. The slug is interpolated into hrefs, so it is strictly validated.
+const APP_SCHOOL = (() => {
+  if (!IS_APP || typeof window === 'undefined' || !window.location) return '';
+  const m = /[?&]school=([A-Za-z0-9][A-Za-z0-9_-]{0,63})(?:&|$)/.exec(window.location.search || '');
+  return m ? m[1] : '';
+})();
+
+const FWD = 'https://florecruit.com/v2/app/forward/';
+const APP_BASE = (school) => 'https://florecruit.com/v2/app/' + school + '/admin/university/';
+// Ordered; first match wins. Anything unmatched (e.g. the tenant-specific interview-scheduling
+// registration links) is left exactly as it is.
+const APP_LINK_RULES = [
+  // Firm profile. The data-driven form carries a /base suffix the in-app route doesn't.
+  [/^https:\/\/florecruit\.com\/v2\/app\/forward\/firms\/([^/?#]+?)(?:\/base)?\/?$/,
+   (m, school) => APP_BASE(school) + 'firms/firm/' + m[1]],
+  // A single job listing.
+  [/^https:\/\/florecruit\.com\/v2\/app\/forward\/jobs\/(\d+)\/?$/,
+   (m, school) => APP_BASE(school) + 'job-board/job/' + m[1]],
+  // The browse-all-jobs button.
+  [/^https:\/\/florecruit\.com\/v2\/app\/forward\/jobs\/?$/,
+   (m, school) => APP_BASE(school) + 'job-board'],
 ];
+
 // Module scope on purpose: two call sites (mkRows, data()'s L helper) are outside the class.
 const LINK = (url) => {
-  if (!IS_APP || typeof url !== 'string') return url;
-  for (let i = 0; i < APP_LINK_REWRITES.length; i++) {
-    const from = APP_LINK_REWRITES[i][0], to = APP_LINK_REWRITES[i][1];
-    if (url.indexOf(from) === 0) return to + url.slice(from.length);
+  if (!IS_APP || !APP_SCHOOL || typeof url !== 'string') return url;
+  for (let i = 0; i < APP_LINK_RULES.length; i++) {
+    const m = APP_LINK_RULES[i][0].exec(url);
+    if (m) return APP_LINK_RULES[i][1](m, APP_SCHOOL);
   }
   return url;
 };

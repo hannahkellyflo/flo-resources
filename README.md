@@ -36,12 +36,36 @@ flags. Three switch points exist for per-variant differences:
 
 - **UI:** gate blocks on a render flag, the way the hero is gated on `showHero`. The template
   already uses `sc-if` extensively, so this is its native idiom.
-- **Links:** add a `[from, to]` prefix pair to `APP_LINK_REWRITES`. Every outbound link funnels
-  through `LINK()` — data-driven table cells, hand-authored rows, overview postings and the
-  browse-jobs button — so one entry redirects them all. Currently identity, i.e. the app
-  variant links to the same places the public page does.
+- **Links:** `APP_LINK_RULES` maps public Flo Forward URLs to a school's own admin routes.
+  Every outbound link funnels through `LINK()` — data-driven table cells, the firm-name column,
+  hand-authored rows, overview postings and the browse-jobs button — so the rules cover the
+  page. Anything unmatched (the tenant-specific interview-scheduling links, Airtable forms) is
+  left untouched.
 - **Design:** put CSS in a variant's `css` field in `build.py`. It is appended after the body,
   so it wins over the runtime's own styles without fighting specificity.
+
+### The `school` parameter
+
+In-app links embed the viewing school's slug, and this page cannot discover it: it is served
+from `resources.joinflo.com`, a different origin from the application, so it can read neither
+the app's URL nor an embedding frame's location. The app has to pass it:
+
+```
+/app/tracker?school=uniproductdemo
+```
+
+`syncUrl` carries `location.search` through every navigation, so the parameter survives clicking
+into sections and switching tabs. With no parameter — or a malformed one — every link falls back
+to its public Flo Forward URL: degraded, never broken. The slug is interpolated into hrefs, so
+it is validated against `[A-Za-z0-9][A-Za-z0-9_-]{0,63}` and rejected otherwise.
+
+Mappings:
+
+| Public | In-app |
+| --- | --- |
+| `/v2/app/forward/firms/{slug}` (and `/base`) | `/v2/app/{school}/admin/university/firms/firm/{slug}` |
+| `/v2/app/forward/jobs/{id}` | `/v2/app/{school}/admin/university/job-board/job/{id}` |
+| `/v2/app/forward/jobs` | `/v2/app/{school}/admin/university/job-board` |
 
 In the app variant the landing view is the Law Student grid rather than the two-column
 overview, so the overview keeps its own path (`/app/tracker/overview`) and stays reachable.
