@@ -419,6 +419,20 @@ ENTRY3L_WHERE = r"""
   AND LOWER(j.TITLE) NOT REGEXP 'summer|intern|extern|clerk|test|vacation|fellowship|networking|\\boci\\b|resume|general submission|general consideration|\\blateral\\b|managing counsel|training contract|sign.?up|\\bselsc\\b|\\b1l\\b|\\b2l\\b'"""
 
 
+def _norm_3l_practice(firm, position):
+    """Firm + normalized practice, so an Airtable survey entry and its now-live Forward posting
+    collapse to one key despite differing titles. Strips the interchangeable 'Application'/'Position'
+    wording, the '2027 New Associate' boilerplate, years, and trailing '(offices)' parentheticals.
+    e.g. 'Corporate: Capital Markets (Multiple Offices)' == 'Corporate: Capital Markets'."""
+    s = (position or "").lower()
+    s = re.sub(r"\(.*?\)", " ", s)                    # drop office parentheticals
+    s = re.sub(r"\b(application|position)\b", " ", s)  # Application/Position are the same role here
+    s = re.sub(r"\bnew associate\b", " ", s)
+    s = re.sub(r"\b20\d\d\b", " ", s)                 # drop the cycle year
+    s = re.sub(r"[^a-z0-9]+", " ", s).strip()
+    return (re.sub(r"[^a-z0-9]+", "", (firm or "").lower()), s)
+
+
 def wire_entry3l(data: dict) -> None:
     rows = metabase_sql(MB_DB, _JOB_SELECT % ENTRY3L_WHERE)
     table = [{
@@ -436,6 +450,11 @@ def wire_entry3l(data: dict) -> None:
     # ── merge Airtable Direct-Apply 3L survey jobs (Class of 2027) — Tier-1 dedup by Job ID ──
     live_ids = {str(r.get("job_id")) for r in rows if r.get("job_id") is not None}
     seen = {(str(r.get("firm") or "").strip().lower(), str(r.get("position") or "").strip().lower()) for r in rows}
+    # Normalized practice keys for the LIVE roles: drop an Airtable survey entry when the firm already
+    # has a live posting for the same practice under a different title (no shared Job ID, "Application"
+    # vs "Position", "(offices)" suffix) — e.g. Latham's 19 roles were showing twice. Only the
+    # not-yet-open Airtable side is dropped; live rows are untouched.
+    live_norm = {_norm_3l_practice(r.get("firm"), r.get("position")) for r in rows}
     da_added = 0
     for row in direct_apply_rows():
         if row["level"] != "3L" or row["class"] != 2027:
@@ -445,6 +464,8 @@ def wire_entry3l(data: dict) -> None:
         k2 = (row["firm"].strip().lower(), row["position"].strip().lower())
         if k2 in seen:
             continue
+        if _norm_3l_practice(row["firm"], row["position"]) in live_norm:
+            continue                                    # same firm+practice already live under a different title
         seen.add(k2); da_added += 1
         table.append({
             "Employer": row["firm"],
