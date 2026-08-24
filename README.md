@@ -44,6 +44,21 @@ flags. Three switch points exist for per-variant differences:
 - **Design:** put CSS in a variant's `css` field in `build.py`. It is appended after the body,
   so it wins over the runtime's own styles without fighting specificity.
 
+### Link targets in the iframe
+
+The app build is embedded in an iframe inside the school application, which makes the anchor
+target part of the contract:
+
+| Link | web | app | Why |
+| --- | --- | --- | --- |
+| Firm profiles, job listings, browse-all | `_blank` | `_top` | `_top` replaces the whole page, landing the user on a real admin URL with a working back button, rather than opening another browser tab from inside an app tab |
+| Marketing nav (wordmark, Sign In, Let's Talk) | `_self` | `_top` | These carried no target at all, so in an iframe they'd try to load `joinflo.com` inside it and be refused by the host's `frame-ancestors`. `_self` is the default, so web is unchanged |
+| Airtable / HubSpot forms | `_blank` | `_blank` | `_top` would navigate the school's entire application away to a third-party form |
+
+Driven by the `linkTarget` and `navTarget` render values. If the host ever adds a `sandbox`
+attribute to the iframe, `_top` needs `allow-top-navigation` in it or the links silently do
+nothing.
+
 ### The `school` parameter
 
 In-app links embed the viewing school's slug, and this page cannot discover it: it is served
