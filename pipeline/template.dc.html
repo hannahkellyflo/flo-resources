@@ -88,6 +88,9 @@
     .tk-zoombox { padding: 16px 14px !important; width: 100% !important; max-height: 94vh !important; }
     .tk-zoomlogo { display: none !important; }   /* hide the watermark on mobile; it collides with the long title */
   }
+  /* Deep-linked chart (#g-<slug>): brief highlight so the reader sees which chart the link pointed to. */
+  @keyframes gFlash { 0% { box-shadow: 0 0 0 3px rgba(155,42,99,.55); } 100% { box-shadow: 0 1px 3px rgba(41,10,27,.05); } }
+  .g-flash { animation: gFlash 1.8s ease-out; }
 </style>
 </helmet>
 
@@ -1125,7 +1128,7 @@
             <div class="share-wrap">
               <div title="Share" style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;cursor:pointer;color:#5C606B;" style-hover="background:#F0EDE6;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg></div>
               <div class="share-menu">
-                <div class="share-item" onClick="{{ copyChartLink }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5C606B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>Copy link</div>
+                <div class="share-item" onClick="{{ copyChartLink }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5C606B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>{{ copyLinkLabel }}</div>
                 <div class="share-item" onClick="{{ downloadChartPng }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5C606B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>Download PNG</div>
               </div>
             </div>
@@ -1222,7 +1225,7 @@
           </sc-if>
           <div class="mkt-grid">
             <sc-for list="{{ marketCharts }}" as="ch" hint-placeholder-count="6">
-              <div class="{{ ch.spanClass }}" style="position:relative;background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 3px rgba(41,10,27,.05);padding:15px 16px;">
+              <div id="{{ ch.anchor }}" class="{{ ch.spanClass }}" style="position:relative;background:#fff;border:1px solid #E7E3DB;border-radius:12px;box-shadow:0 1px 3px rgba(41,10,27,.05);padding:15px 16px;scroll-margin-top:80px;">
                 <svg width="22.5" height="14.6" viewBox="0 0 221 144" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Flo" style="position:absolute;top:16px;right:18px;display:block;opacity:0.5;z-index:1;"><path d="M89.6736 26.4288H73.2543C69.4519 26.4288 66.1447 29.1584 64.8211 33.0793L61.844 42.4562H81.8524L73.2543 69.7392H53.2458L30.4253 141.697H0L22.6555 69.7392H7.60788L16.2061 42.4562H31.2537L35.3861 29.4955C41.0072 11.5959 56.2229 0 73.4193 0H98.3061L89.6736 26.4288Z" fill="#261025"/><path d="M103.936 141.697H91.8809C74.6845 141.697 66.8711 130.102 72.679 112.199L108.912 0H139.337L104.397 108.618C103.216 112.539 104.783 115.269 108.585 115.269H112.668L103.936 141.697Z" fill="#261025"/><path d="M180.343 40.2918C153.06 40.2918 130.24 60.2435 124.123 91.958C118.004 122.822 133.88 143.624 163.48 143.624C191.093 143.624 213.419 123.846 219.7 91.958C225.819 61.0945 209.943 40.2918 180.346 40.2918H180.343ZM189.272 91.958C185.634 106.794 176.871 115.317 166.286 115.317C155.701 115.317 150.743 106.961 154.546 91.958C158.183 77.1219 167.114 68.5992 177.531 68.5992C187.948 68.5992 192.909 77.1251 189.272 91.958Z" fill="#261025"/></svg>
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-right:34px;">
                   <div>
@@ -1422,7 +1425,7 @@ const TAB_SLUG = {
 
 class Component extends DCLogic {
   state = Object.assign(
-    { view: 'overview', worldId: 'entry', subId: 'lawfirm', tabId: '1lsummer', worldFocus: null, alerts: {}, search: '', sortCol: null, sortDir: 'asc', mktScope: 'all', hover: null, rowOpen: null, chartZoom: null, descExpanded: false, donutHover: null, gradHover: null, isMobile: false },
+    { view: 'overview', worldId: 'entry', subId: 'lawfirm', tabId: '1lsummer', worldFocus: null, alerts: {}, search: '', sortCol: null, sortDir: 'asc', mktScope: 'all', hover: null, rowOpen: null, chartZoom: null, descExpanded: false, donutHover: null, gradHover: null, isMobile: false, linkCopied: false },
     this.routeState() || (IS_APP ? { view: 'overview', worldFocus: 'entry' } : {})
   );
 
@@ -1451,6 +1454,33 @@ class Component extends DCLogic {
       if (mq.addEventListener) mq.addEventListener('change', this.onMqMobile);
       else if (mq.addListener) mq.addListener(this.onMqMobile);
     }
+    // Deep link to a specific chart (#g-<slug>): the path routing above lands the right market tab;
+    // this scrolls to the chart once it has rendered. The market charts are heavy and render async,
+    // so poll for the target before giving up rather than firing a couple of fixed early retries.
+    if (typeof window !== 'undefined' && window.location && window.location.hash) {
+      setTimeout(() => this.scrollToHash(), 250);
+    }
+  }
+
+  // Scroll a deep-linked chart (#g-<slug>) into view and flash it once. Picks the visible DOM copy
+  // (the built page inlines the body twice; only the rendered one has width). Retries while the
+  // chart is still rendering; stops after ~4s or once it has scrolled.
+  scrollToHash(attempt) {
+    if (this._hashDone) return;
+    if (typeof window === 'undefined' || !window.location || !window.location.hash) return;
+    const id = window.location.hash.slice(1);
+    if (!/^g-[a-z0-9-]+$/.test(id)) return;
+    const el = [...document.querySelectorAll('#' + (window.CSS && CSS.escape ? CSS.escape(id) : id))]
+      .find((n) => n.getBoundingClientRect().width > 0);
+    if (!el) {
+      const n = (attempt || 0) + 1;
+      if (n <= 16) setTimeout(() => this.scrollToHash(n), 250);  // up to ~4s of polling
+      return;
+    }
+    this._hashDone = true;
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    el.classList.add('g-flash');
+    setTimeout(() => el.classList.remove('g-flash'), 1800);
   }
 
   // Navigating to a different view/section/tab should land at the TOP of the new page, not carry over the
@@ -2203,7 +2233,14 @@ class Component extends DCLogic {
       img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(wrapped);
     };
     // TODO: replace with a deep-link to this exact chart once hash-routing lands (currently copies the page URL).
-    const copyChartLink = () => { if (navigator.clipboard) navigator.clipboard.writeText(window.location.href); };
+    const copyChartLink = () => {
+      // Deep link to this exact chart: <origin>/tracker/.../market#g-<chart-slug>
+      const origin = (typeof window !== 'undefined' && window.location) ? window.location.origin : '';
+      const url = origin + this.routePath(this.state) + (zoomChart && zoomChart.slug ? '#g-' + zoomChart.slug : '');
+      if (typeof navigator !== 'undefined' && navigator.clipboard) navigator.clipboard.writeText(url);
+      this.setState({ linkCopied: true });
+      setTimeout(() => this.setState({ linkCopied: false }), 1600);
+    };
     const payCfg = {
       title: 'Median summer associate weekly pay',
       sub: 'By primary market · ' + activeTab.label + ' · 2027 cycle',
@@ -2733,7 +2770,8 @@ class Component extends DCLogic {
     }
     // Market-data charts render one per row, capped at ~760px (they're authored at a 520px viewBox, so full page
     // width stretched them ~2.3x oversized). Each is click-to-enlarge via onZoom → a centered lightbox.
-    (marketCharts || []).forEach((c, i) => { if (c) { if (c.spanClass == null) c.spanClass = ''; c.onZoom = () => this.setState({ chartZoom: i }); } });
+    const _slug = (t) => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
+    (marketCharts || []).forEach((c, i) => { if (c) { if (c.spanClass == null) c.spanClass = ''; c.slug = _slug(c.title); c.anchor = 'g-' + c.slug; c.onZoom = () => this.setState({ chartZoom: i }); } });
     const czi = this.state.chartZoom;
     const zoomChart = (czi != null && marketCharts && marketCharts[czi]) ? marketCharts[czi] : null;
     const showChartZoom = !!zoomChart;
@@ -2809,6 +2847,7 @@ class Component extends DCLogic {
       showChartZoom,
       downloadChartPng,
       copyChartLink,
+      copyLinkLabel: this.state.linkCopied ? 'Copied!' : 'Copy link',
       closeChartZoom: () => this.setState({ chartZoom: null }),
       stopModal: (e) => { if (e && e.stopPropagation) e.stopPropagation(); },
       show3LMkt: is3LMarket,
