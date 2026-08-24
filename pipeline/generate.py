@@ -333,6 +333,14 @@ JOIN ORG o ON o.ID = j.ORG_ID
 LEFT JOIN JOB_HIRING_TYPE jht ON jht.JOB_ID = j.ID
 LEFT JOIN HIRING_TYPE ht ON ht.ID = jht.HIRING_TYPE_ID
 WHERE j.FORWARD_PUBLISHING_STATUS = 'PUBLISHED' AND j.DELETED_AT IS NULL
+  -- FORWARD_PUBLISHING_STATUS='PUBLISHED' is effectively permanent (a published link never dies), so it
+  -- decides what's eligible to POST but NOT when to take a listing DOWN. Takedown logic (Hannah 2026-08-21):
+  --   has a close date -> drop once the deadline passes;
+  --   no close date    -> drop 6 months after it opened (default staleness cutoff for rolling roles).
+  -- Applies to the _JOB_SELECT tables only (lateral non-partner, judicial clerk, 3L entry-level); the
+  -- student summer tables use SUMMER_SQL + their own seasonal timeline. (No rows have both dates null.)
+  AND ((j.CLOSE_DATE IS NOT NULL AND j.CLOSE_DATE >= NOW())
+       OR (j.CLOSE_DATE IS NULL AND j.OPEN_DATE >= DATE_SUB(NOW(), INTERVAL 6 MONTH)))
   -- ATS + MANUAL_ENTRY (both are real Forward postings; ATS-only was an over-filter
   -- inherited from the attorney base — it dropped MANUAL_ENTRY 3L roles like Latham).
   -- lateral/pc are tag-gated so unaffected; entry3l gains its MANUAL_ENTRY roles.
@@ -411,6 +419,20 @@ ENTRY3L_WHERE = r"""
   AND LOWER(j.TITLE) NOT REGEXP 'summer|intern|extern|clerk|test|vacation|fellowship|networking|\\boci\\b|resume|general submission|general consideration|\\blateral\\b|managing counsel|training contract|sign.?up|\\bselsc\\b|\\b1l\\b|\\b2l\\b'"""
 
 
+def _norm_3l_practice(firm, position):
+    """Firm + normalized practice, so an Airtable survey entry and its now-live Forward posting
+    collapse to one key despite differing titles. Strips the interchangeable 'Application'/'Position'
+    wording, the '2027 New Associate' boilerplate, years, and trailing '(offices)' parentheticals.
+    e.g. 'Corporate: Capital Markets (Multiple Offices)' == 'Corporate: Capital Markets'."""
+    s = (position or "").lower()
+    s = re.sub(r"\(.*?\)", " ", s)                    # drop office parentheticals
+    s = re.sub(r"\b(application|position)\b", " ", s)  # Application/Position are the same role here
+    s = re.sub(r"\bnew associate\b", " ", s)
+    s = re.sub(r"\b20\d\d\b", " ", s)                 # drop the cycle year
+    s = re.sub(r"[^a-z0-9]+", " ", s).strip()
+    return (re.sub(r"[^a-z0-9]+", "", (firm or "").lower()), s)
+
+
 def wire_entry3l(data: dict) -> None:
     rows = metabase_sql(MB_DB, _JOB_SELECT % ENTRY3L_WHERE)
     table = [{
@@ -428,6 +450,11 @@ def wire_entry3l(data: dict) -> None:
     # ── merge Airtable Direct-Apply 3L survey jobs (Class of 2027) — Tier-1 dedup by Job ID ──
     live_ids = {str(r.get("job_id")) for r in rows if r.get("job_id") is not None}
     seen = {(str(r.get("firm") or "").strip().lower(), str(r.get("position") or "").strip().lower()) for r in rows}
+    # Normalized practice keys for the LIVE roles: drop an Airtable survey entry when the firm already
+    # has a live posting for the same practice under a different title (no shared Job ID, "Application"
+    # vs "Position", "(offices)" suffix) — e.g. Latham's 19 roles were showing twice. Only the
+    # not-yet-open Airtable side is dropped; live rows are untouched.
+    live_norm = {_norm_3l_practice(r.get("firm"), r.get("position")) for r in rows}
     da_added = 0
     for row in direct_apply_rows():
         if row["level"] != "3L" or row["class"] != 2027:
@@ -437,6 +464,8 @@ def wire_entry3l(data: dict) -> None:
         k2 = (row["firm"].strip().lower(), row["position"].strip().lower())
         if k2 in seen:
             continue
+        if _norm_3l_practice(row["firm"], row["position"]) in live_norm:
+            continue                                    # same firm+practice already live under a different title
         seen.add(k2); da_added += 1
         table.append({
             "Employer": row["firm"],
@@ -604,6 +633,14 @@ def wire_summer_split(data: dict) -> None:
             levels.append("1L")           # Class of 2029
         if int(r.get("g2L") or 0):
             levels.append("2L")           # Class of 2028
+        # A grad-2029 role whose TITLE marks it as a 2L program or a Summer-2028 role is the Class of
+        # 2029's *2L* summer (next cycle), not a 1L Summer 2027 role — show it on the 2L tab, not the 1L
+        # tab (Hannah 2026-08-21). Scoped to the 1L bucket so legit Class-of-2029 1L roles are untouched.
+        _title = str(r.get("position") or "").lower()
+        if "1L" in levels and (re.search(r"\b2l\b", _title) or "2028" in _title):
+            levels = [lv for lv in levels if lv != "1L"]
+            if "2L" not in levels:
+                levels.append("2L")
         if not levels:
             continue                       # targets neither 2028 nor 2029 -> not a 1L/2L Summer 2027 role
         od = r.get("open_date")

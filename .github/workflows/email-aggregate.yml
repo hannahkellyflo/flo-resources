@@ -1,0 +1,49 @@
+name: Twice-weekly recruiting-tracker email aggregate
+
+# On email-send days (Tue/Fri) DM Elizabeth the full aggregate of updates since the last send,
+# formatted as copy/paste content for the marketing email (Student / Attorney blocks). This is
+# the fallback until direct HubSpot drafting is wired up. Runs 15 min after the daily digest so
+# the two jobs don't race on the watermark push. Its own watermark spans the whole send-to-send
+# gap, independent of the daily.
+on:
+  schedule:
+    - cron: "15 12 * * 2,5"   # Tuesday & Friday, 12:15 UTC (after the refresh + daily digest)
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: email-aggregate
+  cancel-in-progress: false
+
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Post email-ready aggregate to Elizabeth (Slack)
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_TARGET: ${{ secrets.SLACK_TARGET_EG }}   # Elizabeth Greiner's DM (U07NGSKSP1N)
+        run: python digest/slack_notify.py --email
+
+      - name: Commit advanced email watermark
+        run: |
+          if [[ -n "$(git status --porcelain .recruiting-digest/)" ]]; then
+            git config user.name "flo-tracker-bot"
+            git config user.email "bot@joinflo.com"
+            git add .recruiting-digest/
+            git commit -m "chore: advance email watermark [skip ci]"
+            git pull --rebase --autostash
+            git push
+          else
+            echo "No email watermark change (dry-run without secrets, or nothing new)."
+          fi
