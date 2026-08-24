@@ -2692,7 +2692,7 @@ class Component extends DCLogic {
       ovLfMore: OV.lawfirm.latestMore || 0, ovLfHasMore: (OV.lawfirm.latestMore || 0) > 0,
       ovLfSparkSvg: spark((OV.lawfirm || {}).spark, ['S', 'O', 'N', 'D', 'J', 'F', 'M', 'A', 'M', 'J', 'J', 'A']),
       ov3lSparkSvg: spark((OV.entrylevel3l || {}).spark, ['J', 'J', 'A', 'S', 'O', 'N', 'D', 'J', 'F', 'M', 'A', 'M']),
-      ov3lPostings: OV.entrylevel3l.latestList || [], ov3lMore: OV.entrylevel3l.latestMore || 0, ov3lHasMore: (OV.entrylevel3l.latestMore || 0) > 0,
+      ov3lPostings: this.postings(OV.entrylevel3l.latestList || []), ov3lMore: OV.entrylevel3l.latestMore || 0, ov3lHasMore: (OV.entrylevel3l.latestMore || 0) > 0,
       ovPiSPostings: this.postings(OV.pisummer.latestList || []), ovPiSMore: OV.pisummer.latestMore || 0, ovPiSHasMore: (OV.pisummer.latestMore || 0) > 0,
       ovPiEPostings: this.postings(OV.piextern.latestList || []), ovPiEMore: OV.piextern.latestMore || 0, ovPiEHasMore: (OV.piextern.latestMore || 0) > 0,
       ovPiAPostings: this.postings(OV.piattorney.latestList || []), ovPiAMore: OV.piattorney.latestMore || 0, ovPiAHasMore: (OV.piattorney.latestMore || 0) > 0,
