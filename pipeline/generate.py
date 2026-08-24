@@ -1367,13 +1367,15 @@ def wire_overview_stats(data: dict) -> None:
     def pi(open_key, third_kind):
         recs = t.get(open_key, [])
         n = len(recs)
+        # All three PI cards share Listed / New this month / Government, in that order; internships
+        # additionally show % paid as the last tile (Hannah 2026-08-24).
+        stats = [{"label": "Listed", "value": str(n)},
+                 {"label": "New this month", "value": str(_opened_this_month(recs))},
+                 {"label": "Government", "value": str(sum(1 for r in recs if r.get("Government") is True))}]
         if third_kind == "paid":
             paid = sum(1 for r in recs if _has_pay(r.get("Compensation")))
-            third = {"label": "Paid", "value": f"{round(100 * paid / n)}%" if n else "0%"}
-        else:
-            third = {"label": "Government", "value": str(sum(1 for r in recs if r.get("Government") is True))}
-        return [{"label": "Listed", "value": str(n)},
-                {"label": "Opened this month", "value": str(_opened_this_month(recs))}, third]
+            stats.append({"label": "Paid", "value": f"{round(100 * paid / n)}%" if n else "0%"})
+        return stats
 
     ov["piCardStats"] = {"summer": pi("piSummerOpen", "paid"), "extern": pi("piExternOpen", "gov"),
                          "attorney": pi("piAttorneyOpen", "gov")}
