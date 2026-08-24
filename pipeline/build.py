@@ -23,24 +23,49 @@ PIPE = pathlib.Path(__file__).parent
 TEMPLATE = PIPE / "template.dc.html"
 DATA_JSON = PIPE / "data.json"
 SHELL = PIPE / "artifact-shell.html"
-OUT = PIPE.parent / "site" / "tracker" / "index.html"
+SITE_DIR = PIPE.parent / "site"
 
 DATA_MARKER = "/* __DATA_INJECT__ */{}/* __DATA_INJECT__ */"
+VARIANT_MARKER = "/* __VARIANT_INJECT__ */{ name: 'web', routeBase: '/tracker' }/* __VARIANT_INJECT__ */"
 
 # Document head. The shell starts straight at <script>, so without this the page ships no
 # title, no icon, no charset and no link-preview tags. It lives here rather than in
 # artifact-shell.html (which is regenerated wholesale) or the template's <helmet> block --
 # helmet is appended by JS after boot, which browsers honour but crawlers and link unfurlers
 # never see. HTML5 implies <head> for leading meta/title, so no wrapper tags are needed.
-TITLE = "Legal Recruiting Tracker | Flo Forward"
 DESCRIPTION = (
     "Market updates and trends across entry-level and lateral attorney recruiting, updated "
     "every weekday. Now supporting both law firm and public interest recruiting insights."
 )
-# Every /tracker/* path is served this same document by the vercel.json rewrite, so they are
-# all one canonical page -- without this, crawlers would treat each deep link as a duplicate.
-CANONICAL = "https://resources.joinflo.com/tracker"
 SITE = "https://resources.joinflo.com"
+# The public page is canonical for both builds: every /tracker/* path is served the same
+# document by the vercel.json rewrite, and the in-app copy is that content again -- without
+# this, crawlers would treat each deep link and the whole app variant as duplicates.
+CANONICAL = f"{SITE}/tracker"
+
+# One template, two builds. 'web' is the public marketing page; 'app' is the pared-back copy
+# for users arriving from inside the Flo application. Never fork template.dc.html -- put
+# differences behind VARIANT there, so both stay in step including on the daily refresh.
+VARIANTS = (
+    {
+        "name": "web",
+        "out": ("tracker", "index.html"),
+        "route_base": "/tracker",
+        "title": "Legal Recruiting Tracker | Flo Forward",
+        "robots": None,
+        # Per-variant CSS, appended after the body so it wins over the runtime's own styles.
+        "css": "",
+    },
+    {
+        "name": "app",
+        "out": ("app", "tracker", "index.html"),
+        "route_base": "/app/tracker",
+        "title": "Legal Recruiting Tracker",
+        # Same content as the public page: keep it out of search, point search at that one.
+        "robots": "noindex, nofollow",
+        "css": "",  # colour/spacing overrides to match the application go here
+    },
+)
 # Optional. Drop a 1200x630 PNG at site/og-image.png and the link-preview tags below start
 # including it, and the Twitter card upgrades from a small thumbnail to a full-width one.
 # Absent, the tags are simply omitted -- never emitted pointing at a file that isn't there,
@@ -59,7 +84,7 @@ def png_size(path):
     return struct.unpack(">II", head[16:24])
 
 
-def og_image_tags(site_dir):
+def og_image_tags(site_dir, title):
     img = site_dir / OG_IMAGE_FILE
     size = png_size(img)
     if size is None:
@@ -71,7 +96,7 @@ def og_image_tags(site_dir):
         f'<meta property="og:image:type" content="image/png">\n'
         f'<meta property="og:image:width" content="{width}">\n'
         f'<meta property="og:image:height" content="{height}">\n'
-        f'<meta property="og:image:alt" content="{TITLE}">\n'
+        f'<meta property="og:image:alt" content="{title}">\n'
         f'<meta name="twitter:card" content="summary_large_image">\n'
         f'<meta name="twitter:image" content="{SITE}/{OG_IMAGE_FILE}">\n'
     )
@@ -83,7 +108,7 @@ def og_image_tags(site_dir):
 HEAD_TEMPLATE = """<meta charset="utf-8">
 <title>{TITLE}</title>
 <meta name="description" content="{DESCRIPTION}">
-<link rel="canonical" href="{CANONICAL}">
+{ROBOTS}<link rel="canonical" href="{CANONICAL}">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png">
@@ -108,30 +133,46 @@ def extract_body(dc_text: str) -> str:
     return body
 
 
-def build() -> None:
-    dc_text = TEMPLATE.read_text(encoding="utf-8")
-    data_json = DATA_JSON.read_text(encoding="utf-8").strip()
-    json.loads(data_json)  # validate it parses
-    assert dc_text.count(DATA_MARKER) == 1, "DATA injection marker missing/duplicated"
-    dc_text = dc_text.replace(DATA_MARKER, data_json)
+def build_variant(template_text, shell_text, variant):
+    """Write one variant's page. Same template and data for every variant; only the injected
+    VARIANT config, the head metadata and the trailing CSS differ."""
+    config = json.dumps({"name": variant["name"], "routeBase": variant["route_base"]})
+    dc_text = template_text.replace(VARIANT_MARKER, config)
+    assert config in dc_text, "VARIANT injection marker missing/duplicated"
 
     body = extract_body(dc_text)
     enc = json.dumps(body).replace("</script", "<\\/script").replace("<!--", "<\\!--")
 
-    shell = SHELL.read_text(encoding="utf-8")
-    i = shell.find("window.__DC_SRC__=")
+    i = shell_text.find("window.__DC_SRC__=")
     s0 = i + len("window.__DC_SRC__=")
-    j = shell.find('";</script>', s0)
+    j = shell_text.find('";</script>', s0)
     assert i >= 0 and j > s0, "__DC_SRC__ slot not found in shell"
-    shell = shell[:s0] + enc + shell[j + 1:]
+    shell = shell_text[:s0] + enc + shell_text[j + 1:]
 
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    page = HEAD_TEMPLATE.format(
-        TITLE=TITLE, DESCRIPTION=DESCRIPTION, CANONICAL=CANONICAL,
-        og_image_tags=og_image_tags(OUT.parent.parent),
-    ) + shell + body
-    OUT.write_text(page, encoding="utf-8")
-    print(f"built {OUT} ({len(page):,} bytes; body {len(body):,})")
+    robots = f'<meta name="robots" content="{variant["robots"]}">\n' if variant["robots"] else ""
+    head = HEAD_TEMPLATE.format(
+        TITLE=variant["title"], DESCRIPTION=DESCRIPTION, CANONICAL=CANONICAL, ROBOTS=robots,
+        og_image_tags=og_image_tags(SITE_DIR, variant["title"]),
+    )
+    css = f"\n<style>{variant['css']}</style>\n" if variant["css"] else ""
+
+    out = SITE_DIR.joinpath(*variant["out"])
+    out.parent.mkdir(parents=True, exist_ok=True)
+    page = head + shell + body + css
+    out.write_text(page, encoding="utf-8")
+    print(f"built {out} [{variant['name']}] ({len(page):,} bytes; body {len(body):,})")
+
+
+def build() -> None:
+    template_text = TEMPLATE.read_text(encoding="utf-8")
+    data_json = DATA_JSON.read_text(encoding="utf-8").strip()
+    json.loads(data_json)  # validate it parses
+    assert template_text.count(DATA_MARKER) == 1, "DATA injection marker missing/duplicated"
+    assert template_text.count(VARIANT_MARKER) == 1, "VARIANT injection marker missing/duplicated"
+    template_text = template_text.replace(DATA_MARKER, data_json)
+    shell_text = SHELL.read_text(encoding="utf-8")
+    for variant in VARIANTS:
+        build_variant(template_text, shell_text, variant)
 
 
 if __name__ == "__main__":

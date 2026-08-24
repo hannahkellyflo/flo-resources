@@ -9,6 +9,10 @@
   ],
   "rewrites": [
     {
+      "source": "/app/tracker/:path*",
+      "destination": "/app/tracker/index.html"
+    },
+    {
       "source": "/tracker/:path*",
       "destination": "/tracker/index.html"
     }

@@ -110,8 +110,8 @@
     </div>
   </div>
 
-  <!-- ===================== PAGE HEADER (overview only) ===================== -->
-  <sc-if value="{{ isOverview }}" hint-placeholder-val="{{ true }}">
+  <!-- ============ PAGE HEADER (overview only; marketing variant only) ============ -->
+  <sc-if value="{{ showHero }}" hint-placeholder-val="{{ true }}">
   <div class="tk-ovhead" style="max-width:1280px;margin:0 auto;padding:56px 40px 0;">
     <div class="tk-heroflex" style="display:flex;align-items:flex-start;justify-content:space-between;gap:40px;">
       <div style="max-width:760px;">
@@ -1324,7 +1324,7 @@ const buildRows = (records, labels, cfg) => {
       // `label` is attached to every cell so the mobile stacked-card view can show it as a data-label.
       const c = (() => {
         const v = rec[label];
-        if (v && typeof v === 'object' && v.href != null) return { text: v.text, isLink: true, href: v.href };
+        if (v && typeof v === 'object' && v.href != null) return { text: v.text, isLink: true, href: LINK(v.href) };
         if (cfg.bool && cfg.bool[i]) return v ? { text: 'Yes', isText: true } : { text: 'No', isMuted: true };
         if (v == null || v === '' || v === '—') return { text: '—', isMuted: true };
         // Firm-name column: link to the firm's Flo Forward profile (new tab) when one exists, else plain text.
@@ -1333,7 +1333,7 @@ const buildRows = (records, labels, cfg) => {
         if (cfg.firm && cfg.firm[i]) {
           const fp = rec['Firm Profile'];
           const fh = (fp && typeof fp === 'object' && fp.href) ? fp.href : null;
-          return fh ? { text: v, isFirmLink: true, href: fh } : { text: v, isText: true };
+          return fh ? { text: v, isFirmLink: true, href: LINK(fh) } : { text: v, isText: true };
         }
         if (cfg.pills && cfg.pills[i]) return { text: v, isPill: true };
         if (cfg.desc && cfg.desc[i]) return { text: v, isDesc: true };
@@ -1351,7 +1351,59 @@ const buildRows = (records, labels, cfg) => {
 // nav handler syncs the URL inline -- the same reason scrollTop() is called per handler.
 // Path shape: /tracker/<world>/<section>/<tab>, e.g. /tracker/student/lawfirm/2lsummer.
 // site/vercel.json rewrites /tracker/* to this page so a deep link survives a refresh.
-const ROUTE_BASE = '/tracker';
+// Variant config, replaced per build by build.py. 'web' is the public marketing page at
+// /tracker; 'app' is the pared-back copy served at /app/tracker for users arriving from
+// inside the Flo application. One template builds both -- never fork this file.
+const VARIANT = /* __VARIANT_INJECT__ */{ name: 'web', routeBase: '/tracker' }/* __VARIANT_INJECT__ */;
+const IS_APP = VARIANT.name === 'app';
+const ROUTE_BASE = VARIANT.routeBase;
+// In the app variant the landing view is the Law Student grid rather than the two-column
+// overview, so the overview needs a path of its own to stay reachable.
+const OVERVIEW_SLUG = 'overview';
+
+// Table and posting links point at the public Flo Forward app. Inside the host application
+// they must resolve to that school's own admin routes, which embed the school's slug.
+//
+// This page is served from resources.joinflo.com -- a different origin from the application --
+// so it cannot read the app's URL to discover the slug (and an iframe cannot read its
+// parent's location either). The app passes it explicitly instead:
+//
+//     /app/tracker?school=uniproductdemo
+//
+// The param survives in-page navigation because syncUrl carries location.search through.
+// Absent or malformed, every link falls back to its public Flo Forward URL -- degraded but
+// working, never broken. The slug is interpolated into hrefs, so it is strictly validated.
+const APP_SCHOOL = (() => {
+  if (!IS_APP || typeof window === 'undefined' || !window.location) return '';
+  const m = /[?&]school=([A-Za-z0-9][A-Za-z0-9_-]{0,63})(?:&|$)/.exec(window.location.search || '');
+  return m ? m[1] : '';
+})();
+
+const FWD = 'https://florecruit.com/v2/app/forward/';
+const APP_BASE = (school) => 'https://florecruit.com/v2/app/' + school + '/admin/university/';
+// Ordered; first match wins. Anything unmatched (e.g. the tenant-specific interview-scheduling
+// registration links) is left exactly as it is.
+const APP_LINK_RULES = [
+  // Firm profile. The data-driven form carries a /base suffix the in-app route doesn't.
+  [/^https:\/\/florecruit\.com\/v2\/app\/forward\/firms\/([^/?#]+?)(?:\/base)?\/?$/,
+   (m, school) => APP_BASE(school) + 'firms/firm/' + m[1]],
+  // A single job listing.
+  [/^https:\/\/florecruit\.com\/v2\/app\/forward\/jobs\/(\d+)\/?$/,
+   (m, school) => APP_BASE(school) + 'job-board/job/' + m[1]],
+  // The browse-all-jobs button.
+  [/^https:\/\/florecruit\.com\/v2\/app\/forward\/jobs\/?$/,
+   (m, school) => APP_BASE(school) + 'job-board'],
+];
+
+// Module scope on purpose: two call sites (mkRows, data()'s L helper) are outside the class.
+const LINK = (url) => {
+  if (!IS_APP || !APP_SCHOOL || typeof url !== 'string') return url;
+  for (let i = 0; i < APP_LINK_RULES.length; i++) {
+    const m = APP_LINK_RULES[i][0].exec(url);
+    if (m) return APP_LINK_RULES[i][1](m, APP_SCHOOL);
+  }
+  return url;
+};
 const WORLD_SLUG = { entry: 'student', lateral: 'attorney' };
 const SLUG_WORLD = { student: 'entry', attorney: 'lateral' };
 const GROUP_SLUG = { 'Law Firm': 'lawfirm', 'Public Interest': 'publicinterest' };
@@ -1371,7 +1423,7 @@ const TAB_SLUG = {
 class Component extends DCLogic {
   state = Object.assign(
     { view: 'overview', worldId: 'entry', subId: 'lawfirm', tabId: '1lsummer', worldFocus: null, alerts: {}, search: '', sortCol: null, sortDir: 'asc', mktScope: 'all', hover: null, rowOpen: null, chartZoom: null, descExpanded: false, donutHover: null, gradHover: null, isMobile: false },
-    this.routeState() || {}
+    this.routeState() || (IS_APP ? { view: 'overview', worldFocus: 'entry' } : {})
   );
 
   constructor(...args) {
@@ -1427,7 +1479,7 @@ class Component extends DCLogic {
 
   data() {
     const T = (text) => ({ text, isText: true });
-    const L = (text, href) => ({ text, isLink: true, href });
+    const L = (text, href) => ({ text, isLink: true, href: LINK(href) });
     const M = (text) => ({ text, isMuted: true });
     const C = () => ({ isCheck: true });
     const row = (cells) => ({ cells });
@@ -1619,6 +1671,12 @@ class Component extends DCLogic {
     return null;
   }
 
+  // Overview posting lists come straight from DATA with absolute hrefs; route them too.
+  postings(list) {
+    if (!IS_APP || !list) return list || [];
+    return list.map((p) => (p && p.href ? Object.assign({}, p, { href: LINK(p.href) }) : p));
+  }
+
   sectionSlug(subId) { return SECTION_SLUG[subId] || subId; }
   tabSlug(tabId) { return TAB_SLUG[tabId] || tabId; }
   groupSlug(subId) {
@@ -1632,7 +1690,10 @@ class Component extends DCLogic {
   // segment is verified against the section's own `group`, so a section can't be reached
   // under the wrong one.
   routeMatch(tail) {
-    if (!tail || !tail.length) return { view: 'overview', worldFocus: null };
+    // App variant lands on the Law Student grid; the overview keeps its own path so users
+    // can still navigate out to it.
+    if (!tail || !tail.length) return { view: 'overview', worldFocus: IS_APP ? 'entry' : null };
+    if (IS_APP && tail.length === 1 && tail[0] === OVERVIEW_SLUG) return { view: 'overview', worldFocus: null };
     const worldId = SLUG_WORLD[tail[0]];
     if (!worldId) return null;
     // A group on its own isn't a distinct view (the focused grid shows both groups), so it
@@ -1669,6 +1730,12 @@ class Component extends DCLogic {
       // The default tab is left off, so the section's own URL is the short one.
       return st.tabId === sub.tabs[0].id ? base : base + '/' + this.tabSlug(st.tabId);
     }
+    if (IS_APP) {
+      // Mirror of routeMatch: the student grid is the bare base, the overview is a segment.
+      if (!st.worldFocus) return ROUTE_BASE + '/' + OVERVIEW_SLUG;
+      if (st.worldFocus === 'entry') return ROUTE_BASE;
+      return ROUTE_BASE + '/' + WORLD_SLUG[st.worldFocus];
+    }
     return WORLD_SLUG[st.worldFocus] ? ROUTE_BASE + '/' + WORLD_SLUG[st.worldFocus] : ROUTE_BASE;
   }
 
@@ -1679,7 +1746,9 @@ class Component extends DCLogic {
     const hist = typeof window !== 'undefined' && window.history;
     if (!hist || !hist.pushState) return;
     const next = this.routePath(Object.assign({}, this.state, patch || {}));
-    if (!replace && next === window.location.pathname) return;
+    // Nothing to write when the path already matches -- including on the initial normalizing
+    // replace, where an identical URL means there was nothing to normalize.
+    if (next === window.location.pathname) return;
     try {
       hist[replace ? 'replaceState' : 'pushState']({ dcRoute: next }, '', next + window.location.search + window.location.hash);
     } catch (err) {
@@ -1728,6 +1797,7 @@ class Component extends DCLogic {
   renderVals() {
     const { SUBS, WORLDS, BLOGS, OVERVIEW_BLOGS } = this.data();
     const isOverview = this.state.view === 'overview';
+    const showHero = isOverview && !IS_APP;  // hero is marketing-only
     const mkAlert = (id) => {
       const on = !!this.state.alerts[id];
       return {
@@ -1812,7 +1882,7 @@ class Component extends DCLogic {
     const upcomingFile = is2L ? 'forward-jobs-2L-upcoming-class-of-2029.csv' : 'forward-jobs-1L-upcoming-class-of-2029.csv';
     const downloadOpen = () => this.exportCsv(splitColumns, splitOpenRows, openFile);
     const downloadUpcoming = () => this.exportCsv(splitColumns, splitUpcomingRows, upcomingFile);
-    const browseUrl = 'https://florecruit.com/v2/app/forward/jobs';
+    const browseUrl = LINK('https://florecruit.com/v2/app/forward/jobs');
     // "Submit Yours" -> segment-specific Airtable intake form (1L vs 2L differ; the rest are static per block)
     const summerFormUrl = is2L
       ? 'https://airtable.com/appi5xzw51C2e58PR/pagZyFa7VLKB9cRlT/form'
@@ -1823,7 +1893,7 @@ class Component extends DCLogic {
     // cached JSON pipeline lands. Search filters Law School / Program / Recruiting For (cells 0,1,2).
     const isCampus = this.state.subId === 'lawfirm' && activeTab.id === 'campus';
     const campusColLabels = ['Law School', 'Program', 'Sector', 'Recruiting For', 'Program Dates', 'Employer Registration Link', 'Employer Registration Dates', 'Virtual vs. In-Person', 'Format', 'Program Contact - Name', 'Program Contact - Email', 'Student Bidding / Application Dates', 'Initial Employer Schedule Release Date', 'Final Schedule Release Date', 'Additional Info', 'Last updated'];
-    const _tt = (t) => ({ text: t, isText: true }), _ll = (t, h) => ({ text: t, isLink: true, href: h }), _mm = (t) => ({ text: t, isMuted: true });
+    const _tt = (t) => ({ text: t, isText: true }), _ll = (t, h) => ({ text: t, isLink: true, href: LINK(h) }), _mm = (t) => ({ text: t, isMuted: true });
     // Convert plain-text cells at the given column indices to 2-line wrapping cells (long Position/Offices/etc.).
     const wrapCols = (rows, idxs) => rows.forEach((r) => idxs.forEach((i) => { const c = r.cells[i]; if (c && c.isText) r.cells[i] = { text: c.text, isWrap: true }; }));
     // Rows now come from DATA (values); presentation applied here — Last updated (15) muted, links auto, em-dash → muted.
@@ -2657,7 +2727,7 @@ class Component extends DCLogic {
       ovLfSeasonVal: OV.lawfirm.stats[1].value, ovLfSeasonDelta: OV.lawfirm.stats[1].delta, ovLfSeasonVs: OV.lawfirm.stats[1].vs,
       ovLfSeasonShowDelta: !!OV.lawfirm.stats[1].delta && OV.lawfirm.stats[1].delta.charAt(0) !== '-',
       ovLfFirm: OV.lawfirm.latest.firm, ovLfRole: OV.lawfirm.latest.role, ovLfDate: OV.lawfirm.latest.date,
-      ovLfPostings: OV.lawfirm.latestList || (OV.lawfirm.latest ? [OV.lawfirm.latest] : []),
+      ovLfPostings: this.postings(OV.lawfirm.latestList || (OV.lawfirm.latest ? [OV.lawfirm.latest] : [])),
       ov3lOpen: OV.entrylevel3l.openValue, ov3lFirm: OV.entrylevel3l.latest.firm, ov3lRole: OV.entrylevel3l.latest.role, ov3lDate: OV.entrylevel3l.latest.date,
       ovPiSFirm: OV.pisummer.latest.firm, ovPiSRole: OV.pisummer.latest.role, ovPiSDate: OV.pisummer.latest.date,
       ovPiEFirm: OV.piextern.latest.firm, ovPiERole: OV.piextern.latest.role, ovPiEDate: OV.piextern.latest.date,
@@ -2670,12 +2740,12 @@ class Component extends DCLogic {
       ovLfMore: OV.lawfirm.latestMore || 0, ovLfHasMore: (OV.lawfirm.latestMore || 0) > 0,
       ovLfSparkSvg: spark((OV.lawfirm || {}).spark, ['S', 'O', 'N', 'D', 'J', 'F', 'M', 'A', 'M', 'J', 'J', 'A']),
       ov3lSparkSvg: spark((OV.entrylevel3l || {}).spark, ['J', 'J', 'A', 'S', 'O', 'N', 'D', 'J', 'F', 'M', 'A', 'M']),
-      ov3lPostings: OV.entrylevel3l.latestList || [], ov3lMore: OV.entrylevel3l.latestMore || 0, ov3lHasMore: (OV.entrylevel3l.latestMore || 0) > 0,
-      ovPiSPostings: OV.pisummer.latestList || [], ovPiSMore: OV.pisummer.latestMore || 0, ovPiSHasMore: (OV.pisummer.latestMore || 0) > 0,
-      ovPiEPostings: OV.piextern.latestList || [], ovPiEMore: OV.piextern.latestMore || 0, ovPiEHasMore: (OV.piextern.latestMore || 0) > 0,
-      ovPiAPostings: OV.piattorney.latestList || [], ovPiAMore: OV.piattorney.latestMore || 0, ovPiAHasMore: (OV.piattorney.latestMore || 0) > 0,
-      ovJudPostings: OV.judicial.latestList || [], ovJudMore: OV.judicial.latestMore || 0, ovJudHasMore: (OV.judicial.latestMore || 0) > 0,
-      ovLaPostings: OV.lateralassoc.latestList || [], ovLaMore: OV.lateralassoc.latestMore || 0, ovLaHasMore: (OV.lateralassoc.latestMore || 0) > 0,
+      ov3lPostings: this.postings(OV.entrylevel3l.latestList || []), ov3lMore: OV.entrylevel3l.latestMore || 0, ov3lHasMore: (OV.entrylevel3l.latestMore || 0) > 0,
+      ovPiSPostings: this.postings(OV.pisummer.latestList || []), ovPiSMore: OV.pisummer.latestMore || 0, ovPiSHasMore: (OV.pisummer.latestMore || 0) > 0,
+      ovPiEPostings: this.postings(OV.piextern.latestList || []), ovPiEMore: OV.piextern.latestMore || 0, ovPiEHasMore: (OV.piextern.latestMore || 0) > 0,
+      ovPiAPostings: this.postings(OV.piattorney.latestList || []), ovPiAMore: OV.piattorney.latestMore || 0, ovPiAHasMore: (OV.piattorney.latestMore || 0) > 0,
+      ovJudPostings: this.postings(OV.judicial.latestList || []), ovJudMore: OV.judicial.latestMore || 0, ovJudHasMore: (OV.judicial.latestMore || 0) > 0,
+      ovLaPostings: this.postings(OV.lateralassoc.latestList || []), ovLaMore: OV.lateralassoc.latestMore || 0, ovLaHasMore: (OV.lateralassoc.latestMore || 0) > 0,
       ovLpVal: OV.lateralpartner.value,
       headerStats, headerStatsShow: headerStats.length > 0,
       upcomingCapLead: CAP.up[0], upcomingCapRest: CAP.up[1],
@@ -2687,6 +2757,8 @@ class Component extends DCLogic {
       lateralCapLead: CAP.lt[0], lateralCapRest: CAP.lt[1],
       pcCapLead: CAP.pc[0], pcCapRest: CAP.pc[1],
       isOverview,
+      showHero,
+      isApp: IS_APP,
       isWorld: !isOverview,
       dPanelBg: dBright ? '#fff' : '#E7E3DB',
       dPanelBorder: dBright ? '1px solid #ECE7DE' : '1px solid transparent',
