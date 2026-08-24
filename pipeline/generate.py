@@ -110,10 +110,17 @@ def firm_profile_cell(firm_name):
     n = _norm_firm(firm_name)
     url = _FIRM_PROFILE_MAP.get(n)
     if not url:
+        # data name is a longer legal name that starts with a CSV brand ("Baker Donelson Bearman…" -> "Baker Donelson")
         for cn in _FIRM_PROFILE_KEYS:
             if len(cn) >= 6 and n.startswith(cn):
                 url = _FIRM_PROFILE_MAP[cn]
                 break
+    if not url and len(n) >= 5:
+        # data name is a SHORT brand (Airtable survey rows use e.g. "Katten"/"Sheppard"/"Orrick") that is a
+        # prefix of the CSV's full legal name — accept only if it uniquely identifies one firm (avoids "Baker").
+        matches = [cn for cn in _FIRM_PROFILE_KEYS if cn.startswith(n)]
+        if len(matches) == 1:
+            url = _FIRM_PROFILE_MAP[matches[0]]
     return {"text": "View profile", "href": url} if url else "—"
 
 
