@@ -424,15 +424,30 @@ def wire_pc(data: dict) -> None:
 
 
 # ── 3L ENTRY-LEVEL (Metabase db 2, LIVE) ─────────────────────────────────────
-# grad-target year 2027 (FORWARD_JOB_GRAD_DATE_TARGET_RULE) is a noisy proxy — it
-# also matches summer/intern/vacation-scheme/OCI/lateral roles carrying a stray 2027
-# target, so a heavy title-noise exclusion is required (grad-target alone over-counts ~3x).
-# Airtable "3L Hiring" page is empty today, so this is Metabase-only.
-ENTRY3L_WHERE = r"""
+# grad-target year (FORWARD_JOB_GRAD_DATE_TARGET_RULE) is a noisy proxy — it also matches
+# summer/intern/vacation-scheme/OCI/lateral roles carrying a stray target year, so a heavy
+# title-noise exclusion is required (grad-target alone over-counts ~3x).
+# Two cohorts are shown, labeled by class (Hannah 2026-08-25):
+#   Class of 2027 (current 3Ls)  — the standard takedown window (_JOB_SELECT: close-date, else 6mo).
+#   Class of 2026 (just graduated) — narrower: only very recent openings (opened <=3 months ago) and
+#     not closed (past close date already excluded by _JOB_SELECT), so the table doesn't fill with
+#     stale prior-cycle roles. A job targeting BOTH years is treated as 2027 (deduped by Job ID).
+# Airtable "3L Hiring" page is empty today, so the live side is Metabase-only.
+_E3L_TITLE_NOISE = r"summer|intern|extern|clerk|test|vacation|fellowship|networking|\\boci\\b|resume|general submission|general consideration|\\blateral\\b|managing counsel|training contract|sign.?up|\\bselsc\\b|\\b1l\\b|\\b2l\\b"
+
+
+def _entry3l_where(grad_year: int, recent_only: bool = False) -> str:
+    clause = f"""
   EXISTS (SELECT 1 FROM FORWARD_JOB_GRAD_DATE_TARGET_RULE r
           WHERE r.JOB_ID = j.ID AND r.IS_NOT_DELETED = 1
-            AND r.RULE_TYPE = 'INDIVIDUAL_YEARS' AND YEAR(r.MIN_GRAD_DATE) = 2027)
-  AND LOWER(j.TITLE) NOT REGEXP 'summer|intern|extern|clerk|test|vacation|fellowship|networking|\\boci\\b|resume|general submission|general consideration|\\blateral\\b|managing counsel|training contract|sign.?up|\\bselsc\\b|\\b1l\\b|\\b2l\\b'"""
+            AND r.RULE_TYPE = 'INDIVIDUAL_YEARS' AND YEAR(r.MIN_GRAD_DATE) = {grad_year})
+  AND LOWER(j.TITLE) NOT REGEXP '{_E3L_TITLE_NOISE}'"""
+    if recent_only:  # Class 2026: tighten the base 6-month window to 3 months (opened recently only)
+        clause += "\n  AND j.OPEN_DATE >= DATE_SUB(NOW(), INTERVAL 3 MONTH)"
+    return clause
+
+
+ENTRY3L_WHERE = _entry3l_where(2027)
 
 
 _PRACTICE_STOP = {"the", "and", "of", "for", "a", "an"}  # non-distinguishing filler tokens
@@ -468,11 +483,11 @@ def _practice_dup(a, b) -> bool:
     return len(small) >= 2 and (ta <= tb or tb <= ta)
 
 
-def wire_entry3l(data: dict) -> None:
-    rows = metabase_sql(MB_DB, _JOB_SELECT % ENTRY3L_WHERE)
-    table = [{
+def _entry3l_live_row(r, class_label):
+    return {
         "Employer": r.get("firm") or "—",
         "Firm Profile": firm_profile_cell(r.get("firm")),   # not a displayed column; the firm-name cell links to it
+        "Class": class_label,
         "3L Position": r.get("position") or "—",
         "3L Job Listing": {"text": "View listing",
                            "href": f"https://florecruit.com/v2/app/forward/jobs/{r.get('job_id')}"},
@@ -480,16 +495,29 @@ def wire_entry3l(data: dict) -> None:
         "Practices, If Specified": "",       # not reliably derivable -> muted em-dash
         "Bar Admission, If Required": "",
         "Last Updated": fmt_date(r.get("updated_at")),
-    } for r in rows]
+    }
+
+
+def wire_entry3l(data: dict) -> None:
+    rows = metabase_sql(MB_DB, _JOB_SELECT % ENTRY3L_WHERE)                          # Class of 2027
+    ids_2027 = {str(r.get("job_id")) for r in rows if r.get("job_id") is not None}
+    # Class of 2026: recent openings only; a job also targeting 2027 is already shown above (dedupe by id).
+    rows_2026 = [r for r in metabase_sql(MB_DB, _JOB_SELECT % _entry3l_where(2026, recent_only=True))
+                 if str(r.get("job_id")) not in ids_2027]
+    table = [_entry3l_live_row(r, "Class of 2027") for r in rows] \
+          + [_entry3l_live_row(r, "Class of 2026") for r in rows_2026]
 
     # ── merge Airtable Direct-Apply 3L survey jobs (Class of 2027) — Tier-1 dedup by Job ID ──
-    live_ids = {str(r.get("job_id")) for r in rows if r.get("job_id") is not None}
-    seen = {(str(r.get("firm") or "").strip().lower(), str(r.get("position") or "").strip().lower()) for r in rows}
+    # (Class-of-2026 survey rows are intentionally not merged: a "not yet open" 2026 role is a
+    # contradiction post-graduation, and the recency filter can't apply — 3L survey rows have no open date.)
+    live_ids = ids_2027 | {str(r.get("job_id")) for r in rows_2026 if r.get("job_id") is not None}
+    all_live = rows + rows_2026
+    seen = {(str(r.get("firm") or "").strip().lower(), str(r.get("position") or "").strip().lower()) for r in all_live}
     # Normalized practice keys for the LIVE roles: drop an Airtable survey entry when the firm already
     # has a live posting for the same practice under a different title (no shared Job ID, "Application"
     # vs "Position", "(offices)" suffix) — e.g. Latham's 19 roles were showing twice. Only the
     # not-yet-open Airtable side is dropped; live rows are untouched.
-    live_practice = [_practice_norm(r.get("firm"), r.get("position")) for r in rows]
+    live_practice = [_practice_norm(r.get("firm"), r.get("position")) for r in all_live]
     da_added = 0
     for row in direct_apply_rows():
         if row["level"] != "3L" or row["class"] != 2027:
@@ -506,6 +534,7 @@ def wire_entry3l(data: dict) -> None:
         table.append({
             "Employer": row["firm"],
             "Firm Profile": firm_profile_cell(row["firm"]),
+            "Class": "Class of 2027",
             "3L Position": row["position"] or "—",
             "3L Job Listing": "Not yet open",           # upcoming — no live listing/apply link yet
             "Offices": "—",
@@ -515,7 +544,7 @@ def wire_entry3l(data: dict) -> None:
         })
 
     data["tables"]["entry3l"] = table
-    print(f"  entry3l: {len(rows)} 3L entry-level listings (+{da_added} from Airtable survey)")
+    print(f"  entry3l: {len(rows)} Class-2027 + {len(rows_2026)} Class-2026 listings (+{da_added} from Airtable survey)")
 
 
 # ── 1L / 2L SUMMER SPLIT (Metabase db 2, LIVE) ───────────────────────────────

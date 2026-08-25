@@ -223,7 +223,7 @@
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;background:#FAF9F6;margin:-18px -20px 0;padding:16px 20px 14px;">
                   <div>
                     <div style="font-family:'Zalando Sans',sans-serif;font-weight:600;font-size:19px;letter-spacing:-0.01em;color:#1A1A1A;">3L Entry-Level Associates</div>
-                    <div style="font-size:13px;color:#9A948C;margin-top:3px;">Law firm entry-level recruiting - Class of 2027</div>
+                    <div style="font-size:13px;color:#9A948C;margin-top:3px;">Law firm entry-level recruiting - Classes of 2026 &amp; 2027</div>
                   </div>
                   <div style="color:#3E0C2D;flex-shrink:0;margin-top:2px;font-size:12.5px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;">View details <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
                 </div>
@@ -232,7 +232,7 @@
                     <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;">Currently open</div>
                     <div style="display:flex;align-items:baseline;gap:10px;margin-top:7px;">
                       <span style="font-family:'Zalando Sans',sans-serif;font-size:27px;font-weight:600;letter-spacing:-0.02em;line-height:1;color:#192B92;">{{ ov3lOpen }}</span>
-                      <span style="font-size:12px;color:#B0A99F;">Class of 2027 entry-level roles</span>
+                      <span style="font-size:12px;color:#B0A99F;">entry-level roles (Classes of 2026 &amp; 2027)</span>
                     </div>
                   </div>
                   <div onClick="{{ open3LData }}" style="margin:22px -8px 0;padding:16px 8px 4px;border-top:1px solid #F1EEE8;border-radius:8px;cursor:pointer;transition:transform 130ms ease;" style-hover="transform:translateY(-2px);">
@@ -1558,11 +1558,11 @@ class Component extends DCLogic {
       entrylevel3l: {
         name: '3L Entry-Level Associates',
         group: 'Law Firm',
-        secSubtitle: 'Law firm entry-level recruiting - Class of 2027',
+        secSubtitle: 'Law firm entry-level recruiting - Classes of 2026 & 2027',
         cardSubtitle: 'Entry-level associate recruiting',
-        status: 'Updated daily', count: '7 Class of 2027',
-        crumbA: "Class of '27 Tracker",
-        sectionTitle: 'Class of 2027 Openings',
+        status: 'Updated daily', count: 'Class of 2026 & 2027',
+        crumbA: "Entry-Level Tracker",
+        sectionTitle: 'Entry-Level Openings',
         tabs: [
           { id: 'entry3l', label: 'Job Details' },
           { id: 'market', label: 'Market Data' },
@@ -1989,11 +1989,11 @@ class Component extends DCLogic {
     // Dedup key = normalized employer + 3L position (fall back to Flo listing URL); Airtable supplies Practices /
     // Bar Admission (Flo has no such fields → "—"). TEMP sample = validated live pull 2026-07-29 (all from Flo).
     const is3L = this.state.subId === 'entrylevel3l' && activeTab.id === 'entry3l';
-    const entry3lColLabels = ['Employer', '3L Position', '3L Job Listing', 'Offices', 'Practices, If Specified', 'Bar Admission, If Required', 'Last Updated'];
+    const entry3lColLabels = ['Employer', 'Class', '3L Position', '3L Job Listing', 'Offices', 'Practices, If Specified', 'Bar Admission, If Required', 'Last Updated'];
     const J = (id) => 'https://florecruit.com/v2/app/forward/jobs/' + id;
-    const entry3lRowsAll = buildRows(DATA.tables.entry3l, entry3lColLabels, { muted: { 6: true }, firm: { 0: true } });
-    const entry3lMatch = (r) => { if (!q) return true; return [0, 1, 3].some((i) => { const c = r.cells[i]; return !!(c && c.text && String(c.text).toLowerCase().indexOf(q) !== -1); }); };
-    wrapCols(entry3lRowsAll, [1, 3]); // wrap 3L Position + Offices
+    const entry3lRowsAll = buildRows(DATA.tables.entry3l, entry3lColLabels, { muted: { 7: true }, firm: { 0: true } });
+    const entry3lMatch = (r) => { if (!q) return true; return [0, 2, 4].some((i) => { const c = r.cells[i]; return !!(c && c.text && String(c.text).toLowerCase().indexOf(q) !== -1); }); };
+    wrapCols(entry3lRowsAll, [2, 4]); // wrap 3L Position + Offices
     const entry3lRows = sortRows(entry3lRowsAll.filter(entry3lMatch));
     entry3lRows.forEach((r, i) => { r.onOpen = () => this.setState({ rowOpen: i }); });
     const entry3lColumns = entry3lColLabels.map((label, i) => ({
@@ -2004,14 +2004,14 @@ class Component extends DCLogic {
     }));
     const entry3lHasRows = entry3lRows.length > 0;
     // "open roles" = live listings only (the not-yet-open Airtable survey rows in the table aren't open),
-    // so this matches the card/header "Currently open" count. Listing cell (col 2) is a link when live.
-    const entry3lLiveCount = entry3lRows.filter((r) => r.cells[2] && r.cells[2].isLink).length;
+    // so this matches the card/header "Currently open" count. Listing cell (col 3) is a link when live.
+    const entry3lLiveCount = entry3lRows.filter((r) => r.cells[3] && r.cells[3].isLink).length;
     const entry3lFootCount = plz(entry3lLiveCount, 'open role');
     const entry3lEmpty = is3L && !entry3lHasRows;
     const entry3lNoMatch = 'No matches for “' + this.state.search.trim() + '” — try an employer, position, or office.';
-    const entry3lEmptyMsg = hasQuery ? entry3lNoMatch : 'No Class of 2027 entry-level roles are open right now — check back soon.';
-    const entry3lCaption = 'Class of 2027 · live law-firm entry-level roles';
-    const downloadEntry3l = () => this.exportCsv(entry3lColLabels, entry3lRows, 'forward-3L-entry-level-class-of-2027.csv');
+    const entry3lEmptyMsg = hasQuery ? entry3lNoMatch : 'No entry-level roles are open right now — check back soon.';
+    const entry3lCaption = 'Live law-firm entry-level roles · Classes of 2026 & 2027';
+    const downloadEntry3l = () => this.exportCsv(entry3lColLabels, entry3lRows, 'forward-3L-entry-level.csv');
 
     // --- Public Interest tables (3, shared columns). Source: Airtable page pagMTWwBduRbw1toU (interface
     // pbdupnnAiUqN3AjzB) over table tblLw1ZX1As4nTKDl ("Public Sector Jobs Form"). Bucketed by EARLIEST (most
@@ -2943,7 +2943,7 @@ class Component extends DCLogic {
       openAttorneyWorld: (ev) => { if (ev && ev.target && ev.target.closest && ev.target.closest('.ovblock')) return; this.openWorld('lateral'); },
       stageTabs,
       showTabs: sub.tabs.length > 1,
-      sectionTitle: (showChart && is3LMarket) ? 'Market Data — 3L Entry-Level Hiring' : (showChart && isPCMarket) ? 'Market Data — Judicial Clerk Receptions' : (showChart && isLatMarket) ? 'Market Data — Lateral Non-Partner Hiring' : (showChart && isPartnerMarket) ? 'Market Data — Lateral Partner Hiring' : showChart ? 'Market Data — Law Student Recruiting' : (isCampus ? 'Campus Interview Programs' : (isExams ? 'Exams & Grades' : (is3L ? 'Class of 2027 Openings' : (isSplitApply ? splitTitle : sub.sectionTitle)))),
+      sectionTitle: (showChart && is3LMarket) ? 'Market Data — 3L Entry-Level Hiring' : (showChart && isPCMarket) ? 'Market Data — Judicial Clerk Receptions' : (showChart && isLatMarket) ? 'Market Data — Lateral Non-Partner Hiring' : (showChart && isPartnerMarket) ? 'Market Data — Lateral Partner Hiring' : showChart ? 'Market Data — Law Student Recruiting' : (isCampus ? 'Campus Interview Programs' : (isExams ? 'Exams & Grades' : (is3L ? 'Entry-Level Openings' : (isSplitApply ? splitTitle : sub.sectionTitle)))),
       crumbA: sub.crumbA,
       crumbB: activeTab.label,
       columns: isSplitApply ? sortColumns : sub.columns,
