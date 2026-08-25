@@ -17,12 +17,14 @@ current template+data (a stale inline body ships a broken page).
 
 Usage:  python3 build.py
 """
-import json, pathlib, struct
+import json, pathlib, re, struct
 
 PIPE = pathlib.Path(__file__).parent
 TEMPLATE = PIPE / "template.dc.html"
 DATA_JSON = PIPE / "data.json"
 SHELL = PIPE / "artifact-shell.html"
+PALETTE_JSON = PIPE / "app-palette.json"
+INTER_CSS = PIPE / "inter-latin.css"
 SITE_DIR = PIPE.parent / "site"
 
 DATA_MARKER = "/* __DATA_INJECT__ */{}/* __DATA_INJECT__ */"
@@ -53,6 +55,7 @@ VARIANTS = (
         "route_base": "/tracker",
         "title": "Legal Recruiting Tracker | Flo Forward",
         "robots": None,
+        "retheme": False,
         # Per-variant CSS, appended after the body so it wins over the runtime's own styles.
         "css": "",
     },
@@ -63,7 +66,8 @@ VARIANTS = (
         "title": "Legal Recruiting Tracker",
         # Same content as the public page: keep it out of search, point search at that one.
         "robots": "noindex, nofollow",
-        "css": "",  # colour/spacing overrides to match the application go here
+        "retheme": True,          # apply app-palette.json + Inter to inline styles
+        "css": None,              # filled from inter-latin.css at build time
     },
 )
 # Optional. Drop a 1200x630 PNG at site/og-image.png and the link-preview tags below start
@@ -123,6 +127,39 @@ HEAD_TEMPLATE = """<meta charset="utf-8">
 """
 
 
+def retheme(body, palette, fonts):
+    """Recolour and re-font the app variant.
+
+    The tracker sets colour in 554 inline style= attributes, which beat any stylesheet, so
+    this is a build-time substitution rather than a CSS override -- no !important, no
+    selectors to invent, and no runtime cost. Scoped to style= attributes on purpose: chart
+    series colours live in SVG attributes and JS, and must keep their meaning.
+    """
+    swapped = {"colour": 0, "font": 0}
+
+    # The palette is an explicit allowlist of the tracker's warm neutrals, so it can be applied
+    # to the whole body rather than scoped to style attributes: chart series colours, status
+    # pill colours and warning tints simply aren't in it and can never match. That coverage
+    # matters -- colours reach the DOM through style=, style-hover=, <style> blocks, SVG
+    # fill=/stroke= attributes and JS chart config, and scoping to any one of those left the
+    # others warm.
+    #
+    # One deliberate exception to "series colours are untouched": #192B92 is both a stat-number
+    # colour and a chart series colour, so mapping it moves that series to the product's own
+    # strong blue (#013B5D). It stays distinct from the other series.
+    for src, dst in palette.items():
+        body, n = re.subn(re.escape(src), dst, body, flags=re.I)
+        swapped["colour"] += n
+    for src, dst in fonts.items():
+        body, n = re.subn(re.escape(src), dst, body)
+        swapped["font"] += n
+    # SVG font-family attributes are unquoted-in-CSS terms; catch the bare form too.
+    for bare in ("Zalando Sans", "SeasonMix"):
+        body, n = re.subn(re.escape(bare), "Inter", body)
+        swapped["font"] += n
+    return body, swapped
+
+
 def extract_body(dc_text: str) -> str:
     lines = dc_text.split("\n")
     start = next(i for i, l in enumerate(lines) if l.strip() == "<x-dc>")
@@ -141,6 +178,12 @@ def build_variant(template_text, shell_text, variant):
     assert config in dc_text, "VARIANT injection marker missing/duplicated"
 
     body = extract_body(dc_text)
+    if variant.get("retheme"):
+        palette = json.loads(PALETTE_JSON.read_text(encoding="utf-8"))["map"]
+        fonts = {"'SeasonMix'": "'Inter'", "'Zalando Sans'": "'Inter'"}
+        body, swapped = retheme(body, palette, fonts)
+        print("  [%s] retheme: %d colour swaps, %d font swaps"
+              % (variant["name"], swapped["colour"], swapped["font"]))
     enc = json.dumps(body).replace("</script", "<\\/script").replace("<!--", "<\\!--")
 
     i = shell_text.find("window.__DC_SRC__=")
@@ -154,7 +197,10 @@ def build_variant(template_text, shell_text, variant):
         TITLE=variant["title"], DESCRIPTION=DESCRIPTION, CANONICAL=CANONICAL, ROBOTS=robots,
         og_image_tags=og_image_tags(SITE_DIR, variant["title"]),
     )
-    css = f"\n<style>{variant['css']}</style>\n" if variant["css"] else ""
+    variant_css = variant["css"]
+    if variant_css is None:      # the app variant needs Inter inlined; the page loads no
+        variant_css = INTER_CSS.read_text(encoding="utf-8")   # external fonts by design
+    css = "\n<style>%s</style>\n" % variant_css if variant_css else ""
 
     out = SITE_DIR.joinpath(*variant["out"])
     out.parent.mkdir(parents=True, exist_ok=True)

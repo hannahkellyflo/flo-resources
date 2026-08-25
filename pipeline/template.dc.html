@@ -98,7 +98,8 @@
 
 <div style="min-height:100vh;background:#F0EDE6;font-family:'Zalando Sans',system-ui,sans-serif;color:#2A0A1C;">
 
-  <!-- ===================== TOP NAV (recreated to match florecruit.com) ===================== -->
+  <!-- ============ TOP NAV (marketing variant only; the embed has the host's own) ============ -->
+  <sc-if value="{{ isWeb }}" hint-placeholder-val="{{ true }}">
   <div style="background:#F0EDE6;border-bottom:1px solid #E4E0D8;">
     <div class="tk-nav" style="max-width:1280px;margin:0 auto;padding:18px 40px;display:flex;align-items:center;justify-content:space-between;gap:20px 32px;flex-wrap:wrap;">
       <div style="display:flex;align-items:center;gap:16px;flex-shrink:0;">
@@ -114,6 +115,7 @@
       </div>
     </div>
   </div>
+  </sc-if>
 
   <!-- ============ PAGE HEADER (overview only; marketing variant only) ============ -->
   <sc-if value="{{ showHero }}" hint-placeholder-val="{{ true }}">
@@ -1312,8 +1314,11 @@
     </div>
   </div>
 
-  <!-- ===================== SITE FOOTER (embedded joinflo.com/footer) ===================== -->
+  <!-- ==== SITE FOOTER (marketing variant only). It is an iframe to joinflo.com, which in
+       the embed would be a nested cross-origin frame inside the host application. ==== -->
+  <sc-if value="{{ isWeb }}" hint-placeholder-val="{{ true }}">
   <iframe src="https://www.joinflo.com/footer" style="width:100%;border:0;display:block;overflow:hidden;height:390px" frameborder="0" title="Flo footer"></iframe>
+  </sc-if>
 
 </div>
 </x-dc>
@@ -2868,6 +2873,7 @@ class Component extends DCLogic {
       linkTarget,
       navTarget,
       isApp: IS_APP,
+      isWeb: !IS_APP,
       isWorld: !isOverview,
       dPanelBg: dBright ? '#fff' : '#E7E3DB',
       dPanelBorder: dBright ? '1px solid #ECE7DE' : '1px solid transparent',
