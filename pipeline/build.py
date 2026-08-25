@@ -67,6 +67,13 @@ VARIANTS = (
         # Same content as the public page: keep it out of search, point search at that one.
         "robots": "noindex, nofollow",
         "retheme": True,          # apply app-palette.json + Inter to inline styles
+        # Solid dark buttons -> Flo Kit action tokens. Anchored to `background:` so the same
+        # hex used as text still resolves to the neutral ink via the palette.
+        "buttons": {
+            "background:#1E0A16": "background:#0174BE",   # primary rest
+            "background:#261025": "background:#0174BE",   # primary rest (larger variant)
+            "background:#3E0C2D": "background:#0167A9",   # primary hover
+        },
         "css": None,              # filled from inter-latin.css at build time
     },
 )
@@ -127,7 +134,7 @@ HEAD_TEMPLATE = """<meta charset="utf-8">
 """
 
 
-def retheme(body, palette, fonts):
+def retheme(body, palette, fonts, buttons):
     """Recolour and re-font the app variant.
 
     The tracker sets colour in 554 inline style= attributes, which beat any stylesheet, so
@@ -136,6 +143,14 @@ def retheme(body, palette, fonts):
     series colours live in SVG attributes and JS, and must keep their meaning.
     """
     swapped = {"colour": 0, "font": 0}
+
+    # Buttons first, and property-anchored. A flat hex map can't tell a colour used as a
+    # button fill from the same colour used as heading text -- the tracker's dark maroon is
+    # both. These are Flo Kit *action* tokens (primary #0174BE, primary-hover #0167A9), not
+    # the neutral text tokens the palette would otherwise assign.
+    for src, dst in (buttons or {}).items():
+        body, n = re.subn(re.escape(src), dst, body)
+        swapped["button"] = swapped.get("button", 0) + n
 
     # The palette is an explicit allowlist of the tracker's warm neutrals, so it can be applied
     # to the whole body rather than scoped to style attributes: chart series colours, status
@@ -150,6 +165,14 @@ def retheme(body, palette, fonts):
     for src, dst in palette.items():
         body, n = re.subn(re.escape(src), dst, body, flags=re.I)
         swapped["colour"] += n
+    # Drop the marketing faces BEFORE renaming. Renaming first would relabel these
+    # @font-face blocks as 'Inter' while they still point at the Zalando Sans / SeasonMix
+    # base64 payloads -- the page then renders the old faces under the new name, and the real
+    # Inter is outranked and never loads. Removing them also drops their payloads from the
+    # app build entirely.
+    body, dropped = re.subn(r'@font-face\{[^{}]*?(?:Zalando Sans|SeasonMix)[^{}]*?\}', '', body)
+    swapped["faces_dropped"] = dropped
+
     for src, dst in fonts.items():
         body, n = re.subn(re.escape(src), dst, body)
         swapped["font"] += n
@@ -181,9 +204,10 @@ def build_variant(template_text, shell_text, variant):
     if variant.get("retheme"):
         palette = json.loads(PALETTE_JSON.read_text(encoding="utf-8"))["map"]
         fonts = {"'SeasonMix'": "'Inter'", "'Zalando Sans'": "'Inter'"}
-        body, swapped = retheme(body, palette, fonts)
-        print("  [%s] retheme: %d colour swaps, %d font swaps"
-              % (variant["name"], swapped["colour"], swapped["font"]))
+        body, swapped = retheme(body, palette, fonts, variant.get("buttons"))
+        print("  [%s] retheme: %d colour, %d button, %d font swaps, %d @font-face dropped"
+              % (variant["name"], swapped["colour"], swapped.get("button", 0), swapped["font"],
+                 swapped.get("faces_dropped", 0)))
     enc = json.dumps(body).replace("</script", "<\\/script").replace("<!--", "<\\!--")
 
     i = shell_text.find("window.__DC_SRC__=")
