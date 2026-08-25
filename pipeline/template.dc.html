@@ -1532,8 +1532,8 @@ class Component extends DCLogic {
           { id: 'examsgrades', label: 'Exams & Grades' },
           { id: 'market', label: 'Market Data' },
         ],
-        columns: ['1L Application Open Date', 'Employer', '1L Job Listing', 'Firm Profile', '1L Position', 'Office Location', 'Scholarship', 'Application Close Date'],
-        columns2L: ['2L Application Open Date', 'Employer', '2L Job Listing', 'Firm Profile', '2L Position', 'Office Location', 'Scholarship', 'Application Close Date'],
+        columns: ['1L Application Open Date', 'Employer', '1L Job Listing', 'Firm Profile', '1L Position', 'Office Location', 'Scholarship', 'Application Close Date', 'Last updated'],
+        columns2L: ['2L Application Open Date', 'Employer', '2L Job Listing', 'Firm Profile', '2L Position', 'Office Location', 'Scholarship', 'Application Close Date', 'Last updated'],
         // --- REAL DATA (sample) wired from Metabase #5413 + Airtable, 2026-07-19. Full set comes from the cached JSON pipeline. ---
         // 1L Summer = Table A (1L, Class of 2029). Requires a positive 1L / Class-of-2029 signal
         // (title has "1L", "Class of 2029", or "1L Summer 2027") — token-less jobs are NOT swept in.
@@ -1895,8 +1895,8 @@ class Component extends DCLogic {
     }));
     const splitOpenSrc = is2L ? DATA.tables.summer2L.open : DATA.tables.summer1L.open;
     const splitUpcomingSrc = is2L ? DATA.tables.summer2L.upcoming : DATA.tables.summer1L.upcoming;
-    const splitOpenRows = sortRows(buildRows(splitOpenSrc, splitColumns, { firm: { 1: true } }).filter(matchRow));  // open: links auto, em-dash muted; Employer (col 1) → firm-profile link
-    const splitUpcomingRows = sortRows(buildRows(splitUpcomingSrc, splitColumns, { muted: { 2: true }, firm: { 1: true } }).filter(matchRow));  // upcoming: only 'Not yet open' (col 2) muted; open date stays full-color (real data); Employer (col 1) → firm-profile link
+    const splitOpenRows = sortRows(buildRows(splitOpenSrc, splitColumns, { firm: { 1: true }, muted: { 8: true } }).filter(matchRow));  // open: links auto, em-dash muted; Employer (col 1) → firm-profile link; Last updated (8) muted
+    const splitUpcomingRows = sortRows(buildRows(splitUpcomingSrc, splitColumns, { muted: { 2: true, 8: true }, firm: { 1: true } }).filter(matchRow));  // upcoming: 'Not yet open' (col 2) + Last updated (8) muted; open date stays full-color (real data); Employer (col 1) → firm-profile link
     splitUpcomingRows.forEach((r, i) => { r.onOpen = () => this.setState({ rowOpen: i }); });
     splitOpenRows.forEach((r, i) => { r.onOpen = () => this.setState({ rowOpen: splitUpcomingRows.length + i }); });
     const sortColumns = splitColumns.map((label, i) => ({
@@ -1962,8 +1962,8 @@ class Component extends DCLogic {
     // --- Exams & Grades (same table tbl3TysOhuqGmnTp6 — exams + grades combined into one table). ---
     // No records yet — empty state until the cached JSON pipeline lands. Search filters Law School (cell 0).
     const isExams = this.state.subId === 'lawfirm' && activeTab.id === 'examsgrades';
-    const examsColLabels = ['Law School', 'First Semester Grades Available', 'Second Semester Grades Available', 'Career Services Notes on Grades', 'First Semester Exam Dates', 'Second Semester Exam Dates', 'Career Services Notes on Exams'];
-    const examsRowsAll = buildRows(DATA.tables.exams, examsColLabels, { muted: { 3: true, 6: true } });
+    const examsColLabels = ['Law School', 'First Semester Grades Available', 'Second Semester Grades Available', 'Career Services Notes on Grades', 'First Semester Exam Dates', 'Second Semester Exam Dates', 'Career Services Notes on Exams', 'Last updated'];
+    const examsRowsAll = buildRows(DATA.tables.exams, examsColLabels, { muted: { 3: true, 6: true, 7: true } });
     const examsMatch = (r) => { if (!q) return true; const c = r.cells[0]; return !!(c && c.text && String(c.text).toLowerCase().indexOf(q) !== -1); };
     const examsRows = sortRows(examsRowsAll.filter(examsMatch));
     const examsColumns = examsColLabels.map((label, i) => ({
@@ -1989,7 +1989,7 @@ class Component extends DCLogic {
     // Dedup key = normalized employer + 3L position (fall back to Flo listing URL); Airtable supplies Practices /
     // Bar Admission (Flo has no such fields → "—"). TEMP sample = validated live pull 2026-07-29 (all from Flo).
     const is3L = this.state.subId === 'entrylevel3l' && activeTab.id === 'entry3l';
-    const entry3lColLabels = ['Employer', 'Class', '3L Position', '3L Job Listing', 'Offices', 'Practices, If Specified', 'Bar Admission, If Required', 'Last Updated'];
+    const entry3lColLabels = ['Employer', 'Class', '3L Position', '3L Job Listing', 'Offices', 'Practices, If Specified', 'Bar Admission, If Required', 'Last updated'];
     const J = (id) => 'https://florecruit.com/v2/app/forward/jobs/' + id;
     const entry3lRowsAll = buildRows(DATA.tables.entry3l, entry3lColLabels, { muted: { 7: true }, firm: { 0: true } });
     const entry3lMatch = (r) => { if (!q) return true; return [0, 2, 4].some((i) => { const c = r.cells[i]; return !!(c && c.text && String(c.text).toLowerCase().indexOf(q) !== -1); }); };
@@ -2022,18 +2022,18 @@ class Component extends DCLogic {
     const isPIExtern = this.state.subId === 'piextern' && activeTab.id === 'jobs';
     const isPIAttorney = this.state.subId === 'piattorney' && activeTab.id === 'jobs';
     const isPI = isPISummer || isPIExtern || isPIAttorney;
-    const piColLabels = ['Organization', 'Job Title', 'Apply Here', 'Location(s)', 'Compensation', 'Government', 'Job Description', 'Application Open Date', 'Application Close Date', 'Posted Date'];
+    const piColLabels = ['Organization', 'Job Title', 'Apply Here', 'Location(s)', 'Compensation', 'Government', 'Job Description', 'Application Open Date', 'Application Close Date', 'Posted Date', 'Last updated'];
     const _dd = (t) => ({ text: t, isDesc: true });
     const _gg = (b) => (b ? { text: 'Yes', isText: true } : { text: 'No', isMuted: true });
-    const piSummerOpen = buildRows(DATA.tables.piSummerOpen, piColLabels, { wraps: { 1: true, 3: true, 4: true }, bool: { 5: true }, desc: { 6: true }, muted: { 9: true } });
-    const piExternOpen = buildRows(DATA.tables.piExternOpen, piColLabels, { wraps: { 1: true, 3: true, 4: true }, bool: { 5: true }, desc: { 6: true }, muted: { 9: true } });
-    const piAttorneyOpen = buildRows(DATA.tables.piAttorneyOpen, piColLabels, { wraps: { 1: true, 3: true, 4: true }, bool: { 5: true }, desc: { 6: true }, muted: { 9: true } });
+    const piSummerOpen = buildRows(DATA.tables.piSummerOpen, piColLabels, { wraps: { 1: true, 3: true, 4: true }, bool: { 5: true }, desc: { 6: true }, muted: { 9: true, 10: true } });
+    const piExternOpen = buildRows(DATA.tables.piExternOpen, piColLabels, { wraps: { 1: true, 3: true, 4: true }, bool: { 5: true }, desc: { 6: true }, muted: { 9: true, 10: true } });
+    const piAttorneyOpen = buildRows(DATA.tables.piAttorneyOpen, piColLabels, { wraps: { 1: true, 3: true, 4: true }, bool: { 5: true }, desc: { 6: true }, muted: { 9: true, 10: true } });
     // Past Roles = Application Close Date has passed; auto-removed 30 days after close. Real records in the
     // last-30-day window today (2026-07-29): Entry-Level → Muskegon Retention (closed Jul 14); Attorney →
     // Legal Aid of Marin VOCA (closed Jul 6). Internships → none. Kern post-bar (closed Mar 31) is >30d → removed.
-    const piSummerPast = buildRows(DATA.tables.piSummerPast, piColLabels, { wraps: { 1: true, 3: true, 4: true }, bool: { 5: true }, desc: { 6: true }, muted: { 9: true } });
-    const piExternPast = buildRows(DATA.tables.piExternPast, piColLabels, { wraps: { 1: true, 3: true, 4: true }, bool: { 5: true }, desc: { 6: true }, muted: { 9: true } });
-    const piAttorneyPast = buildRows(DATA.tables.piAttorneyPast, piColLabels, { wraps: { 1: true, 3: true, 4: true }, bool: { 5: true }, desc: { 6: true }, muted: { 9: true } });
+    const piSummerPast = buildRows(DATA.tables.piSummerPast, piColLabels, { wraps: { 1: true, 3: true, 4: true }, bool: { 5: true }, desc: { 6: true }, muted: { 9: true, 10: true } });
+    const piExternPast = buildRows(DATA.tables.piExternPast, piColLabels, { wraps: { 1: true, 3: true, 4: true }, bool: { 5: true }, desc: { 6: true }, muted: { 9: true, 10: true } });
+    const piAttorneyPast = buildRows(DATA.tables.piAttorneyPast, piColLabels, { wraps: { 1: true, 3: true, 4: true }, bool: { 5: true }, desc: { 6: true }, muted: { 9: true, 10: true } });
     const piOpenRowsAll = isPISummer ? piSummerOpen : isPIExtern ? piExternOpen : isPIAttorney ? piAttorneyOpen : [];
     const piPastRowsAll = isPISummer ? piSummerPast : isPIExtern ? piExternPast : isPIAttorney ? piAttorneyPast : [];
     wrapCols(piOpenRowsAll, [1, 3, 4]); wrapCols(piPastRowsAll, [1, 3, 4]); // wrap Job Title + Location(s) + Compensation
@@ -2074,7 +2074,7 @@ class Component extends DCLogic {
     // these) so it's derived from the title. Bar Admission (a 3L column) isn't available and is omitted.
     // TEMP samples = validated live pull 2026-07-29.
     const isLateralNP = this.state.subId === 'lateralassoc' && activeTab.id === 'lateral';
-    const lateralColLabels = ['Law Firm', 'Job Listing', 'Position', 'Offices', 'Job Description', 'Open Date', 'Type', 'Last Updated'];
+    const lateralColLabels = ['Law Firm', 'Job Listing', 'Position', 'Offices', 'Job Description', 'Open Date', 'Type', 'Last updated'];
     const _pill = (t) => ({ text: t, isPill: true });
     const _tw = (t) => ({ text: t, isWrap: true }); // long text that wraps to ~2 lines instead of forcing horizontal scroll
     const lateralRowsAll = buildRows(DATA.tables.lateral, lateralColLabels, { wraps: { 2: true, 3: true }, desc: { 4: true }, pills: { 6: true }, muted: { 7: true } });

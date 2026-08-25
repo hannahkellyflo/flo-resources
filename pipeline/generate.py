@@ -13,7 +13,7 @@ Secrets (GitHub Actions env):
 
 Run:  METABASE_API_KEY=… AIRTABLE_TOKEN=… python3 generate.py
 """
-import json, os, re, html, urllib.request, urllib.parse, pathlib, datetime
+import json, os, re, html, urllib.request, urllib.parse, pathlib, datetime, copy
 
 PIPE = pathlib.Path(__file__).parent
 DATA_JSON = PIPE / "data.json"
@@ -559,7 +559,7 @@ def wire_entry3l(data: dict) -> None:
 # Firm Profile -> '—' (no slug in Metabase, Hannah).
 SUMMER_SQL = """
 SELECT j.ID AS job_id, o.NAME AS firm, j.TITLE AS position,
-  j.OPEN_DATE AS open_date, j.CLOSE_DATE AS close_date,
+  j.OPEN_DATE AS open_date, j.CLOSE_DATE AS close_date, j.UPDATED_AT AS updated_at,
   EXISTS (SELECT 1 FROM FORWARD_JOB_GRAD_DATE_TARGET_RULE r WHERE r.JOB_ID=j.ID
           AND r.IS_NOT_DELETED=1 AND r.RULE_TYPE='INDIVIDUAL_YEARS' AND YEAR(r.MIN_GRAD_DATE)=2029) AS g1L,
   EXISTS (SELECT 1 FROM FORWARD_JOB_GRAD_DATE_TARGET_RULE r WHERE r.JOB_ID=j.ID
@@ -602,6 +602,7 @@ def _summer_record(r: dict, lvl: str, upcoming: bool) -> dict:
         "Office Location": r.get("offices") or "—",
         "Scholarship": "—",
         "Application Close Date": fmt_mdy(r.get("close_date")) or "—",
+        "_srcUpdated": fmt_date(r.get("updated_at")),   # seed for "Last updated" (dropped after stamping)
     }
 
 
@@ -675,6 +676,7 @@ def _da_summer_record(row: dict, lvl: str) -> dict:
         "Office Location": "—",
         "Scholarship": "—",
         "Application Close Date": fmt_mdy(row["close_iso"]) or "—",
+        "_srcUpdated": "—",   # survey upcoming rows have no source timestamp → seed to today when new
     }
 
 
@@ -1507,6 +1509,111 @@ def wire_overview_stats(data: dict) -> None:
           f"3L {n3l_live} open (+{len(t.get('entry3l', [])) - n3l_live} upcoming), pc {npc}, partner12mo {p12}, openings {total}")
 
 
+# ── "Last updated" change-detection stamping (Hannah 2026-08-25) ──────────────
+# Every table row carries a "Last updated" date reflecting when the tracker last ADDED or
+# CHANGED it. Computed by diffing this run's tables against the previously committed data.json
+# (loaded as the snapshot base in main()):
+#   * new row                          -> seed from the source's own timestamp when known
+#                                         (Metabase UPDATED_AT / PI "Posted Date"), else today
+#   * displayed field changed          -> today
+#   * unchanged                        -> carry forward its prior "Last updated"
+# Rows are keyed like the digest differ: Flo job id from the listing link, else normalized
+# employer|position. The source seed column ("Last Updated" / "_srcUpdated" for Metabase rows) is
+# consumed here and dropped so the visible column is the single unified "Last updated".
+_LU_JOBID_RE = re.compile(r"/jobs/(\d+)")
+# table key -> (shape, name_col, pos_col, link_col, seed_col, drop_seed)
+_LU_TABLES = {
+    "summer1L":      ("split", "Employer", "1L Position", "1L Job Listing", "_srcUpdated",  True),
+    "summer2L":      ("split", "Employer", "2L Position", "2L Job Listing", "_srcUpdated",  True),
+    "entry3l":       ("flat",  "Employer", "3L Position", "3L Job Listing", "Last Updated", True),
+    "lateral":       ("flat",  "Law Firm", "Position",    "Job Listing",    "Last Updated", True),
+    "pc":            ("flat",  "Law Firm", "Position",    "Job Listing",    "Last Updated", True),
+    "campus":        ("flat",  "Law School", "Program",   None,             "Last updated", False),
+    "exams":         ("flat",  "Law School", None,        None,             None,           False),
+    "piSummerOpen":  ("flat",  "Organization", "Job Title", "Apply Here",   "Posted Date",  False),
+    "piSummerPast":  ("flat",  "Organization", "Job Title", "Apply Here",   "Posted Date",  False),
+    "piExternOpen":  ("flat",  "Organization", "Job Title", "Apply Here",   "Posted Date",  False),
+    "piExternPast":  ("flat",  "Organization", "Job Title", "Apply Here",   "Posted Date",  False),
+    "piAttorneyOpen":("flat",  "Organization", "Job Title", "Apply Here",   "Posted Date",  False),
+    "piAttorneyPast":("flat",  "Organization", "Job Title", "Apply Here",   "Posted Date",  False),
+}
+_LU_SIG_EXCLUDE = {"Last updated", "Last Updated", "_srcUpdated", "Firm Profile"}
+
+
+def _lu_norm(s):
+    if isinstance(s, dict):
+        return _lu_norm(s.get("href") or s.get("text"))
+    s = "" if s is None else str(s)
+    return re.sub(r"\s+", " ", s.replace("–", "-").replace("—", "-")).strip().lower().rstrip(".,;: ")
+
+
+def _lu_key(name_col, pos_col, link_col, row):
+    if link_col:
+        cell = row.get(link_col)
+        href = cell.get("href") if isinstance(cell, dict) else None
+        if href:
+            m = _LU_JOBID_RE.search(href)
+            if m:
+                return "job:" + m.group(1)
+    parts = [_lu_norm(row.get(name_col))]
+    if pos_col:
+        parts.append(_lu_norm(row.get(pos_col)))
+    return "cmp:" + "|".join(parts)
+
+
+def _lu_sig(row):
+    return tuple(sorted((k, _lu_norm(v)) for k, v in row.items() if k not in _LU_SIG_EXCLUDE))
+
+
+def _lu_rows(shape, tbl):
+    if tbl is None:
+        return []
+    return ((tbl.get("open") or []) + (tbl.get("upcoming") or [])) if shape == "split" else tbl
+
+
+def _lu_date(v):
+    """Normalize a source date to 'Mon D, YYYY' (from ISO or M/D/YYYY); pass other text through."""
+    s = str(v).strip()
+    m = re.match(r"^(\d{4})-(\d\d)-(\d\d)", s)
+    if not m:
+        m2 = re.match(r"^(\d{1,2})/(\d{1,2})/(\d{4})$", s)
+        if m2:
+            mo, da, yr = int(m2.group(1)), int(m2.group(2)), int(m2.group(3))
+            try:
+                return datetime.date(yr, mo, da).strftime("%b %-d, %Y")
+            except ValueError:
+                return s
+        return s
+    try:
+        return datetime.date(int(m.group(1)), int(m.group(2)), int(m.group(3))).strftime("%b %-d, %Y")
+    except ValueError:
+        return s
+
+
+def _lu_seed(row, seed_col, today):
+    if seed_col:
+        v = row.get(seed_col)
+        if v and str(v) not in ("", "—"):
+            return _lu_date(v)
+    return today
+
+
+def stamp_last_updated(tables: dict, prev_tables: dict) -> None:
+    today = TODAY.strftime("%b %-d, %Y")
+    for key, (shape, name_col, pos_col, link_col, seed_col, drop_seed) in _LU_TABLES.items():
+        prev = {_lu_key(name_col, pos_col, link_col, r): r for r in _lu_rows(shape, (prev_tables or {}).get(key))}
+        for row in _lu_rows(shape, tables.get(key)):
+            p = prev.get(_lu_key(name_col, pos_col, link_col, row))
+            if p is None:
+                row["Last updated"] = _lu_seed(row, seed_col, today)
+            elif _lu_sig(p) == _lu_sig(row):
+                row["Last updated"] = _lu_date(p["Last updated"]) if p.get("Last updated") else _lu_seed(row, seed_col, today)
+            else:
+                row["Last updated"] = today
+            if drop_seed and seed_col:
+                row.pop(seed_col, None)
+
+
 WIRED = [wire_public_interest, wire_campus_exams, wire_lateral, wire_pc, wire_entry3l,
          wire_summer_split, wire_lateral_charts, wire_partner_charts, wire_threeL_charts,
          wire_postclerk_charts, wire_lawstudent_charts, wire_overview_stats]
@@ -1514,9 +1621,11 @@ WIRED = [wire_public_interest, wire_campus_exams, wire_lateral, wire_pc, wire_en
 
 def main() -> None:
     data = json.loads(DATA_JSON.read_text(encoding="utf-8"))  # snapshot base
+    prev_tables = copy.deepcopy(data.get("tables", {}))        # prior committed rows, for "Last updated" diffing
     print(f"loaded snapshot; wiring {len(WIRED)} live section(s)")
     for fn in WIRED:
         fn(data)
+    stamp_last_updated(data.get("tables", {}), prev_tables)    # per-row "Last updated" (add/edit detection)
     data.setdefault("meta", {})["generatedAt"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
     DATA_JSON.write_text(json.dumps(data, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"wrote {DATA_JSON}")
