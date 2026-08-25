@@ -1326,13 +1326,24 @@
 const DATA = /* __DATA_INJECT__ */{}/* __DATA_INJECT__ */;  // build.py injects data.json
 // Map named-field records → table cells. cfg (all optional, keyed by column index): links auto-detected via {href};
 // bool → Yes/No; pills / desc / wraps / muted force that cell type; empty ('' / null / '—') → muted em-dash; else text.
+// "Last updated" date in the viewer's timezone (CT fallback) so the table date matches the detail
+// view's date+time (both derive from the same _luAt instant; avoids a UTC-vs-local off-by-one near midnight).
+const fmtLuDate = (iso) => {
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    let tz = null; try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) { tz = null; }
+    return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: tz || 'America/Chicago' }).format(d);
+  } catch (e) { return null; }
+};
 const buildRows = (records, labels, cfg) => {
   cfg = cfg || {};
   return (records || []).map((rec) => ({
     cells: labels.map((label, i) => {
       // `label` is attached to every cell so the mobile stacked-card view can show it as a data-label.
       const c = (() => {
-        const v = rec[label];
+        let v = rec[label];
+        if (label === 'Last updated' && rec['_luAt']) { const ld = fmtLuDate(rec['_luAt']); if (ld) v = ld; }
         if (v && typeof v === 'object' && v.href != null) return { text: v.text, isLink: true, href: LINK(v.href) };
         if (cfg.bool && cfg.bool[i]) return v ? { text: 'Yes', isText: true } : { text: 'No', isMuted: true };
         if (v == null || v === '' || v === '—') return { text: '—', isMuted: true };
