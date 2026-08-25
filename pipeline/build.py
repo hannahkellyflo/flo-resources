@@ -67,6 +67,38 @@ VARIANTS = (
         # Same content as the public page: keep it out of search, point search at that one.
         "robots": "noindex, nofollow",
         "retheme": True,          # apply app-palette.json + Inter to inline styles
+        # Solid dark buttons -> Flo Kit action tokens. Anchored to `background:` so the same
+        # hex used as text still resolves to the neutral ink via the palette.
+        # Flo Kit type scale: H1 32/40, H2 28/36, H3 24/32, H4 20/28, Body Lg 16/24,
+        # Body 14/20, Body Sm 12/20. The tracker has 18 sizes; each snaps to its nearest
+        # step. Anything already on the scale (12/14/16/24) is left alone.
+        "sizes": {
+            "font-size:62px": "font-size:32px",     # hero (marketing only, but map anyway)
+            "font-size:30px": "font-size:28px",
+            "font-size:27px": "font-size:28px",
+            "font-size:26px": "font-size:28px",
+            "font-size:22px": "font-size:24px",
+            "font-size:19px": "font-size:20px",
+            "font-size:10px": "font-size:12px",
+            "font-size:15.5px": "font-size:16px",
+            "font-size:15px": "font-size:16px",
+            "font-size:13.5px": "font-size:14px",
+            "font-size:13px": "font-size:14px",
+            "font-size:12.5px": "font-size:12px",
+            "font-size:11.5px": "font-size:12px",
+            "font-size:11px": "font-size:12px",
+            "font-size:10.5px": "font-size:12px",
+            "font-size:9.5px": "font-size:12px",
+        },
+        "buttons": {
+            # Radius travels with the fill: Flo Kit puts standard buttons at 6px and reserves
+            # 8px for large ones, and these are 36px-tall standard buttons.
+            "border-radius:8px;background:#1E0A16": "border-radius:6px;background:#0174BE",
+            "border-radius:8px;background:#261025": "border-radius:6px;background:#0174BE",
+            "background:#1E0A16": "background:#0174BE",   # any without a radius alongside
+            "background:#261025": "background:#0174BE",
+            "background:#3E0C2D": "background:#0167A9",   # primary hover
+        },
         "css": None,              # filled from inter-latin.css at build time
     },
 )
@@ -127,7 +159,7 @@ HEAD_TEMPLATE = """<meta charset="utf-8">
 """
 
 
-def retheme(body, palette, fonts):
+def retheme(body, palette, fonts, buttons, sizes):
     """Recolour and re-font the app variant.
 
     The tracker sets colour in 554 inline style= attributes, which beat any stylesheet, so
@@ -136,6 +168,19 @@ def retheme(body, palette, fonts):
     series colours live in SVG attributes and JS, and must keep their meaning.
     """
     swapped = {"colour": 0, "font": 0}
+
+    # Buttons first, and property-anchored. A flat hex map can't tell a colour used as a
+    # button fill from the same colour used as heading text -- the tracker's dark maroon is
+    # both. These are Flo Kit *action* tokens (primary #0174BE, primary-hover #0167A9), not
+    # the neutral text tokens the palette would otherwise assign.
+    for src, dst in (sizes or {}).items():
+        px = src.split(":")[1]
+        body, n = re.subn(r'font-size:\s*' + re.escape(px), dst, body)
+        swapped["size"] = swapped.get("size", 0) + n
+
+    for src, dst in (buttons or {}).items():
+        body, n = re.subn(re.escape(src), dst, body)
+        swapped["button"] = swapped.get("button", 0) + n
 
     # The palette is an explicit allowlist of the tracker's warm neutrals, so it can be applied
     # to the whole body rather than scoped to style attributes: chart series colours, status
@@ -150,6 +195,14 @@ def retheme(body, palette, fonts):
     for src, dst in palette.items():
         body, n = re.subn(re.escape(src), dst, body, flags=re.I)
         swapped["colour"] += n
+    # Drop the marketing faces BEFORE renaming. Renaming first would relabel these
+    # @font-face blocks as 'Inter' while they still point at the Zalando Sans / SeasonMix
+    # base64 payloads -- the page then renders the old faces under the new name, and the real
+    # Inter is outranked and never loads. Removing them also drops their payloads from the
+    # app build entirely.
+    body, dropped = re.subn(r'@font-face\{[^{}]*?(?:Zalando Sans|SeasonMix)[^{}]*?\}', '', body)
+    swapped["faces_dropped"] = dropped
+
     for src, dst in fonts.items():
         body, n = re.subn(re.escape(src), dst, body)
         swapped["font"] += n
@@ -181,9 +234,10 @@ def build_variant(template_text, shell_text, variant):
     if variant.get("retheme"):
         palette = json.loads(PALETTE_JSON.read_text(encoding="utf-8"))["map"]
         fonts = {"'SeasonMix'": "'Inter'", "'Zalando Sans'": "'Inter'"}
-        body, swapped = retheme(body, palette, fonts)
-        print("  [%s] retheme: %d colour swaps, %d font swaps"
-              % (variant["name"], swapped["colour"], swapped["font"]))
+        body, swapped = retheme(body, palette, fonts, variant.get("buttons"), variant.get("sizes"))
+        print("  [%s] retheme: %d colour, %d button, %d size, %d font swaps, %d @font-face dropped"
+              % (variant["name"], swapped["colour"], swapped.get("button", 0), swapped.get("size", 0), swapped["font"],
+                 swapped.get("faces_dropped", 0)))
     enc = json.dumps(body).replace("</script", "<\\/script").replace("<!--", "<\\!--")
 
     i = shell_text.find("window.__DC_SRC__=")
@@ -200,6 +254,9 @@ def build_variant(template_text, shell_text, variant):
     variant_css = variant["css"]
     if variant_css is None:      # the app variant needs Inter inlined; the page loads no
         variant_css = INTER_CSS.read_text(encoding="utf-8")   # external fonts by design
+        # Flo Kit: "Inter with tabular-nums carries table values and token chips." Nothing
+        # inline sets font-variant-numeric, so this applies without a specificity fight.
+        variant_css += "\ntable td, table th { font-variant-numeric: tabular-nums; }\n"
     css = "\n<style>%s</style>\n" % variant_css if variant_css else ""
 
     out = SITE_DIR.joinpath(*variant["out"])
