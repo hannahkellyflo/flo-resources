@@ -104,10 +104,19 @@ def _load_firm_profiles():
 
 _FIRM_PROFILE_MAP, _FIRM_PROFILE_KEYS = _load_firm_profiles()
 
+# Explicit aliases for firms whose tracker name and profile key differ by more than casing/legal-suffix
+# (abbreviations, rebrands) so the prefix fallbacks can't bridge them. Keys/values are matched after
+# _norm_firm normalization; the value must be a profile key that exists in firm-profiles.json.
+#   "Herbert Smith Freehills Kramer" (tracker) <-> "HSF Kramer" (profile, HSF = Herbert Smith Freehills)
+_FIRM_PROFILE_ALIASES = {
+    _norm_firm("Herbert Smith Freehills Kramer"): _norm_firm("HSF Kramer"),
+}
+
 
 def firm_profile_cell(firm_name):
     """{text:'View profile', href} when the firm has a live Flo Forward profile, else '—' (muted grey)."""
     n = _norm_firm(firm_name)
+    n = _FIRM_PROFILE_ALIASES.get(n, n)
     url = _FIRM_PROFILE_MAP.get(n)
     if not url:
         # data name is a longer legal name that starts with a CSV brand ("Baker Donelson Bearman…" -> "Baker Donelson")
