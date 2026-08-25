@@ -208,6 +208,7 @@ def wire_public_interest(data: dict) -> None:
             continue
         rec = pi_record(f)
         rec["Posted Date"] = fmt_date(r.get("createdTime"))
+        rec["_srcAt"] = r.get("createdTime")   # raw datetime → detail-view time (dropped after stamping)
         buckets[pi_bucket(f.get(PI_F["grad"]))][state].append(rec)
     m = {"summer": "piSummer", "extern": "piExtern", "attorney": "piAttorney"}
     for b, key in m.items():
@@ -285,6 +286,7 @@ def campus_record(f: dict) -> dict:
         "Final Schedule Release Date": fmt_mdy(f.get(CAMPUS_F["finalRelease"])),
         "Additional Info": _txt(f.get(CAMPUS_F["addlInfo"])),
         "Last updated": fmt_mdy(f.get(CAMPUS_F["updated"])),
+        "_srcAt": f.get(CAMPUS_F["updated"]),   # source date (usually date-only) → detail-view (dropped after stamping)
     }
 
 
@@ -399,6 +401,7 @@ def job_record(row: dict, type_val: str) -> dict:
         "Open Date": fmt_date(row.get("open_date")),
         "Type": type_val,
         "Last Updated": fmt_date(row.get("updated_at")),
+        "_srcAt": row.get("updated_at"),   # raw datetime → detail-view time (dropped after stamping)
     }
 
 
@@ -495,6 +498,7 @@ def _entry3l_live_row(r, class_label):
         "Practices, If Specified": "",       # not reliably derivable -> muted em-dash
         "Bar Admission, If Required": "",
         "Last Updated": fmt_date(r.get("updated_at")),
+        "_srcAt": r.get("updated_at"),   # raw datetime → detail-view time (dropped after stamping)
     }
 
 
@@ -602,7 +606,8 @@ def _summer_record(r: dict, lvl: str, upcoming: bool) -> dict:
         "Office Location": r.get("offices") or "—",
         "Scholarship": "—",
         "Application Close Date": fmt_mdy(r.get("close_date")) or "—",
-        "_srcUpdated": fmt_date(r.get("updated_at")),   # seed for "Last updated" (dropped after stamping)
+        "_srcUpdated": fmt_date(r.get("updated_at")),   # date seed for "Last updated" (dropped after stamping)
+        "_srcAt": r.get("updated_at"),                  # raw datetime → detail-view time (dropped after stamping)
     }
 
 
@@ -1537,7 +1542,7 @@ _LU_TABLES = {
     "piAttorneyOpen":("flat",  "Organization", "Job Title", "Apply Here",   "Posted Date",  False),
     "piAttorneyPast":("flat",  "Organization", "Job Title", "Apply Here",   "Posted Date",  False),
 }
-_LU_SIG_EXCLUDE = {"Last updated", "Last Updated", "_srcUpdated", "Firm Profile"}
+_LU_SIG_EXCLUDE = {"Last updated", "Last Updated", "_srcUpdated", "_srcAt", "_luAt", "Firm Profile"}
 
 
 def _lu_norm(s):
@@ -1614,6 +1619,37 @@ def stamp_last_updated(tables: dict, prev_tables: dict) -> None:
                 row.pop(seed_col, None)
 
 
+def _lu_timed(v):
+    """The raw source value if it carries a time component (ISO with T HH:MM), else None."""
+    return str(v) if v and re.search(r"T\d\d:\d\d", str(v)) else None
+
+
+def stamp_last_updated_at(tables: dict, prev_tables: dict) -> None:
+    """Companion to stamp_last_updated: a full ISO timestamp ("_luAt") for the DETAIL view's
+    time display. Same add/edit/carry diff, but tracks a datetime rather than a date:
+      new  -> the source's own datetime when timed (Metabase UPDATED_AT / PI createdTime);
+              None for a date-only source (detail then shows date only); else now (added now)
+      edit -> now;   unchanged -> carry forward the prior _luAt (else re-derive from source)
+    Keyed and signature-compared exactly like the date stamp; "_srcAt" is consumed and dropped."""
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    for key, (shape, name_col, pos_col, link_col, seed_col, drop_seed) in _LU_TABLES.items():
+        prev = {_lu_key(name_col, pos_col, link_col, r): r for r in _lu_rows(shape, (prev_tables or {}).get(key))}
+        for row in _lu_rows(shape, tables.get(key)):
+            src = row.get("_srcAt")
+            timed = _lu_timed(src)
+            fresh = timed if timed else (None if src else now_iso)  # date-only source -> None; no source -> now
+            p = prev.get(_lu_key(name_col, pos_col, link_col, row))
+            if p is None:
+                at = fresh
+            elif _lu_sig(p) == _lu_sig(row):
+                at = p.get("_luAt") or fresh
+            else:
+                at = now_iso
+            if at:
+                row["_luAt"] = at
+            row.pop("_srcAt", None)
+
+
 WIRED = [wire_public_interest, wire_campus_exams, wire_lateral, wire_pc, wire_entry3l,
          wire_summer_split, wire_lateral_charts, wire_partner_charts, wire_threeL_charts,
          wire_postclerk_charts, wire_lawstudent_charts, wire_overview_stats]
@@ -1625,7 +1661,8 @@ def main() -> None:
     print(f"loaded snapshot; wiring {len(WIRED)} live section(s)")
     for fn in WIRED:
         fn(data)
-    stamp_last_updated(data.get("tables", {}), prev_tables)    # per-row "Last updated" (add/edit detection)
+    stamp_last_updated(data.get("tables", {}), prev_tables)    # per-row "Last updated" date (add/edit detection)
+    stamp_last_updated_at(data.get("tables", {}), prev_tables)  # per-row "_luAt" datetime for the detail-view time
     data.setdefault("meta", {})["generatedAt"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
     DATA_JSON.write_text(json.dumps(data, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"wrote {DATA_JSON}")

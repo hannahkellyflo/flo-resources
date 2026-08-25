@@ -1353,6 +1353,7 @@ const buildRows = (records, labels, cfg) => {
       c.label = label;
       return c;
     }),
+    _luAt: rec['_luAt'] || null,   // full timestamp (ISO) → detail-view "Last updated" time; not a visible column
   }));
 };
 // ---- URL routing ------------------------------------------------------------------------
@@ -2135,14 +2136,27 @@ class Component extends DCLogic {
       : is3L ? { rows: entry3lRows, labels: entry3lColLabels, pills: {}, titleIdx: 1, fallback: '3L Role' }
       : isSplitApply ? { rows: splitUpcomingRows.concat(splitOpenRows), labels: splitColumns, pills: {}, titleIdx: 1, fallback: 'Summer Role' }
       : null;
+    // Detail-view "Last updated": show date + time in the viewer's timezone (fall back to Central).
+    // The table cell stays date-only; the full timestamp rides on the row as _luAt.
+    const fmtLuDetail = (iso) => {
+      if (!iso) return null;
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return null;
+      const opts = { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' };
+      let tz = null;
+      try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) { tz = null; }
+      try { return new Intl.DateTimeFormat('en-US', Object.assign({}, opts, { timeZone: tz || 'America/Chicago' })).format(d); }
+      catch (e) { try { return new Intl.DateTimeFormat('en-US', Object.assign({}, opts, { timeZone: 'America/Chicago' })).format(d); } catch (e2) { return null; } }
+    };
     let recDetail = null;
     if (detailCfg && rowOpenIdx != null && detailCfg.rows[rowOpenIdx]) {
       const pr = detailCfg.rows[rowOpenIdx];
       const fields = detailCfg.labels.map((label, i) => {
         const c = pr.cells[i] || {};
         const isCheck = !!c.isCheck;
-        const empty = !isCheck && (c.text == null || c.text === '' || c.text === '—');
-        const value = isCheck ? 'Yes' : (empty ? '—' : String(c.text));
+        const luDetail = label === 'Last updated' ? fmtLuDetail(pr._luAt) : null;   // date + time in the detail view
+        const empty = !isCheck && !luDetail && (c.text == null || c.text === '' || c.text === '—');
+        const value = luDetail || (isCheck ? 'Yes' : (empty ? '—' : String(c.text)));
         const isLink = !!c.isLink && !!c.href && !empty;
         const isPill = !!detailCfg.pills[i] && !empty && !isLink;
         const isLong = !!c.isDesc && !empty;  // job description — clamp to 5 lines with View more
