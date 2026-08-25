@@ -223,7 +223,7 @@
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;background:#FAF9F6;margin:-18px -20px 0;padding:16px 20px 14px;">
                   <div>
                     <div style="font-family:'Zalando Sans',sans-serif;font-weight:600;font-size:19px;letter-spacing:-0.01em;color:#1A1A1A;">3L Entry-Level Associates</div>
-                    <div style="font-size:13px;color:#9A948C;margin-top:3px;">Law firm entry-level recruiting - Classes of 2026 &amp; 2027</div>
+                    <div style="font-size:13px;color:#9A948C;margin-top:3px;">Law firm entry-level recruiting - Class of 2026, 2027</div>
                   </div>
                   <div style="color:#3E0C2D;flex-shrink:0;margin-top:2px;font-size:12.5px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;">View details <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
                 </div>
@@ -232,7 +232,7 @@
                     <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;">Currently open</div>
                     <div style="display:flex;align-items:baseline;gap:10px;margin-top:7px;">
                       <span style="font-family:'Zalando Sans',sans-serif;font-size:27px;font-weight:600;letter-spacing:-0.02em;line-height:1;color:#192B92;">{{ ov3lOpen }}</span>
-                      <span style="font-size:12px;color:#B0A99F;">entry-level roles (Classes of 2026 &amp; 2027)</span>
+                      <span style="font-size:12px;color:#B0A99F;">entry-level roles (Class of 2026, 2027)</span>
                     </div>
                   </div>
                   <div onClick="{{ open3LData }}" style="margin:22px -8px 0;padding:16px 8px 4px;border-top:1px solid #F1EEE8;border-radius:8px;cursor:pointer;transition:transform 130ms ease;" style-hover="transform:translateY(-2px);">
@@ -1558,9 +1558,9 @@ class Component extends DCLogic {
       entrylevel3l: {
         name: '3L Entry-Level Associates',
         group: 'Law Firm',
-        secSubtitle: 'Law firm entry-level recruiting - Classes of 2026 & 2027',
+        secSubtitle: 'Law firm entry-level recruiting - Class of 2026, 2027',
         cardSubtitle: 'Entry-level associate recruiting',
-        status: 'Updated daily', count: 'Class of 2026 & 2027',
+        status: 'Updated daily', count: 'Class of 2026, 2027',
         crumbA: "Entry-Level Tracker",
         sectionTitle: 'Entry-Level Openings',
         tabs: [
@@ -2010,7 +2010,7 @@ class Component extends DCLogic {
     const entry3lEmpty = is3L && !entry3lHasRows;
     const entry3lNoMatch = 'No matches for “' + this.state.search.trim() + '” — try an employer, position, or office.';
     const entry3lEmptyMsg = hasQuery ? entry3lNoMatch : 'No entry-level roles are open right now — check back soon.';
-    const entry3lCaption = 'Live law-firm entry-level roles · Classes of 2026 & 2027';
+    const entry3lCaption = 'Live law-firm entry-level roles · Class of 2026, 2027';
     const downloadEntry3l = () => this.exportCsv(entry3lColLabels, entry3lRows, 'forward-3L-entry-level.csv');
 
     // --- Public Interest tables (3, shared columns). Source: Airtable page pagMTWwBduRbw1toU (interface
