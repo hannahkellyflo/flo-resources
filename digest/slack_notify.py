@@ -5,8 +5,9 @@ Reads the changeset from diff_data (a single day's bot-refresh diff by default, 
 aggregate window via --since) and posts a grouped summary to Elizabeth, noting which
 upcoming email (Tue/Fri) the changes will land in.
 
-  * Reported: new items + open-date / campus-program-date / exam-grade-date changes.
-  * Close-date changes are shown in a separate "FYI" block (Slack only, never the email).
+  * Email-worthy (counted at top): new items + open-date / campus-program-date / exam-grade-date changes.
+  * Slack-only end sections (context, never in the email): close-date FYI, removals ("Removed from the
+    tracker"), and general edits ("Edited listings" — non-date fields like title/office/comp).
   * Human-commit deltas (rule changes) are noted as "needs review", never counted as news.
 
 Prod:   SLACK_BOT_TOKEN + SLACK_TARGET (a user id for a DM, or a channel id) → chat.postMessage.
@@ -58,6 +59,15 @@ def _bullets(items):
             out.append(f"  • {name}{pos} — open date {c['old']} → {c['new']}")
         elif c["kind"] == "program_date":
             out.append(f"  • {name} — {c['field']}: {c['old'] or '—'} → {c['new'] or '—'}")
+        elif c["kind"] == "remove":
+            out.append(f"  • {name}{pos}")
+        elif c["kind"] == "edit":
+            es = c.get("edits", [])
+            shown = "; ".join(f"{e['field']}: {e['old']} → {e['new']}" for e in es[:3])
+            more = len(es) - 3
+            if more > 0:
+                shown += f" (+{more} more)"
+            out.append(f"  • {name}{pos} — {shown}")
     return out
 
 
@@ -71,24 +81,31 @@ def _section_group(items):
     return [(s, secs[s]) for s in order]
 
 
+# Kinds that feed the marketing email; everything else (close-date, removals, general edits)
+# is Slack-only context for Elizabeth.
+EMAIL_KINDS = ("add", "open_date", "program_date")
+
+
 def compose(changes, flagged, today):
-    student = [c for c in changes if c["audience"] == "student" and c["kind"] != "close_date"]
-    attorney = [c for c in changes if c["audience"] == "attorney" and c["kind"] != "close_date"]
+    student = [c for c in changes if c["audience"] == "student" and c["kind"] in EMAIL_KINDS]
+    attorney = [c for c in changes if c["audience"] == "attorney" and c["kind"] in EMAIL_KINDS]
     close = [c for c in changes if c["kind"] == "close_date"]
+    removed = [c for c in changes if c["kind"] == "remove"]
+    edited = [c for c in changes if c["kind"] == "edit"]
     nxt = next_send_date(today)
     total = len(student) + len(attorney)
     when = (f"*today's* email update ({_fmt_day(today)})" if nxt == today
             else f"the next email update on *{_fmt_day(nxt)}*")
 
     L = [f"*Legal Recruiting Tracker — daily update · {_fmt_day(today)}*", ""]
-    if total == 0 and not close:
+    if not (total or close or removed or edited):
         L.append("No tracker changes today. :white_check_mark:")
     elif total:
-        L.append(f"*{total}* change{'s' if total != 1 else ''} today — "
+        L.append(f"*{total}* new/date change{'s' if total != 1 else ''} today — "
                  f"{len(student)} student, {len(attorney)} attorney. "
                  f"These will be included in {when}.")
     else:
-        L.append(f"No email-worthy changes today (see close-date FYI below). "
+        L.append(f"No email-worthy changes today (see the sections below). "
                  f"Next email: {when}.")
 
     for label, items in (("STUDENT", student), ("ATTORNEY", attorney)):
@@ -108,6 +125,21 @@ def compose(changes, flagged, today):
         for (ent, old, new), n in agg.items():
             mult = f" (×{n} listings)" if n > 1 else ""
             L.append(f"  • {ent} — close date {old} → {new}{mult}")
+
+    # Separate end sections (Slack only): rows that came off the tracker, and rows whose
+    # non-date fields changed (title/office/comp/etc.) — context for Elizabeth, not email content.
+    _clean = lambda s: s[4:] if s.startswith("New ") else s   # "New Lateral…" reads oddly under Removed/Edited
+    if removed:
+        L += ["", f"*Removed from the tracker ({len(removed)})* _(not in the email)_"]
+        for sec, cs in _section_group(removed):
+            L.append(f"_{_clean(sec)}:_")
+            L += _bullets(cs)
+
+    if edited:
+        L += ["", f"*Edited listings ({len(edited)})* _(not in the email)_"]
+        for sec, cs in _section_group(edited):
+            L.append(f"_{_clean(sec)}:_")
+            L += _bullets(cs)
 
     if flagged:
         subs = {}
@@ -144,8 +176,8 @@ def prev_send_date(today):
 
 def compose_email(changes, today):
     """Email-ready aggregate: Student and Attorney blocks Elizabeth can copy/paste per version."""
-    student = [c for c in changes if c["audience"] == "student" and c["kind"] != "close_date"]
-    attorney = [c for c in changes if c["audience"] == "attorney" and c["kind"] != "close_date"]
+    student = [c for c in changes if c["audience"] == "student" and c["kind"] in EMAIL_KINDS]
+    attorney = [c for c in changes if c["audience"] == "attorney" and c["kind"] in EMAIL_KINDS]
     total = len(student) + len(attorney)
     since = prev_send_date(today)
     L = [f":clipboard: *Email-ready update — {_fmt_day(today)}* _(copy/paste for today's send)_",
