@@ -41,7 +41,9 @@
   .campus-row .row-expand { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 7px; color: #B4ADA2; opacity: 0; transition: opacity 120ms ease, background 120ms ease, color 120ms ease; }
   .campus-row:hover .row-expand { opacity: 1; }
   .campus-row .row-expand:hover { background: #EDE7DE; color: #3E0C2D; }
-  .campus-row td:hover { text-decoration: underline; }              /* clickable row: underline the cell you're on */
+  /* Row-click affordance is the background highlight + the expand icon (above); underline on hover is
+     reserved for the firm-name profile links (their own style-hover) so it only signals "opens the firm
+     profile", not general row clickability. Real link cells (Apply / View listing) still underline: */
   .tscroll a:hover { text-decoration: underline !important; }        /* clickable link cells (Apply / View listing) */
   .tcard { min-height: 420px; }
   .tcard:has(.tempty) { min-height: 210px; }   /* halve the height when a table is fully empty */
