@@ -2736,11 +2736,9 @@ class Component extends DCLogic {
       } else if (isPartnerMarket) {
         // Lateral PARTNER market data — Metabase #5413 base + hiring type = 'Lateral Partner'. TEMP snapshot 2026-08-10.
         // Aggregate market only (no listings table): 0 currently published; 69 opened past 12 mo; 95 all-time.
-        const ptl2025 = DATA.charts.partner.timeline['2025'];
-        const ptl2026 = DATA.charts.partner.timeline['2026'];
-        const timeline = { title: 'Lateral partner searches & pipelines created on Flo by month', sub: 'By open date · calendar year · new listings per month',
-          svg: lineChart([{ label: '2025', color: '#4D8EFF', points: ptl2025 }, { label: '2026', color: '#192B92', points: ptl2026 }], 'ptrtl'),
-          legend: [{ label: '2025', color: '#4D8EFF' }, { label: '2026', color: '#192B92' }] };
+        // NOTE: the partner by-month timeline chart was removed (Hannah 2026-08-25) — it was dominated by
+        // evergreen candidate-pool/pipeline listings (+ a stray test listing), so it misrepresented genuine
+        // search volume. Remaining partner charts: practice area, market (by city), candidate source.
         // Past 12 months only (no window toggle). Practice title-derived; most partner listings name no area.
         const pPrac = DATA.charts.partner.practice;
         const practiceBar = { title: 'Lateral partner hiring on Flo by practice area', sub: 'Past 12 months · 69 listings · title-derived where specified', svg: barChart(pPrac, '#192B92', 8), legend: [] };
@@ -2755,7 +2753,7 @@ class Component extends DCLogic {
         const pSrcTotal = pSrcItems.reduce((s, it) => s + it.value, 0);
         const pStageLbl = srcStage === 'applied' ? 'Submitted (all candidates)' : srcStage === 'interview' ? 'Reached interview or beyond' : 'Reached offer or beyond';
         const sourceChart = { title: 'Source of lateral partner candidates on Flo', sub: pStageLbl + ' · ' + rawFmt(pSrcTotal) + ' candidates · submitted since Jan 2025', svg: donutChart(pSrcItems, pSrcTotal, 'Candidates'), legend: [], hasStageToggle: true };
-        marketCharts = [timeline, practiceBar, marketBar, sourceChart];
+        marketCharts = [practiceBar, marketBar, sourceChart];
       } else {
       const t = mktScope === 't15';
       const sSub = t ? 'Top-15 schools · monthly' : 'All schools · monthly';

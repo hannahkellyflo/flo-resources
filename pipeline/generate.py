@@ -1016,15 +1016,14 @@ GROUP BY loc.OPTION HAVING n>0 ORDER BY n DESC""")
 
 
 def wire_partner_charts(data: dict) -> None:
-    tl = metabase_sql(MB_DB, f"""
-SELECT YEAR(j.OPEN_DATE) AS yr, MONTH(j.OPEN_DATE) AS mo, COUNT(DISTINCT j.ID) AS n
-{PARTNER_WHERE} AND YEAR(j.OPEN_DATE) IN (2025, 2026)
-GROUP BY yr, mo""")
-    data["charts"]["partner"]["timeline"] = {"2025": monthly12(tl, 2025), "2026": monthly12(tl, 2026)}
+    # The by-month partner timeline was retired (Hannah 2026-08-25): dominated by evergreen
+    # candidate-pool/pipeline listings (+ a stray test listing), it misrepresented real search
+    # volume. Remaining partner charts: market (by city), practice area, candidate source.
+    data["charts"]["partner"].pop("timeline", None)
     data["charts"]["partner"]["market"] = _market_single(PARTNER_TAG_COND)
     data["charts"]["partner"]["practice"] = _practice_windows(PARTNER_TAG_COND)["12mo"]
     data["charts"]["partner"]["source"] = _apply_source(data["charts"]["partner"]["source"], _source_funnel(("Lateral Partner",)))
-    print(f"  partner charts: timeline + market + practice + source")
+    print(f"  partner charts: market + practice + source")
 
 
 def wire_threeL_charts(data: dict) -> None:
