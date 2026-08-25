@@ -13,7 +13,7 @@ Secrets (GitHub Actions env):
 
 Run:  METABASE_API_KEY=… AIRTABLE_TOKEN=… python3 generate.py
 """
-import json, os, re, html, urllib.request, urllib.parse, pathlib, datetime
+import json, os, re, html, urllib.request, urllib.parse, pathlib, datetime, copy
 
 PIPE = pathlib.Path(__file__).parent
 DATA_JSON = PIPE / "data.json"
@@ -104,16 +104,32 @@ def _load_firm_profiles():
 
 _FIRM_PROFILE_MAP, _FIRM_PROFILE_KEYS = _load_firm_profiles()
 
+# Explicit aliases for firms whose tracker name and profile key differ by more than casing/legal-suffix
+# (abbreviations, rebrands) so the prefix fallbacks can't bridge them. Keys/values are matched after
+# _norm_firm normalization; the value must be a profile key that exists in firm-profiles.json.
+#   "Herbert Smith Freehills Kramer" (tracker) <-> "HSF Kramer" (profile, HSF = Herbert Smith Freehills)
+_FIRM_PROFILE_ALIASES = {
+    _norm_firm("Herbert Smith Freehills Kramer"): _norm_firm("HSF Kramer"),
+}
+
 
 def firm_profile_cell(firm_name):
     """{text:'View profile', href} when the firm has a live Flo Forward profile, else '—' (muted grey)."""
     n = _norm_firm(firm_name)
+    n = _FIRM_PROFILE_ALIASES.get(n, n)
     url = _FIRM_PROFILE_MAP.get(n)
     if not url:
+        # data name is a longer legal name that starts with a CSV brand ("Baker Donelson Bearman…" -> "Baker Donelson")
         for cn in _FIRM_PROFILE_KEYS:
             if len(cn) >= 6 and n.startswith(cn):
                 url = _FIRM_PROFILE_MAP[cn]
                 break
+    if not url and len(n) >= 5:
+        # data name is a SHORT brand (Airtable survey rows use e.g. "Katten"/"Sheppard"/"Orrick") that is a
+        # prefix of the CSV's full legal name — accept only if it uniquely identifies one firm (avoids "Baker").
+        matches = [cn for cn in _FIRM_PROFILE_KEYS if cn.startswith(n)]
+        if len(matches) == 1:
+            url = _FIRM_PROFILE_MAP[matches[0]]
     return {"text": "View profile", "href": url} if url else "—"
 
 
@@ -192,6 +208,7 @@ def wire_public_interest(data: dict) -> None:
             continue
         rec = pi_record(f)
         rec["Posted Date"] = fmt_date(r.get("createdTime"))
+        rec["_srcAt"] = r.get("createdTime")   # raw datetime → detail-view time (dropped after stamping)
         buckets[pi_bucket(f.get(PI_F["grad"]))][state].append(rec)
     m = {"summer": "piSummer", "extern": "piExtern", "attorney": "piAttorney"}
     for b, key in m.items():
@@ -269,6 +286,7 @@ def campus_record(f: dict) -> dict:
         "Final Schedule Release Date": fmt_mdy(f.get(CAMPUS_F["finalRelease"])),
         "Additional Info": _txt(f.get(CAMPUS_F["addlInfo"])),
         "Last updated": fmt_mdy(f.get(CAMPUS_F["updated"])),
+        "_srcAt": f.get(CAMPUS_F["updated"]),   # source date (usually date-only) → detail-view (dropped after stamping)
     }
 
 
@@ -383,6 +401,7 @@ def job_record(row: dict, type_val: str) -> dict:
         "Open Date": fmt_date(row.get("open_date")),
         "Type": type_val,
         "Last Updated": fmt_date(row.get("updated_at")),
+        "_srcAt": row.get("updated_at"),   # raw datetime → detail-view time (dropped after stamping)
     }
 
 
@@ -408,36 +427,70 @@ def wire_pc(data: dict) -> None:
 
 
 # ── 3L ENTRY-LEVEL (Metabase db 2, LIVE) ─────────────────────────────────────
-# grad-target year 2027 (FORWARD_JOB_GRAD_DATE_TARGET_RULE) is a noisy proxy — it
-# also matches summer/intern/vacation-scheme/OCI/lateral roles carrying a stray 2027
-# target, so a heavy title-noise exclusion is required (grad-target alone over-counts ~3x).
-# Airtable "3L Hiring" page is empty today, so this is Metabase-only.
-ENTRY3L_WHERE = r"""
+# grad-target year (FORWARD_JOB_GRAD_DATE_TARGET_RULE) is a noisy proxy — it also matches
+# summer/intern/vacation-scheme/OCI/lateral roles carrying a stray target year, so a heavy
+# title-noise exclusion is required (grad-target alone over-counts ~3x).
+# Two cohorts are shown, labeled by class (Hannah 2026-08-25):
+#   Class of 2027 (current 3Ls)  — the standard takedown window (_JOB_SELECT: close-date, else 6mo).
+#   Class of 2026 (just graduated) — narrower: only very recent openings (opened <=3 months ago) and
+#     not closed (past close date already excluded by _JOB_SELECT), so the table doesn't fill with
+#     stale prior-cycle roles. A job targeting BOTH years is treated as 2027 (deduped by Job ID).
+# Airtable "3L Hiring" page is empty today, so the live side is Metabase-only.
+_E3L_TITLE_NOISE = r"summer|intern|extern|clerk|test|vacation|fellowship|networking|\\boci\\b|resume|general submission|general consideration|\\blateral\\b|managing counsel|training contract|sign.?up|\\bselsc\\b|\\b1l\\b|\\b2l\\b"
+
+
+def _entry3l_where(grad_year: int, recent_only: bool = False) -> str:
+    clause = f"""
   EXISTS (SELECT 1 FROM FORWARD_JOB_GRAD_DATE_TARGET_RULE r
           WHERE r.JOB_ID = j.ID AND r.IS_NOT_DELETED = 1
-            AND r.RULE_TYPE = 'INDIVIDUAL_YEARS' AND YEAR(r.MIN_GRAD_DATE) = 2027)
-  AND LOWER(j.TITLE) NOT REGEXP 'summer|intern|extern|clerk|test|vacation|fellowship|networking|\\boci\\b|resume|general submission|general consideration|\\blateral\\b|managing counsel|training contract|sign.?up|\\bselsc\\b|\\b1l\\b|\\b2l\\b'"""
+            AND r.RULE_TYPE = 'INDIVIDUAL_YEARS' AND YEAR(r.MIN_GRAD_DATE) = {grad_year})
+  AND LOWER(j.TITLE) NOT REGEXP '{_E3L_TITLE_NOISE}'"""
+    if recent_only:  # Class 2026: tighten the base 6-month window to 3 months (opened recently only)
+        clause += "\n  AND j.OPEN_DATE >= DATE_SUB(NOW(), INTERVAL 3 MONTH)"
+    return clause
 
 
-def _norm_3l_practice(firm, position):
-    """Firm + normalized practice, so an Airtable survey entry and its now-live Forward posting
-    collapse to one key despite differing titles. Strips the interchangeable 'Application'/'Position'
-    wording, the '2027 New Associate' boilerplate, years, and trailing '(offices)' parentheticals.
-    e.g. 'Corporate: Capital Markets (Multiple Offices)' == 'Corporate: Capital Markets'."""
+ENTRY3L_WHERE = _entry3l_where(2027)
+
+
+_PRACTICE_STOP = {"the", "and", "of", "for", "a", "an"}  # non-distinguishing filler tokens
+
+
+def _practice_norm(firm, position):
+    """(firm_key, token_set) for an entry-level role, so an Airtable survey entry and its now-live
+    Forward posting collapse despite differing titles. Strips the interchangeable
+    'Application'/'Position' wording, the '2027 New Associate' boilerplate, years and '(offices)'
+    parentheticals, then reduces to a *set* of tokens so word order and an appended office
+    ("... – New York") no longer block a match. e.g. 'Associate- Entry Level (Fall 2027)' and
+    '2027 Entry Level Associate – New York' both include {associate, entry, level}."""
     s = (position or "").lower()
     s = re.sub(r"\(.*?\)", " ", s)                    # drop office parentheticals
     s = re.sub(r"\b(application|position)\b", " ", s)  # Application/Position are the same role here
     s = re.sub(r"\bnew associate\b", " ", s)
     s = re.sub(r"\b20\d\d\b", " ", s)                 # drop the cycle year
-    s = re.sub(r"[^a-z0-9]+", " ", s).strip()
-    return (re.sub(r"[^a-z0-9]+", "", (firm or "").lower()), s)
+    toks = {t for t in re.split(r"[^a-z0-9]+", s) if t and t not in _PRACTICE_STOP}
+    return (re.sub(r"[^a-z0-9]+", "", (firm or "").lower()), frozenset(toks))
 
 
-def wire_entry3l(data: dict) -> None:
-    rows = metabase_sql(MB_DB, _JOB_SELECT % ENTRY3L_WHERE)
-    table = [{
+def _practice_dup(a, b) -> bool:
+    """True when two (firm_key, token_set) roles are the same posting under different titles:
+    same firm and one token set contains the other, with >=2 shared meaningful tokens so a lone
+    'associate' never collapses genuinely distinct roles. This subset (not exact) match is what
+    lets a survey title with an appended office ('Entry Level Associate – New York') dedupe against
+    a live posting that omits it ('Associate- Entry Level'). Leans toward dropping a redundant
+    'upcoming' survey row when the firm already has a live posting for the same core role."""
+    (fa, ta), (fb, tb) = a, b
+    if fa != fb or not ta or not tb:
+        return False
+    small = ta if len(ta) <= len(tb) else tb
+    return len(small) >= 2 and (ta <= tb or tb <= ta)
+
+
+def _entry3l_live_row(r, class_label):
+    return {
         "Employer": r.get("firm") or "—",
         "Firm Profile": firm_profile_cell(r.get("firm")),   # not a displayed column; the firm-name cell links to it
+        "Class": class_label,
         "3L Position": r.get("position") or "—",
         "3L Job Listing": {"text": "View listing",
                            "href": f"https://florecruit.com/v2/app/forward/jobs/{r.get('job_id')}"},
@@ -445,16 +498,30 @@ def wire_entry3l(data: dict) -> None:
         "Practices, If Specified": "",       # not reliably derivable -> muted em-dash
         "Bar Admission, If Required": "",
         "Last Updated": fmt_date(r.get("updated_at")),
-    } for r in rows]
+        "_srcAt": r.get("updated_at"),   # raw datetime → detail-view time (dropped after stamping)
+    }
+
+
+def wire_entry3l(data: dict) -> None:
+    rows = metabase_sql(MB_DB, _JOB_SELECT % ENTRY3L_WHERE)                          # Class of 2027
+    ids_2027 = {str(r.get("job_id")) for r in rows if r.get("job_id") is not None}
+    # Class of 2026: recent openings only; a job also targeting 2027 is already shown above (dedupe by id).
+    rows_2026 = [r for r in metabase_sql(MB_DB, _JOB_SELECT % _entry3l_where(2026, recent_only=True))
+                 if str(r.get("job_id")) not in ids_2027]
+    table = [_entry3l_live_row(r, "Class of 2027") for r in rows] \
+          + [_entry3l_live_row(r, "Class of 2026") for r in rows_2026]
 
     # ── merge Airtable Direct-Apply 3L survey jobs (Class of 2027) — Tier-1 dedup by Job ID ──
-    live_ids = {str(r.get("job_id")) for r in rows if r.get("job_id") is not None}
-    seen = {(str(r.get("firm") or "").strip().lower(), str(r.get("position") or "").strip().lower()) for r in rows}
+    # (Class-of-2026 survey rows are intentionally not merged: a "not yet open" 2026 role is a
+    # contradiction post-graduation, and the recency filter can't apply — 3L survey rows have no open date.)
+    live_ids = ids_2027 | {str(r.get("job_id")) for r in rows_2026 if r.get("job_id") is not None}
+    all_live = rows + rows_2026
+    seen = {(str(r.get("firm") or "").strip().lower(), str(r.get("position") or "").strip().lower()) for r in all_live}
     # Normalized practice keys for the LIVE roles: drop an Airtable survey entry when the firm already
     # has a live posting for the same practice under a different title (no shared Job ID, "Application"
     # vs "Position", "(offices)" suffix) — e.g. Latham's 19 roles were showing twice. Only the
     # not-yet-open Airtable side is dropped; live rows are untouched.
-    live_norm = {_norm_3l_practice(r.get("firm"), r.get("position")) for r in rows}
+    live_practice = [_practice_norm(r.get("firm"), r.get("position")) for r in all_live]
     da_added = 0
     for row in direct_apply_rows():
         if row["level"] != "3L" or row["class"] != 2027:
@@ -464,12 +531,14 @@ def wire_entry3l(data: dict) -> None:
         k2 = (row["firm"].strip().lower(), row["position"].strip().lower())
         if k2 in seen:
             continue
-        if _norm_3l_practice(row["firm"], row["position"]) in live_norm:
-            continue                                    # same firm+practice already live under a different title
+        pr = _practice_norm(row["firm"], row["position"])
+        if any(_practice_dup(pr, lp) for lp in live_practice):
+            continue                                    # same firm+role already live under a different title
         seen.add(k2); da_added += 1
         table.append({
             "Employer": row["firm"],
             "Firm Profile": firm_profile_cell(row["firm"]),
+            "Class": "Class of 2027",
             "3L Position": row["position"] or "—",
             "3L Job Listing": "Not yet open",           # upcoming — no live listing/apply link yet
             "Offices": "—",
@@ -479,7 +548,7 @@ def wire_entry3l(data: dict) -> None:
         })
 
     data["tables"]["entry3l"] = table
-    print(f"  entry3l: {len(rows)} 3L entry-level listings (+{da_added} from Airtable survey)")
+    print(f"  entry3l: {len(rows)} Class-2027 + {len(rows_2026)} Class-2026 listings (+{da_added} from Airtable survey)")
 
 
 # ── 1L / 2L SUMMER SPLIT (Metabase db 2, LIVE) ───────────────────────────────
@@ -494,7 +563,7 @@ def wire_entry3l(data: dict) -> None:
 # Firm Profile -> '—' (no slug in Metabase, Hannah).
 SUMMER_SQL = """
 SELECT j.ID AS job_id, o.NAME AS firm, j.TITLE AS position,
-  j.OPEN_DATE AS open_date, j.CLOSE_DATE AS close_date,
+  j.OPEN_DATE AS open_date, j.CLOSE_DATE AS close_date, j.UPDATED_AT AS updated_at,
   EXISTS (SELECT 1 FROM FORWARD_JOB_GRAD_DATE_TARGET_RULE r WHERE r.JOB_ID=j.ID
           AND r.IS_NOT_DELETED=1 AND r.RULE_TYPE='INDIVIDUAL_YEARS' AND YEAR(r.MIN_GRAD_DATE)=2029) AS g1L,
   EXISTS (SELECT 1 FROM FORWARD_JOB_GRAD_DATE_TARGET_RULE r WHERE r.JOB_ID=j.ID
@@ -537,6 +606,8 @@ def _summer_record(r: dict, lvl: str, upcoming: bool) -> dict:
         "Office Location": r.get("offices") or "—",
         "Scholarship": "—",
         "Application Close Date": fmt_mdy(r.get("close_date")) or "—",
+        "_srcUpdated": fmt_date(r.get("updated_at")),   # date seed for "Last updated" (dropped after stamping)
+        "_srcAt": r.get("updated_at"),                  # raw datetime → detail-view time (dropped after stamping)
     }
 
 
@@ -610,6 +681,7 @@ def _da_summer_record(row: dict, lvl: str) -> dict:
         "Office Location": "—",
         "Scholarship": "—",
         "Application Close Date": fmt_mdy(row["close_iso"]) or "—",
+        "_srcUpdated": "—",   # survey upcoming rows have no source timestamp → seed to today when new
     }
 
 
@@ -1367,13 +1439,15 @@ def wire_overview_stats(data: dict) -> None:
     def pi(open_key, third_kind):
         recs = t.get(open_key, [])
         n = len(recs)
+        # All three PI cards share Listed / New this month / Government, in that order; internships
+        # additionally show % paid as the last tile (Hannah 2026-08-24).
+        stats = [{"label": "Listed", "value": str(n)},
+                 {"label": "New this month", "value": str(_opened_this_month(recs))},
+                 {"label": "Government", "value": str(sum(1 for r in recs if r.get("Government") is True))}]
         if third_kind == "paid":
             paid = sum(1 for r in recs if _has_pay(r.get("Compensation")))
-            third = {"label": "Paid", "value": f"{round(100 * paid / n)}%" if n else "0%"}
-        else:
-            third = {"label": "Government", "value": str(sum(1 for r in recs if r.get("Government") is True))}
-        return [{"label": "Listed", "value": str(n)},
-                {"label": "Opened this month", "value": str(_opened_this_month(recs))}, third]
+            stats.append({"label": "Paid", "value": f"{round(100 * paid / n)}%" if n else "0%"})
+        return stats
 
     ov["piCardStats"] = {"summer": pi("piSummerOpen", "paid"), "extern": pi("piExternOpen", "gov"),
                          "attorney": pi("piAttorneyOpen", "gov")}
@@ -1440,6 +1514,142 @@ def wire_overview_stats(data: dict) -> None:
           f"3L {n3l_live} open (+{len(t.get('entry3l', [])) - n3l_live} upcoming), pc {npc}, partner12mo {p12}, openings {total}")
 
 
+# ── "Last updated" change-detection stamping (Hannah 2026-08-25) ──────────────
+# Every table row carries a "Last updated" date reflecting when the tracker last ADDED or
+# CHANGED it. Computed by diffing this run's tables against the previously committed data.json
+# (loaded as the snapshot base in main()):
+#   * new row                          -> seed from the source's own timestamp when known
+#                                         (Metabase UPDATED_AT / PI "Posted Date"), else today
+#   * displayed field changed          -> today
+#   * unchanged                        -> carry forward its prior "Last updated"
+# Rows are keyed like the digest differ: Flo job id from the listing link, else normalized
+# employer|position. The source seed column ("Last Updated" / "_srcUpdated" for Metabase rows) is
+# consumed here and dropped so the visible column is the single unified "Last updated".
+_LU_JOBID_RE = re.compile(r"/jobs/(\d+)")
+# table key -> (shape, name_col, pos_col, link_col, seed_col, drop_seed)
+_LU_TABLES = {
+    "summer1L":      ("split", "Employer", "1L Position", "1L Job Listing", "_srcUpdated",  True),
+    "summer2L":      ("split", "Employer", "2L Position", "2L Job Listing", "_srcUpdated",  True),
+    "entry3l":       ("flat",  "Employer", "3L Position", "3L Job Listing", "Last Updated", True),
+    "lateral":       ("flat",  "Law Firm", "Position",    "Job Listing",    "Last Updated", True),
+    "pc":            ("flat",  "Law Firm", "Position",    "Job Listing",    "Last Updated", True),
+    "campus":        ("flat",  "Law School", "Program",   None,             "Last updated", False),
+    "exams":         ("flat",  "Law School", None,        None,             None,           False),
+    "piSummerOpen":  ("flat",  "Organization", "Job Title", "Apply Here",   "Posted Date",  False),
+    "piSummerPast":  ("flat",  "Organization", "Job Title", "Apply Here",   "Posted Date",  False),
+    "piExternOpen":  ("flat",  "Organization", "Job Title", "Apply Here",   "Posted Date",  False),
+    "piExternPast":  ("flat",  "Organization", "Job Title", "Apply Here",   "Posted Date",  False),
+    "piAttorneyOpen":("flat",  "Organization", "Job Title", "Apply Here",   "Posted Date",  False),
+    "piAttorneyPast":("flat",  "Organization", "Job Title", "Apply Here",   "Posted Date",  False),
+}
+_LU_SIG_EXCLUDE = {"Last updated", "Last Updated", "_srcUpdated", "_srcAt", "_luAt", "Firm Profile"}
+
+
+def _lu_norm(s):
+    if isinstance(s, dict):
+        return _lu_norm(s.get("href") or s.get("text"))
+    s = "" if s is None else str(s)
+    return re.sub(r"\s+", " ", s.replace("–", "-").replace("—", "-")).strip().lower().rstrip(".,;: ")
+
+
+def _lu_key(name_col, pos_col, link_col, row):
+    if link_col:
+        cell = row.get(link_col)
+        href = cell.get("href") if isinstance(cell, dict) else None
+        if href:
+            m = _LU_JOBID_RE.search(href)
+            if m:
+                return "job:" + m.group(1)
+    parts = [_lu_norm(row.get(name_col))]
+    if pos_col:
+        parts.append(_lu_norm(row.get(pos_col)))
+    return "cmp:" + "|".join(parts)
+
+
+def _lu_sig(row):
+    return tuple(sorted((k, _lu_norm(v)) for k, v in row.items() if k not in _LU_SIG_EXCLUDE))
+
+
+def _lu_rows(shape, tbl):
+    if tbl is None:
+        return []
+    return ((tbl.get("open") or []) + (tbl.get("upcoming") or [])) if shape == "split" else tbl
+
+
+def _lu_date(v):
+    """Normalize a source date to 'Mon D, YYYY' (from ISO or M/D/YYYY); pass other text through."""
+    s = str(v).strip()
+    m = re.match(r"^(\d{4})-(\d\d)-(\d\d)", s)
+    if not m:
+        m2 = re.match(r"^(\d{1,2})/(\d{1,2})/(\d{4})$", s)
+        if m2:
+            mo, da, yr = int(m2.group(1)), int(m2.group(2)), int(m2.group(3))
+            try:
+                return datetime.date(yr, mo, da).strftime("%b %-d, %Y")
+            except ValueError:
+                return s
+        return s
+    try:
+        return datetime.date(int(m.group(1)), int(m.group(2)), int(m.group(3))).strftime("%b %-d, %Y")
+    except ValueError:
+        return s
+
+
+def _lu_seed(row, seed_col, today):
+    if seed_col:
+        v = row.get(seed_col)
+        if v and str(v) not in ("", "—"):
+            return _lu_date(v)
+    return today
+
+
+def stamp_last_updated(tables: dict, prev_tables: dict) -> None:
+    today = TODAY.strftime("%b %-d, %Y")
+    for key, (shape, name_col, pos_col, link_col, seed_col, drop_seed) in _LU_TABLES.items():
+        prev = {_lu_key(name_col, pos_col, link_col, r): r for r in _lu_rows(shape, (prev_tables or {}).get(key))}
+        for row in _lu_rows(shape, tables.get(key)):
+            p = prev.get(_lu_key(name_col, pos_col, link_col, row))
+            if p is None:
+                row["Last updated"] = _lu_seed(row, seed_col, today)
+            elif _lu_sig(p) == _lu_sig(row):
+                row["Last updated"] = _lu_date(p["Last updated"]) if p.get("Last updated") else _lu_seed(row, seed_col, today)
+            else:
+                row["Last updated"] = today
+            if drop_seed and seed_col:
+                row.pop(seed_col, None)
+
+
+def _lu_timed(v):
+    """The raw source value if it carries a time component (ISO with T HH:MM), else None."""
+    return str(v) if v and re.search(r"T\d\d:\d\d", str(v)) else None
+
+
+def stamp_last_updated_at(tables: dict, prev_tables: dict) -> None:
+    """Companion to stamp_last_updated: a full ISO timestamp ("_luAt") for the DETAIL view's
+    time display. Same add/edit/carry diff, but tracks a datetime rather than a date:
+      new  -> the source's own datetime when timed (Metabase UPDATED_AT / PI createdTime);
+              None for a date-only source (detail then shows date only); else now (added now)
+      edit -> now;   unchanged -> carry forward the prior _luAt (else re-derive from source)
+    Keyed and signature-compared exactly like the date stamp; "_srcAt" is consumed and dropped."""
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    for key, (shape, name_col, pos_col, link_col, seed_col, drop_seed) in _LU_TABLES.items():
+        prev = {_lu_key(name_col, pos_col, link_col, r): r for r in _lu_rows(shape, (prev_tables or {}).get(key))}
+        for row in _lu_rows(shape, tables.get(key)):
+            src = row.get("_srcAt")
+            timed = _lu_timed(src)
+            fresh = timed if timed else (None if src else now_iso)  # date-only source -> None; no source -> now
+            p = prev.get(_lu_key(name_col, pos_col, link_col, row))
+            if p is None:
+                at = fresh
+            elif _lu_sig(p) == _lu_sig(row):
+                at = p.get("_luAt") or fresh
+            else:
+                at = now_iso
+            if at:
+                row["_luAt"] = at
+            row.pop("_srcAt", None)
+
+
 WIRED = [wire_public_interest, wire_campus_exams, wire_lateral, wire_pc, wire_entry3l,
          wire_summer_split, wire_lateral_charts, wire_partner_charts, wire_threeL_charts,
          wire_postclerk_charts, wire_lawstudent_charts, wire_overview_stats]
@@ -1447,9 +1657,12 @@ WIRED = [wire_public_interest, wire_campus_exams, wire_lateral, wire_pc, wire_en
 
 def main() -> None:
     data = json.loads(DATA_JSON.read_text(encoding="utf-8"))  # snapshot base
+    prev_tables = copy.deepcopy(data.get("tables", {}))        # prior committed rows, for "Last updated" diffing
     print(f"loaded snapshot; wiring {len(WIRED)} live section(s)")
     for fn in WIRED:
         fn(data)
+    stamp_last_updated(data.get("tables", {}), prev_tables)    # per-row "Last updated" date (add/edit detection)
+    stamp_last_updated_at(data.get("tables", {}), prev_tables)  # per-row "_luAt" datetime for the detail-view time
     data.setdefault("meta", {})["generatedAt"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
     DATA_JSON.write_text(json.dumps(data, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"wrote {DATA_JSON}")
