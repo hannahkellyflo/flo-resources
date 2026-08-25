@@ -435,18 +435,37 @@ ENTRY3L_WHERE = r"""
   AND LOWER(j.TITLE) NOT REGEXP 'summer|intern|extern|clerk|test|vacation|fellowship|networking|\\boci\\b|resume|general submission|general consideration|\\blateral\\b|managing counsel|training contract|sign.?up|\\bselsc\\b|\\b1l\\b|\\b2l\\b'"""
 
 
-def _norm_3l_practice(firm, position):
-    """Firm + normalized practice, so an Airtable survey entry and its now-live Forward posting
-    collapse to one key despite differing titles. Strips the interchangeable 'Application'/'Position'
-    wording, the '2027 New Associate' boilerplate, years, and trailing '(offices)' parentheticals.
-    e.g. 'Corporate: Capital Markets (Multiple Offices)' == 'Corporate: Capital Markets'."""
+_PRACTICE_STOP = {"the", "and", "of", "for", "a", "an"}  # non-distinguishing filler tokens
+
+
+def _practice_norm(firm, position):
+    """(firm_key, token_set) for an entry-level role, so an Airtable survey entry and its now-live
+    Forward posting collapse despite differing titles. Strips the interchangeable
+    'Application'/'Position' wording, the '2027 New Associate' boilerplate, years and '(offices)'
+    parentheticals, then reduces to a *set* of tokens so word order and an appended office
+    ("... – New York") no longer block a match. e.g. 'Associate- Entry Level (Fall 2027)' and
+    '2027 Entry Level Associate – New York' both include {associate, entry, level}."""
     s = (position or "").lower()
     s = re.sub(r"\(.*?\)", " ", s)                    # drop office parentheticals
     s = re.sub(r"\b(application|position)\b", " ", s)  # Application/Position are the same role here
     s = re.sub(r"\bnew associate\b", " ", s)
     s = re.sub(r"\b20\d\d\b", " ", s)                 # drop the cycle year
-    s = re.sub(r"[^a-z0-9]+", " ", s).strip()
-    return (re.sub(r"[^a-z0-9]+", "", (firm or "").lower()), s)
+    toks = {t for t in re.split(r"[^a-z0-9]+", s) if t and t not in _PRACTICE_STOP}
+    return (re.sub(r"[^a-z0-9]+", "", (firm or "").lower()), frozenset(toks))
+
+
+def _practice_dup(a, b) -> bool:
+    """True when two (firm_key, token_set) roles are the same posting under different titles:
+    same firm and one token set contains the other, with >=2 shared meaningful tokens so a lone
+    'associate' never collapses genuinely distinct roles. This subset (not exact) match is what
+    lets a survey title with an appended office ('Entry Level Associate – New York') dedupe against
+    a live posting that omits it ('Associate- Entry Level'). Leans toward dropping a redundant
+    'upcoming' survey row when the firm already has a live posting for the same core role."""
+    (fa, ta), (fb, tb) = a, b
+    if fa != fb or not ta or not tb:
+        return False
+    small = ta if len(ta) <= len(tb) else tb
+    return len(small) >= 2 and (ta <= tb or tb <= ta)
 
 
 def wire_entry3l(data: dict) -> None:
@@ -470,7 +489,7 @@ def wire_entry3l(data: dict) -> None:
     # has a live posting for the same practice under a different title (no shared Job ID, "Application"
     # vs "Position", "(offices)" suffix) — e.g. Latham's 19 roles were showing twice. Only the
     # not-yet-open Airtable side is dropped; live rows are untouched.
-    live_norm = {_norm_3l_practice(r.get("firm"), r.get("position")) for r in rows}
+    live_practice = [_practice_norm(r.get("firm"), r.get("position")) for r in rows]
     da_added = 0
     for row in direct_apply_rows():
         if row["level"] != "3L" or row["class"] != 2027:
@@ -480,8 +499,9 @@ def wire_entry3l(data: dict) -> None:
         k2 = (row["firm"].strip().lower(), row["position"].strip().lower())
         if k2 in seen:
             continue
-        if _norm_3l_practice(row["firm"], row["position"]) in live_norm:
-            continue                                    # same firm+practice already live under a different title
+        pr = _practice_norm(row["firm"], row["position"])
+        if any(_practice_dup(pr, lp) for lp in live_practice):
+            continue                                    # same firm+role already live under a different title
         seen.add(k2); da_added += 1
         table.append({
             "Employer": row["firm"],
