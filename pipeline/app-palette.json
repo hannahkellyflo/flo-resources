@@ -18,6 +18,8 @@
   "#3B3D44": "#161617",
   "#3E0C2D": "#161617",
   "#4A444C": "#161617",
+  "#4D8EFF": "#3B6DA3",
+  "#4DA54C": "#2E9C56",
   "#574463": "#161617",
   "#57534C": "#393B41",
   "#6B6862": "#5C606B",
@@ -26,6 +28,7 @@
   "#7D766C": "#5C606B",
   "#8A857C": "#5C606B",
   "#9A948C": "#8E95A5",
+  "#9DC3FF": "#7DADD0",
   "#A39D93": "#8E95A5",
   "#A8A29A": "#8E95A5",
   "#B0A99F": "#8E95A5",
@@ -69,10 +72,29 @@
   "#F7F5F0": "#FAFBFC",
   "#FAF9F6": "#EDF5FC",
   "#FBFAF6": "#F8FAFC",
+  "#FC97C2": "#B27EBB",
   "#FCEBD5": "#E7E7E7"
  },
  "_scope": "Derived from every hex in the template, not just inline style= attributes -- chart gridlines, scrollbars and hover states live only in <style> blocks and JS.",
- "_protected": "chart series colours, plus anything with chroma > 60 (errors, warnings, status tints)",
+ "_protected": "Anything with chroma > 60 that carries meaning on its own (errors, warnings, status tints). Chart series are no longer protected -- they map onto the Flo Kit accent ramps.",
  "_tint": "Tracker tinted surfaces (caption rows, header rows, row hovers, scrollbar tracks) map to Flo Kit white-10 #F8FAFC, not pure white -- keeping the shade of separation from the card surface that the warm theme had.",
- "_contrast": "Stat numerals and active-tab colour use primary/50 #0174BE, not the darkest step. The tab track and card header band sit on primary/10 #EDF5FC so they separate from the white surfaces they contain. Uppercase table headers and eyebrow labels take neutral/80 #393B41 rather than foreground/muted #5C606B -- muted lost 1.35 of contrast against the tracker's warm grey, and small letterspaced caps need it back."
+ "_contrast": "Stat numerals and active-tab colour use primary/50 #0174BE, not the darkest step. The tab track and card header band sit on primary/10 #EDF5FC so they separate from the white surfaces they contain. Uppercase table headers and eyebrow labels take neutral/80 #393B41 rather than foreground/muted #5C606B -- muted lost 1.35 of contrast against the tracker's warm grey, and small letterspaced caps need it back.",
+ "_charts": "Chart series -> accent ramps, chosen by CIELAB distance with two overrides: both blues go to the info ramp rather than primary, so data never wears the same blue as buttons, links and the active tab; and #4D8EFF darkens more than distance alone would ask, because it also sets uppercase label text that only scored 3.17 on white. blue #4D8EFF -> info/50 #3B6DA3, light blue #9DC3FF -> info/30 #7DADD0, green #4DA54C -> success/40 #2E9C56, pink #FC97C2 -> purple/30 #B27EBB. #192B92 is split by context (see 'context' above) because it is both a UI accent and a series colour.",
+ "context": [
+  {
+   "find": "'#192B92'",
+   "to": "'#3B6DA3'",
+   "why": "Quoted = JS chart config: lineChart/barChart series colours, donut and point fills, the series-by-year maps. Sends them to info/50, keeping data off the primary blue that buttons, links and the active tab wear."
+  },
+  {
+   "find": "stroke=\"#192B92\"",
+   "to": "stroke=\"#3B6DA3\"",
+   "why": "Donut ring in the static SVG."
+  },
+  {
+   "find": "background:#192B92",
+   "to": "background:#3B6DA3",
+   "why": "Legend swatch beside a series label."
+  }
+ ]
 }

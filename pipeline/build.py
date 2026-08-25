@@ -159,7 +159,7 @@ HEAD_TEMPLATE = """<meta charset="utf-8">
 """
 
 
-def retheme(body, palette, fonts, buttons, sizes):
+def retheme(body, palette, fonts, buttons, sizes, contexts=None):
     """Recolour and re-font the app variant.
 
     The tracker sets colour in 554 inline style= attributes, which beat any stylesheet, so
@@ -182,6 +182,12 @@ def retheme(body, palette, fonts, buttons, sizes):
         body, n = re.subn(re.escape(src), dst, body)
         swapped["button"] = swapped.get("button", 0) + n
 
+    # Context rules: literal substrings that pin a colour to one *role* before the flat hex map
+    # gets a chance to collapse both roles onto one token. Same trick as the button map above.
+    for rule in (contexts or []):
+        body, n = re.subn(re.escape(rule["find"]), lambda _m, t=rule["to"]: t, body)
+        swapped["context"] = swapped.get("context", 0) + n
+
     # The palette is an explicit allowlist of the tracker's warm neutrals, so it can be applied
     # to the whole body rather than scoped to style attributes: chart series colours, status
     # pill colours and warning tints simply aren't in it and can never match. That coverage
@@ -189,9 +195,13 @@ def retheme(body, palette, fonts, buttons, sizes):
     # fill=/stroke= attributes and JS chart config, and scoping to any one of those left the
     # others warm.
     #
-    # One deliberate exception to "series colours are untouched": #192B92 is both a stat-number
-    # colour and a chart series colour, so mapping it moves that series to the product's own
-    # strong blue (#013B5D). It stays distinct from the other series.
+    # #192B92 is the one hex the flat map cannot handle: the tracker uses it both as a UI accent
+    # (active tab, stat numerals, section headings -- inline style=) and as a chart series
+    # colour (sparkline stroke and dots, donut, bar fill, legend swatch -- quoted in JS and in
+    # SVG attributes). The palette sends it to primary/50 for the UI, which is correct there and
+    # wrong for a data series: it would make chart lines the same blue as buttons and links. The
+    # context rules above run first and peel the chart uses off to the info ramp, so by the time
+    # the flat pass runs only the UI occurrences are left.
     for src, dst in palette.items():
         body, n = re.subn(re.escape(src), dst, body, flags=re.I)
         swapped["colour"] += n
@@ -232,12 +242,14 @@ def build_variant(template_text, shell_text, variant):
 
     body = extract_body(dc_text)
     if variant.get("retheme"):
-        palette = json.loads(PALETTE_JSON.read_text(encoding="utf-8"))["map"]
+        palette_doc = json.loads(PALETTE_JSON.read_text(encoding="utf-8"))
+        palette = palette_doc["map"]
         fonts = {"'SeasonMix'": "'Inter'", "'Zalando Sans'": "'Inter'"}
-        body, swapped = retheme(body, palette, fonts, variant.get("buttons"), variant.get("sizes"))
-        print("  [%s] retheme: %d colour, %d button, %d size, %d font swaps, %d @font-face dropped"
+        body, swapped = retheme(body, palette, fonts, variant.get("buttons"),
+                                variant.get("sizes"), palette_doc.get("context"))
+        print("  [%s] retheme: %d colour, %d button, %d size, %d font swaps, %d context, %d @font-face dropped"
               % (variant["name"], swapped["colour"], swapped.get("button", 0), swapped.get("size", 0), swapped["font"],
-                 swapped.get("faces_dropped", 0)))
+                 swapped.get("context", 0), swapped.get("faces_dropped", 0)))
     enc = json.dumps(body).replace("</script", "<\\/script").replace("<!--", "<\\!--")
 
     i = shell_text.find("window.__DC_SRC__=")
