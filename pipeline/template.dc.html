@@ -2700,7 +2700,7 @@ class Component extends DCLogic {
         const mktByWin = DATA.charts.threeL.marketByWindow;
         const winLbl = mktWin === '12mo' ? 'Past 12 months' : mktWin === '3mo' ? 'Past 3 months' : 'Open now';
         const practiceBar = { title: '3L entry-level hiring on Flo by practice area', sub: winLbl + ' · ' + totalByWin[mktWin] + ' roles', svg: barChart(pracByWin[mktWin], '#192B92', 7), legend: [], hasToggle: true };
-        const marketBar = { title: '3L entry-level hiring on Flo by market', sub: winLbl + ' · ' + totalByWin[mktWin] + ' roles', svg: barChart(mktByWin[mktWin], '#4D8EFF', 7), legend: [], hasToggle: true };
+        const marketBar = { title: '3L entry-level hiring on Flo by market', sub: winLbl + ' · ' + totalByWin[mktWin] + ' roles across ' + mktByWin[mktWin].length + ' U.S. markets · bubble size = listings (roles may span markets)', svg: usMap(mktByWin[mktWin]), legend: [], hasToggle: true };
         marketCharts = [timeline, practiceBar, marketBar];
       } else if (isLatMarket) {
         // Lateral non-partner market data — Metabase #5413 base filters + hiring type
