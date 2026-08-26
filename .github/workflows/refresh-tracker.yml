@@ -37,7 +37,9 @@ jobs:
         run: |
           git config user.name "flo-tracker-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add pipeline/data.json site/tracker/index.html
+          # build.py writes both variants; staging only the public one left the in-app
+          # copy frozen at whatever was last committed by hand.
+          git add pipeline/data.json site/tracker/index.html site/app/tracker/index.html
           if git diff --cached --quiet; then
             echo "No changes to commit."
           else
