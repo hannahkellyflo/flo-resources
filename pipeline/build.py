@@ -159,7 +159,7 @@ HEAD_TEMPLATE = """<meta charset="utf-8">
 """
 
 
-def retheme(body, palette, fonts, buttons, sizes):
+def retheme(body, palette, fonts, buttons, sizes, contexts=None):
     """Recolour and re-font the app variant.
 
     The tracker sets colour in 554 inline style= attributes, which beat any stylesheet, so
@@ -173,6 +173,13 @@ def retheme(body, palette, fonts, buttons, sizes):
     # button fill from the same colour used as heading text -- the tracker's dark maroon is
     # both. These are Flo Kit *action* tokens (primary #0174BE, primary-hover #0167A9), not
     # the neutral text tokens the palette would otherwise assign.
+    # Context rules: literal substrings that pin a colour to one *role* before the flat hex map
+    # gets a chance to collapse both roles onto one token. Runs first, so rules are written
+    # against the template exactly as authored -- not against whatever the size pass left behind.
+    for rule in (contexts or []):
+        body, n = re.subn(re.escape(rule["find"]), lambda _m, t=rule["to"]: t, body)
+        swapped["context"] = swapped.get("context", 0) + n
+
     for src, dst in (sizes or {}).items():
         px = src.split(":")[1]
         body, n = re.subn(r'font-size:\s*' + re.escape(px), dst, body)
@@ -189,9 +196,13 @@ def retheme(body, palette, fonts, buttons, sizes):
     # fill=/stroke= attributes and JS chart config, and scoping to any one of those left the
     # others warm.
     #
-    # One deliberate exception to "series colours are untouched": #192B92 is both a stat-number
-    # colour and a chart series colour, so mapping it moves that series to the product's own
-    # strong blue (#013B5D). It stays distinct from the other series.
+    # #192B92 is the one hex the flat map cannot handle: the tracker uses it both as a UI accent
+    # (active tab, stat numerals, section headings -- inline style=) and as a chart series
+    # colour (sparkline stroke and dots, donut, bar fill, legend swatch -- quoted in JS and in
+    # SVG attributes). The palette sends it to primary/50 for the UI, which is correct there and
+    # wrong for a data series: it would make chart lines the same blue as buttons and links. The
+    # context rules above run first and peel the chart uses off to the info ramp, so by the time
+    # the flat pass runs only the UI occurrences are left.
     for src, dst in palette.items():
         body, n = re.subn(re.escape(src), dst, body, flags=re.I)
         swapped["colour"] += n
@@ -223,6 +234,41 @@ def extract_body(dc_text: str) -> str:
     return body
 
 
+# Every chart legend is a set of series that must stay visually distinct. The retheme maps
+# colours by hex, which has no idea two of them sit in the same legend -- mapping #4D8EFF and
+# #192B92 onto one ramp step once rendered "Class of 2026" and "Class of 2028" identical, and
+# nothing caught it but a screenshot. This asserts the property directly on the built body.
+SERIES_SETS = (
+    # (description, pattern, how many the template is known to contain)
+    ("year/class series map", re.compile(r"\{ *'(?:\d{4}-\d{4}|Class of \d{4})':.{0,240}?\};"), 2),
+    ("lineChart() call", re.compile(r"lineChart\(\[\{.{0,300}?\}\]"), 2),
+)
+SERIES_COLOUR = re.compile(r"'(#[0-9A-Fa-f]{6})'")
+
+
+def check_series_distinct(body, name):
+    """Fail the build if any one chart draws two series in the same colour."""
+    for label, pattern, expected in SERIES_SETS:
+        found = pattern.findall(body)
+        # A regex that silently stops matching would make this check pass by doing nothing,
+        # which is the failure mode this guard exists to prevent. Pin the count.
+        assert len(found) == expected, (
+            "[%s] %s: matched %d, expected %d.\n"
+            "   If a chart was added or removed on purpose, update the count here.\n"
+            "   Otherwise the markup moved and this check has stopped looking at the charts:\n"
+            "   fix the pattern rather than the number."
+            % (name, label, len(found), expected))
+        for chunk in found:
+            colours = [c.upper() for c in SERIES_COLOUR.findall(chunk)]
+            if len(colours) < 2:
+                continue
+            dupes = {c for c in colours if colours.count(c) > 1}
+            assert not dupes, (
+                "[%s] %s draws two series in %s -- they will be indistinguishable in the legend.\n"
+                "   %s\n   Give one of them a different step in app-palette.json."
+                % (name, label, ", ".join(sorted(dupes)), chunk[:200]))
+
+
 def build_variant(template_text, shell_text, variant):
     """Write one variant's page. Same template and data for every variant; only the injected
     VARIANT config, the head metadata and the trailing CSS differ."""
@@ -232,12 +278,15 @@ def build_variant(template_text, shell_text, variant):
 
     body = extract_body(dc_text)
     if variant.get("retheme"):
-        palette = json.loads(PALETTE_JSON.read_text(encoding="utf-8"))["map"]
+        palette_doc = json.loads(PALETTE_JSON.read_text(encoding="utf-8"))
+        palette = palette_doc["map"]
         fonts = {"'SeasonMix'": "'Inter'", "'Zalando Sans'": "'Inter'"}
-        body, swapped = retheme(body, palette, fonts, variant.get("buttons"), variant.get("sizes"))
-        print("  [%s] retheme: %d colour, %d button, %d size, %d font swaps, %d @font-face dropped"
+        body, swapped = retheme(body, palette, fonts, variant.get("buttons"),
+                                variant.get("sizes"), palette_doc.get("context"))
+        print("  [%s] retheme: %d colour, %d button, %d size, %d font swaps, %d context, %d @font-face dropped"
               % (variant["name"], swapped["colour"], swapped.get("button", 0), swapped.get("size", 0), swapped["font"],
-                 swapped.get("faces_dropped", 0)))
+                 swapped.get("context", 0), swapped.get("faces_dropped", 0)))
+    check_series_distinct(body, variant["name"])
     enc = json.dumps(body).replace("</script", "<\\/script").replace("<!--", "<\\!--")
 
     i = shell_text.find("window.__DC_SRC__=")
