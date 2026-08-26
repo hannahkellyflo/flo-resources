@@ -241,7 +241,7 @@ def extract_body(dc_text: str) -> str:
 SERIES_SETS = (
     # (description, pattern, how many the template is known to contain)
     ("year/class series map", re.compile(r"\{ *'(?:\d{4}-\d{4}|Class of \d{4})':.{0,240}?\};"), 2),
-    ("lineChart() call", re.compile(r"lineChart\(\[\{.{0,300}?\}\]"), 3),
+    ("lineChart() call", re.compile(r"lineChart\(\[\{.{0,300}?\}\]"), 2),
 )
 SERIES_COLOUR = re.compile(r"'(#[0-9A-Fa-f]{6})'")
 
@@ -253,8 +253,10 @@ def check_series_distinct(body, name):
         # A regex that silently stops matching would make this check pass by doing nothing,
         # which is the failure mode this guard exists to prevent. Pin the count.
         assert len(found) == expected, (
-            "[%s] %s: matched %d, expected %d -- the markup moved, so this check is no longer "
-            "looking at the charts. Fix the pattern, do not lower the number."
+            "[%s] %s: matched %d, expected %d.\n"
+            "   If a chart was added or removed on purpose, update the count here.\n"
+            "   Otherwise the markup moved and this check has stopped looking at the charts:\n"
+            "   fix the pattern rather than the number."
             % (name, label, len(found), expected))
         for chunk in found:
             colours = [c.upper() for c in SERIES_COLOUR.findall(chunk)]

@@ -14,9 +14,10 @@ Design notes (Hannah 2026-08-21):
   * Rows are keyed on the Flo job ID from the listing URL (/jobs/<id>) when present, with
     a normalized employer|position composite fallback for the link-less tables (upcoming,
     campus, exams). This kills the punctuation-churn false positives (en-dash vs hyphen).
-  * Reported in the EMAIL: new items, open-date changes, campus program-date changes,
-    exam/grade-date changes. NOT close-date changes (those go to the Slack digest only)
-    and NOT removals.
+  * EMAIL content: new items, open-date changes, campus program-date changes, exam/grade-date
+    changes. SLACK-ONLY (context for Elizabeth, never in the email): close-date changes, removals
+    (a keyed row present before and gone after), and general edits (non-date fields like
+    title/office/comp changing on an existing row).
 
 Usage:
   diff_data.py <from_ref> <to_ref>      # diff two data.json versions
@@ -136,6 +137,29 @@ def load_data(ref):
     return json.loads(out.stdout).get("tables", {})
 
 
+def _common(cfg, row):
+    return {"audience": cfg["audience"], "section": cfg["section"],
+            "table": cfg["key"], "key": _row_key(cfg, row),
+            "entity": row.get(cfg["name"]),
+            "pos": row.get(cfg["pos"]) if cfg.get("pos") else None,
+            "link": _link_href(row.get(cfg.get("link"))) if cfg.get("link") else None,
+            "profile": _link_href(row.get(cfg.get("profile"))) if cfg.get("profile") else None}
+
+
+# Non-content columns skipped when detecting a general "edit" (metadata / timestamps, not the listing itself).
+EDIT_EXCLUDE = {"Firm Profile", "Last updated", "Last Updated", "_luAt", "Posted Date", "_srcAt", "_srcUpdated"}
+
+
+def _edit_val(v):
+    """Compact, safe display of an edited cell value (unwraps links, trims long text)."""
+    if isinstance(v, dict):
+        v = v.get("text") or v.get("href") or ""
+    s = ("" if v is None else str(v)).strip()
+    if not s or s == "—":
+        return "—"
+    return (s[:57] + "…") if len(s) > 60 else s
+
+
 def diff(from_ref, to_ref):
     """Return a list of change dicts for a single from->to step."""
     a, b = load_data(from_ref), load_data(to_ref)
@@ -143,13 +167,9 @@ def diff(from_ref, to_ref):
     for cfg in TABLES:
         ar = {_row_key(cfg, r): r for r in _rows(cfg, a)}
         br = {_row_key(cfg, r): r for r in _rows(cfg, b)}
+        dated = set(filter(None, [cfg.get("open_date"), cfg.get("close_date")])) | set(cfg.get("date_cols", []))
         for k, row in br.items():
-            common = {"audience": cfg["audience"], "section": cfg["section"],
-                      "table": cfg["key"], "key": k,
-                      "entity": row.get(cfg["name"]),
-                      "pos": row.get(cfg["pos"]) if cfg.get("pos") else None,
-                      "link": _link_href(row.get(cfg.get("link"))) if cfg.get("link") else None,
-                      "profile": _link_href(row.get(cfg.get("profile"))) if cfg.get("profile") else None}
+            common = _common(cfg, row)
             if k not in ar:  # ── addition ──
                 if not cfg.get("adds", True):
                     continue
@@ -174,6 +194,18 @@ def diff(from_ref, to_ref):
                 if _norm(o) != _norm(n):
                     changes.append(dict(common, kind="program_date", field=col,
                                         old=o, new=n))
+            # ── general field edits beyond the dated fields (Slack daily only, never the email) ──
+            edits = []
+            for col in sorted((set(old) | set(row)) - EDIT_EXCLUDE - dated):
+                o, n = old.get(col), row.get(col)
+                if _norm(o) != _norm(n):
+                    edits.append({"field": col, "old": _edit_val(o), "new": _edit_val(n)})
+            if edits:
+                changes.append(dict(common, kind="edit", edits=edits))
+        # ── removals: a keyed row present before and gone after (Slack daily only, never the email) ──
+        for k, old in ar.items():
+            if k not in br:
+                changes.append(dict(_common(cfg, old), kind="remove"))
     return changes
 
 
