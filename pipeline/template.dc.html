@@ -460,7 +460,7 @@
                     <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#9A948C;">Opened past 12 months</div>
                     <div style="display:flex;align-items:baseline;gap:10px;margin-top:7px;">
                       <span style="font-family:'Zalando Sans',sans-serif;font-size:27px;font-weight:600;letter-spacing:-0.02em;line-height:1;color:#192B92;">{{ ovLpVal }}</span>
-                      <span style="font-size:12px;color:#B0A99F;">partner listings · aggregate market trends</span>
+                      <span style="font-size:12px;color:#B0A99F;">partner pipelines · aggregate market trends</span>
                     </div>
                   </div>
                 </div>
@@ -2757,11 +2757,11 @@ class Component extends DCLogic {
         // NOTE: the partner by-month timeline chart was removed (Hannah 2026-08-25) — it was dominated by
         // evergreen candidate-pool/pipeline listings (+ a stray test listing), so it misrepresented genuine
         // search volume. Remaining partner charts: practice area, market (by city), candidate source.
-        // Past 12 months only (no window toggle). Practice title-derived; most partner listings name no area.
+        // Past 12 months only (no window toggle). Practice title-derived; most partner pipelines name no area.
         const pPrac = DATA.charts.partner.practice;
-        const practiceBar = { title: 'Lateral partner hiring on Flo by practice area', sub: 'Past 12 months · 69 listings · title-derived where specified', svg: barChart(pPrac, '#192B92', 8), legend: [] };
+        const practiceBar = { title: 'Lateral partner hiring on Flo by practice area', sub: 'Past 12 months · 69 pipelines · title-derived where specified', svg: barChart(pPrac, '#192B92', 8), legend: [] };
         const pMkt = DATA.charts.partner.market;
-        const marketBar = { title: 'Lateral partner hiring on Flo by market', sub: 'Past 12 months · 69 listings across ' + pMkt.length + ' U.S. markets · bubble size = listings (roles may span markets)', svg: usMap(pMkt), legend: [] };
+        const marketBar = { title: 'Lateral partner hiring on Flo by market', sub: 'Past 12 months · 69 pipelines across ' + pMkt.length + ' U.S. markets · bubble size = pipelines (roles may span markets)', svg: usMap(pMkt), legend: [] };
         // Candidate source by funnel stage (warehouse job_applications, job_type='Lateral Partner', since Jan 2025).
         // Distinct candidates (matches the non-partner donut method); stage = furthest core bucket reached, rolled up
         // from the custom status string (Interview+/Offer+ include candidates rejected AT that stage). Demo orgs
@@ -2909,7 +2909,7 @@ class Component extends DCLogic {
       show3LMkt: is3LMarket,
       showScopeToggle: false, // All-schools/Top-15 toggle removed (Hannah 2026-08-03); charts default to all schools
       showMktHeader: !isPartnerMarket, // Lateral Partner market hides the eyebrow + its padding (Hannah 2026-08-21)
-      mktHeader: is3LMarket ? '3L entry-level hiring · Airtable 3L Jobs (incl. closed) · updated daily' : isPCMarket ? 'Firm-hosted judicial clerk receptions · Metabase events & registrations · recruiting cycle Sep–Aug' : isLatMarket ? 'Lateral associate, counsel & staff attorney listings · Metabase · updated daily' : isPartnerMarket ? 'Lateral partner listings · Metabase · trailing 12 months' : 'Monthly volume by recruiting cycle (September–August) · updated daily',
+      mktHeader: is3LMarket ? '3L entry-level hiring · Airtable 3L Jobs (incl. closed) · updated daily' : isPCMarket ? 'Firm-hosted judicial clerk receptions · Metabase events & registrations · recruiting cycle Sep–Aug' : isLatMarket ? 'Lateral associate, counsel & staff attorney listings · Metabase · updated daily' : isPartnerMarket ? 'Lateral partner pipelines · Metabase · trailing 12 months' : 'Monthly volume by recruiting cycle (September–August) · updated daily',
       win12: mktWin === '12mo', win3: mktWin === '3mo', winOpen: mktWin === 'open',
       onWin12: () => this.setState({ mktWin: '12mo' }),
       onWin3: () => this.setState({ mktWin: '3mo' }),
