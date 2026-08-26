@@ -960,14 +960,16 @@ GROUP BY yr, mo""")
     print(f"  lateral charts: timeline + totals + market + grad + practice + source")
 
 
-def cycle_series(by: dict, cycle_start_year: int, axis_start=6) -> list:
-    """12-elem array on a cycle axis starting at `axis_start` month (6=Jun..May).
-    `by` = {(yr,mo): n}. The current month shows its month-to-date value; only
+def cycle_series(by: dict, cycle_start_year: int, axis_start=6, length=12) -> list:
+    """`length`-elem array on a cycle axis starting at `axis_start` month (6=Jun).
+    `by` = {(yr,mo): n}. Handles spans >12 months (3L entry-level hiring for a class
+    runs ~18 months: it opens the summer before 3L year and tails past May graduation
+    into the following fall). The current month shows its month-to-date value; only
     strictly-future months are null."""
     out = []
-    for i in range(12):
-        mo = (axis_start - 1 + i) % 12 + 1
-        yr = cycle_start_year + (1 if mo < axis_start else 0)
+    for i in range(length):
+        m0 = (axis_start - 1) + i          # absolute month offset from Jan of cycle_start_year
+        mo, yr = m0 % 12 + 1, cycle_start_year + m0 // 12
         future = (yr, mo) > (TODAY.year, TODAY.month)
         out.append(None if future else by.get((yr, mo), 0))
     return out
@@ -1036,13 +1038,15 @@ WHERE j.DELETED_AT IS NULL
   AND (j.JOB_TYPE IN ('ATS','MANUAL_ENTRY') OR j.JOB_TYPE IS NULL) AND j.JOB_CLASSIFICATION = 'LAW_FIRM'
   AND LOWER(o.NAME) NOT REGEXP '%s'
   AND LOWER(j.TITLE) NOT REGEXP '%s'
-  AND j.OPEN_DATE >= '2025-06-01' AND j.OPEN_DATE < '2027-06-01'
+  AND j.OPEN_DATE >= '2025-06-01' AND j.OPEN_DATE < '2027-12-01'
 GROUP BY gyear, yr, mo""" % (DEMO_REGEXP, THREEL_NOISE))
     by = {gy: {(int(r["yr"]), int(r["mo"])): int(r["n"]) for r in rows if int(r["gyear"]) == gy}
           for gy in (2026, 2027)}
+    # 18-month cycle (Jun before 3L year → the following Nov) so a class's post-graduation
+    # summer/fall openings aren't clipped by a 12-month Jun–May window (Hannah 2026-08-25).
     data["charts"]["threeL"]["timeline"] = {
-        "2026": cycle_series(by[2026], 2025),   # Class of 2026 cycle: Jun 2025 – May 2026
-        "2027": cycle_series(by[2027], 2026),   # Class of 2027 cycle: Jun 2026 – May 2027
+        "2026": cycle_series(by[2026], 2025, length=18),   # Class of 2026: Jun 2025 – Nov 2026
+        "2027": cycle_series(by[2027], 2026, length=18),   # Class of 2027: Jun 2026 – Nov 2027
     }
     data["charts"]["threeL"]["marketByWindow"] = _windows(metabase_sql(MB_DB, _market_sql(THREEL_COND)), "city")
     data["charts"]["threeL"]["practiceByWindow"] = _practice_windows(THREEL_COND)

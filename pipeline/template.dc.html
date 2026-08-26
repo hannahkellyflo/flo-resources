@@ -2393,20 +2393,28 @@ class Component extends DCLogic {
       const mkSAcum = (obj, keys, colors) => keys.filter((k) => obj[k] && obj[k].length >= 3).map((k) => ({ label: k, color: colors[k], points: obj[k].slice(2).concat([null, null]) }));
       const hv = this.state.hover;
       const rawFmt = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-      const lineChart = (series, cid, yFix, ax) => {
+      const lineChart = (series, cid, yFix, ax, marker) => {
         const MOx = ax || MO; // optional axis override (accounts chart stays Jul–Jun while others are Sep–Aug)
         const VBW = 780, VBH = 232, padL = 46, padR = 14, padT = 14, padB = 30;
         const plotW = VBW - padL - padR, plotH = VBH - padT - padB, baseY = padT + plotH;
+        const denom = Math.max(1, MOx.length - 1);  // axis is MOx.length points (12 for calendar/cycle, 18 for the 3L extended cycle)
         let maxV = 0; series.forEach((s) => s.points.forEach((v) => { if (v != null && v > maxV) maxV = v; }));
         if (maxV <= 0) maxV = 1;
         const step = Math.pow(10, Math.floor(Math.log10(maxV))); const yMax = yFix || Math.max(step, Math.ceil(maxV / step) * step);
-        const X = (i) => padL + plotW * (i / 11); const Y = (v) => baseY - (v / yMax) * plotH;
+        const X = (i) => padL + plotW * (i / denom); const Y = (v) => baseY - (v / yMax) * plotH;
         const fmt = (v) => (v >= 1000 ? (v % 1000 === 0 ? v / 1000 + 'k' : (v / 1000).toFixed(1) + 'k') : String(v));
         const kids = [];
         for (let g = 0; g <= 4; g++) { const gv = yMax * g / 4, yy = Y(gv);
           kids.push(e('line', { key: 'g' + g, x1: padL, x2: VBW - padR, y1: yy, y2: yy, stroke: '#EFECE4', strokeWidth: 1 }));
           kids.push(e('text', { key: 'gl' + g, x: padL - 8, y: yy + 3, textAnchor: 'end', fontSize: 9, fill: '#9A948C', fontFamily: 'Zalando Sans,sans-serif' }, fmt(Math.round(gv)))); }
         MOx.forEach((m, i) => kids.push(e('text', { key: 'x' + i, x: X(i), y: baseY + 16, textAnchor: 'middle', fontSize: 8.5, fill: '#9A948C', fontFamily: 'Zalando Sans,sans-serif' }, m)));
+        // optional vertical anchor (e.g. the May-graduation line on the 18-month 3L cycle) — dashed, labeled at top
+        if (marker) {
+          const mAt = Math.max(0, Math.min(denom, marker.at));
+          const mx = padL + plotW * (mAt / denom);
+          kids.push(e('line', { key: 'mkln', x1: mx, x2: mx, y1: padT + 10, y2: baseY, stroke: '#C99FB6', strokeWidth: 1, strokeDasharray: '3 3' }));
+          kids.push(e('text', { key: 'mklb', x: mx, y: padT + 7, textAnchor: 'middle', fontSize: 8.5, fontWeight: 700, fill: '#9A2A63', fontFamily: 'Zalando Sans,sans-serif' }, marker.label));
+        }
         series.forEach((s, si) => {
           let d = '', started = false;
           s.points.forEach((v, i) => { if (v == null) return; d += (started ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1) + ' '; started = true; });
@@ -2669,11 +2677,14 @@ class Component extends DCLogic {
         // cycle month. C2027 is pacing AHEAD (Jul 12 vs 6); Aug is the current partial month. Series labels
         // '2025-26'/'2026-27' only anchor the tooltip calendar year; the visible legend shows the class + list years.
         // TEMP snapshot 2026-08-11. NOTE: the practice/market bars below are STILL the Airtable C2026 snapshot.
-        const MO_3L = ['Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May'];
+        // 18-month cycle: a class's roles open the summer before 3L year and keep opening past May graduation
+        // into the following fall, so the axis runs Jun → the next Nov (dashed line marks May graduation).
+        const MO_3L = ['Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'];
+        const GRAD_MARK = { at: 11.5, label: 'graduation' };
         const tl2026 = DATA.charts.threeL.timeline['2026'];
         const tl2027 = DATA.charts.threeL.timeline['2027'];
-        const timeline = { title: '3L entry-level postings on Flo by month', sub: 'By open date · distinct roles · recruiting cycle Jun–May · year over year',
-          svg: lineChart([{ label: '2025-26', color: '#FC97C2', points: tl2026 }, { label: '2026-27', color: '#4DA54C', points: tl2027 }], '3ltl', 0, MO_3L),
+        const timeline = { title: '3L entry-level postings on Flo by month', sub: 'By open date · distinct roles · 18-month hiring cycle (Jun before 3L year → the next Nov) · dashed line = May graduation · year over year',
+          svg: lineChart([{ label: '2025-26', color: '#FC97C2', points: tl2026 }, { label: '2026-27', color: '#4DA54C', points: tl2027 }], '3ltl', 0, MO_3L, GRAD_MARK),
           legend: [{ label: 'Class of 2026 (Listed 2025-2026)', color: '#FC97C2' }, { label: 'Class of 2027 (Listed 2026-2027)', color: '#4DA54C' }] };
         // Windows are nested (open now ⊆ past 3 mo ⊆ past 12 mo): a role counts if it was open at any point in
         // the window, so everything open now is in every window. Past 3 mo = open now + closed in last 3 months.
@@ -2779,7 +2790,8 @@ class Component extends DCLogic {
     {
       const _lg = (s) => s.map((x) => ({ label: x.label, color: x.color }));
       const CAL = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      const MO_3Lt = ['Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May'];
+      const MO_3Lt = ['Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov'];
+      const GRAD_MARK_3L = { at: 11.5, label: 'graduation' };
       const _sid = this.state.subId, _tid = activeTab.id;
       if (_sid === 'lawfirm' && _tid === '1lsummer') {
         const s = mkSA(D.postings, SY, SYC);
@@ -2792,7 +2804,7 @@ class Component extends DCLogic {
         tableChart = { title: 'Law school student interview volume on Flo', sub: 'On-campus interviews · monthly', svg: lineChart(s, 'tcls'), legend: _lg(s), showMarketLink: true, onMarket: () => this.selectTab('market') };
       } else if (_sid === 'entrylevel3l' && _tid === 'entry3l') {
         const s = [{ label: '2025-26', color: '#FC97C2', points: DATA.charts.threeL.timeline['2026'] }, { label: '2026-27', color: '#4DA54C', points: DATA.charts.threeL.timeline['2027'] }];
-        tableChart = { title: '3L entry-level postings on Flo by month', sub: 'By open date · recruiting cycle Jun–May · year over year', svg: lineChart(s, 'tc3l', 0, MO_3Lt), legend: [{ label: 'Class of 2026 (Listed 2025-2026)', color: '#FC97C2' }, { label: 'Class of 2027 (Listed 2026-2027)', color: '#4DA54C' }], showMarketLink: true, onMarket: () => this.selectTab('market') };
+        tableChart = { title: '3L entry-level postings on Flo by month', sub: 'By open date · 18-month hiring cycle · dashed line = May graduation · year over year', svg: lineChart(s, 'tc3l', 0, MO_3Lt, GRAD_MARK_3L), legend: [{ label: 'Class of 2026 (Listed 2025-2026)', color: '#FC97C2' }, { label: 'Class of 2027 (Listed 2026-2027)', color: '#4DA54C' }], showMarketLink: true, onMarket: () => this.selectTab('market') };
       } else if (_sid === 'lateralassoc' && _tid === 'lateral') {
         const s = [{ label: '2025', color: '#4D8EFF', points: DATA.charts.lateral.timeline['2025'] }, { label: '2026', color: '#192B92', points: DATA.charts.lateral.timeline['2026'] }];
         tableChart = { title: 'Lateral non-partner listings on Flo by month', sub: 'By open date · calendar year · unique searches per month', svg: lineChart(s, 'tclat', 0, CAL), legend: [{ label: '2025', color: '#4D8EFF' }, { label: '2026', color: '#192B92' }], showMarketLink: true, onMarket: () => this.selectTab('market') };
