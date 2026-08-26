@@ -100,6 +100,11 @@
    "find": ".campus-row:hover { background: #FBFAF6; }",
    "to": ".campus-row:hover { background: #F8FAFC; }",
    "why": "#FBFAF6 is nine static table footer bands plus this one row hover. The bands want neutral/10; the hover wants surface/hover, so pin it before the flat pass takes it."
+  },
+  {
+   "find": "<div style=\"font-size:13px;color:#8A857C;margin-top:3px;\">",
+   "to": "<div style=\"font-size:13px;color:#9A948C;margin-top:3px;\">",
+   "why": "All eight overview-card subheaders are this one markup shape; seven use #9A948C and the 1L-2L card uses #8A857C. In the warm palette the two greys were 3.67 vs 3.36 on white -- indistinguishable. The Flo Kit mapping puts them either side of the muted/faint boundary (6.29 vs 3.00), so an invisible inconsistency became a loud one. Normalise to the other seven before the flat pass; #8A857C's other 19 uses are real secondary text and keep muted."
   }
  ]
 }

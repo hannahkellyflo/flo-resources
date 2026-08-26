@@ -173,6 +173,13 @@ def retheme(body, palette, fonts, buttons, sizes, contexts=None):
     # button fill from the same colour used as heading text -- the tracker's dark maroon is
     # both. These are Flo Kit *action* tokens (primary #0174BE, primary-hover #0167A9), not
     # the neutral text tokens the palette would otherwise assign.
+    # Context rules: literal substrings that pin a colour to one *role* before the flat hex map
+    # gets a chance to collapse both roles onto one token. Runs first, so rules are written
+    # against the template exactly as authored -- not against whatever the size pass left behind.
+    for rule in (contexts or []):
+        body, n = re.subn(re.escape(rule["find"]), lambda _m, t=rule["to"]: t, body)
+        swapped["context"] = swapped.get("context", 0) + n
+
     for src, dst in (sizes or {}).items():
         px = src.split(":")[1]
         body, n = re.subn(r'font-size:\s*' + re.escape(px), dst, body)
@@ -181,12 +188,6 @@ def retheme(body, palette, fonts, buttons, sizes, contexts=None):
     for src, dst in (buttons or {}).items():
         body, n = re.subn(re.escape(src), dst, body)
         swapped["button"] = swapped.get("button", 0) + n
-
-    # Context rules: literal substrings that pin a colour to one *role* before the flat hex map
-    # gets a chance to collapse both roles onto one token. Same trick as the button map above.
-    for rule in (contexts or []):
-        body, n = re.subn(re.escape(rule["find"]), lambda _m, t=rule["to"]: t, body)
-        swapped["context"] = swapped.get("context", 0) + n
 
     # The palette is an explicit allowlist of the tracker's warm neutrals, so it can be applied
     # to the whole body rather than scoped to style attributes: chart series colours, status
