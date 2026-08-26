@@ -1536,6 +1536,26 @@ def wire_overview_stats(data: dict) -> None:
 
     p12 = int(metabase_sql(MB_DB, PARTNER_12MO_SQL)[0]["n"])
     ov["headerStats"]["lateralpartner"] = [{"label": "Opened past 12 mo", "value": str(p12), "delta": "", "hasDelta": False}]
+    ov["cards"].setdefault("lateralpartner", {})["value"] = p12   # overview card (was a stale snapshot 69)
+
+    # Lateral non-partner overview card tiles — top practice / market / target grad year, derived from the
+    # live open-now breakdowns (were a stale snapshot, e.g. "Class of 2022"). % is of open non-partner roles.
+    lat_ch = data["charts"]["lateral"]
+    _opn = lat_ch.get("totalByWindow", {}).get("open") or 0
+    _pct = lambda n: f"{round(n / _opn * 100)}% of open roles" if _opn else ""
+    _tp = (lat_ch.get("practiceByWindow", {}).get("open") or [])
+    _tm = (lat_ch.get("marketByWindow", {}).get("open") or [])
+    _tg = (lat_ch.get("gradByWindow", {}).get("open") or [])
+    _lat_tiles = []
+    if _tp:
+        _lat_tiles.append({"label": "Top practice area", "value": _tp[0][0], "sub": _pct(_tp[0][1])})
+    if _tm:
+        _lat_tiles.append({"label": "Top market", "value": str(_tm[0][0]).split(",")[0], "sub": _pct(_tm[0][1])})
+    if _tg:
+        _top_g = max(_tg, key=lambda x: x[1])   # gradByWindow is sorted by year; pick the most-targeted
+        _lat_tiles.append({"label": "Top grad year targeted", "value": f"Class of {_top_g[0]}", "sub": "most-targeted year"})
+    if _lat_tiles:
+        ov["cards"].setdefault("lateralassoc", {})["stats"] = _lat_tiles
 
     lf = metabase_sql(MB_DB, LAWFIRM_STATS_SQL)[0]
     # current counts come from the table-derived flow (exact match to the visible table);

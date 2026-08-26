@@ -2910,7 +2910,7 @@ class Component extends DCLogic {
       show3LMkt: is3LMarket,
       showScopeToggle: false, // All-schools/Top-15 toggle removed (Hannah 2026-08-03); charts default to all schools
       showMktHeader: !isPartnerMarket, // Lateral Partner market hides the eyebrow + its padding (Hannah 2026-08-21)
-      mktHeader: is3LMarket ? '3L entry-level hiring · Airtable 3L Jobs (incl. closed) · updated daily' : isPCMarket ? 'Firm-hosted judicial clerk receptions · Metabase events & registrations · recruiting cycle Sep–Aug' : isLatMarket ? 'Lateral associate, counsel & staff attorney listings · Metabase · updated daily' : isPartnerMarket ? 'Lateral partner pipelines · Metabase · trailing 12 months' : 'Monthly volume by recruiting cycle (September–August) · updated daily',
+      mktHeader: is3LMarket ? '3L entry-level hiring · updated daily' : isPCMarket ? 'Firm-hosted judicial clerk receptions · events & registrations · recruiting cycle Sep–Aug' : isLatMarket ? 'Lateral associate, counsel & staff attorney hiring · updated daily' : isPartnerMarket ? 'Lateral partner pipelines · trailing 12 months' : 'Monthly volume by recruiting cycle (September–August) · updated daily',
       win12: mktWin === '12mo', win3: mktWin === '3mo', winOpen: mktWin === 'open',
       onWin12: () => this.setState({ mktWin: '12mo' }),
       onWin3: () => this.setState({ mktWin: '3mo' }),
