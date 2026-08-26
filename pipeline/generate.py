@@ -883,12 +883,14 @@ def _practice(title):
     return "Other / General"
 
 
-def _practice_windows(cond):
+def _practice_windows(cond, open_expr="j.FORWARD_PUBLISHING_STATUS='PUBLISHED'"):
+    """`open_expr` defines the "open now" column (default = published-permanent). The 3L breakdowns
+    pass the takedown-based _E3L_OPEN so their windows match the entry3l table."""
     rows = metabase_sql(MB_DB, f"""
 SELECT j.TITLE AS title,
-  (j.FORWARD_PUBLISHING_STATUS='PUBLISHED') AS o,
-  (j.FORWARD_PUBLISHING_STATUS='PUBLISHED' OR j.OPEN_DATE>=DATE_SUB(NOW(),INTERVAL 3 MONTH)) AS w3,
-  (j.FORWARD_PUBLISHING_STATUS='PUBLISHED' OR j.OPEN_DATE>=DATE_SUB(NOW(),INTERVAL 12 MONTH)) AS w12
+  ({open_expr}) AS o,
+  (({open_expr}) OR j.OPEN_DATE>=DATE_SUB(NOW(),INTERVAL 3 MONTH)) AS w3,
+  (({open_expr}) OR j.OPEN_DATE>=DATE_SUB(NOW(),INTERVAL 12 MONTH)) AS w12
 FROM JOB j JOIN ORG o ON o.ID=j.ORG_ID WHERE {cond}""")
     agg = {"o": {}, "w3": {}, "w12": {}}
     for r in rows:
@@ -1005,6 +1007,39 @@ THREEL_COND = f"""j.DELETED_AT IS NULL AND (j.JOB_TYPE IN ('ATS','MANUAL_ENTRY')
   AND EXISTS (SELECT 1 FROM FORWARD_JOB_GRAD_DATE_TARGET_RULE r2 WHERE r2.JOB_ID=j.ID
               AND r2.IS_NOT_DELETED=1 AND r2.RULE_TYPE='INDIVIDUAL_YEARS' AND YEAR(r2.MIN_GRAD_DATE)=2027)
   AND LOWER(j.TITLE) NOT REGEXP '{THREEL_NOISE}'"""
+
+# 3L market/practice/total windows aligned to the entry3l TABLE (Hannah 2026-08-25) so "open now"
+# matches the table's live count. Universe = Class 2027 + recent Class 2026 (same as wire_entry3l);
+# "open now" = currently open per the SAME takedown rule (2027: close-date/6-mo; 2026: opened <=3 mo,
+# not closed). The old THREEL_COND was grad-2027-only + published-permanent → it undercounted.
+_G3L = lambda y: (f"EXISTS (SELECT 1 FROM FORWARD_JOB_GRAD_DATE_TARGET_RULE r WHERE r.JOB_ID=j.ID "
+                  f"AND r.IS_NOT_DELETED=1 AND r.RULE_TYPE='INDIVIDUAL_YEARS' AND YEAR(r.MIN_GRAD_DATE)={y})")
+_E3L_OPEN = f"""(
+   ({_G3L(2027)} AND ((j.CLOSE_DATE IS NOT NULL AND j.CLOSE_DATE>=NOW()) OR (j.CLOSE_DATE IS NULL AND j.OPEN_DATE>=DATE_SUB(NOW(),INTERVAL 6 MONTH))))
+   OR ({_G3L(2026)} AND j.OPEN_DATE>=DATE_SUB(NOW(),INTERVAL 3 MONTH) AND (j.CLOSE_DATE IS NULL OR j.CLOSE_DATE>=NOW())))"""
+_E3L_MKT_BASE = f"""j.DELETED_AT IS NULL AND j.FORWARD_PUBLISHING_STATUS='PUBLISHED'
+  AND (j.JOB_TYPE IN ('ATS','MANUAL_ENTRY') OR j.JOB_TYPE IS NULL) AND j.JOB_CLASSIFICATION='LAW_FIRM'
+  AND LOWER(o.NAME) NOT REGEXP '{DEMO_REGEXP}' AND LOWER(j.TITLE) NOT REGEXP '{_E3L_TITLE_NOISE}'
+  AND ({_G3L(2026)} OR {_G3L(2027)})"""
+# open = currently open (matches the table's live count); 3mo/12mo add roles opened within the window.
+_E3L_WIN = f"""COUNT(DISTINCT CASE WHEN {_E3L_OPEN} THEN j.ID END) AS o,
+  COUNT(DISTINCT CASE WHEN {_E3L_OPEN} OR j.OPEN_DATE>=DATE_SUB(NOW(),INTERVAL 3 MONTH) THEN j.ID END) AS w3,
+  COUNT(DISTINCT CASE WHEN {_E3L_OPEN} OR j.OPEN_DATE>=DATE_SUB(NOW(),INTERVAL 12 MONTH) THEN j.ID END) AS w12"""
+
+
+def _threeL_totals() -> dict:
+    r = metabase_sql(MB_DB, f"SELECT {_E3L_WIN} FROM JOB j JOIN ORG o ON o.ID=j.ORG_ID WHERE {_E3L_MKT_BASE}")[0]
+    return {"open": int(r["o"]), "3mo": int(r["w3"]), "12mo": int(r["w12"])}
+
+
+def _threeL_market_sql() -> str:
+    return f"""SELECT loc.OPTION AS city, {_E3L_WIN}
+FROM JOB j JOIN ORG o ON o.ID=j.ORG_ID
+JOIN JOB_OFFICE jo ON jo.JOB_ID=j.ID JOIN ORG_OFFICE ofc ON ofc.ID=jo.OFFICE_ID
+JOIN STATIC_LIST_OPTION loc ON loc.ID=ofc.OFFICE_LOCATION_ID
+WHERE {_E3L_MKT_BASE} GROUP BY loc.OPTION HAVING w12 > 0"""
+
+
 PARTNER_TAG_COND = f"""j.DELETED_AT IS NULL AND j.JOB_CLASSIFICATION='LAW_FIRM'
   AND LOWER(o.NAME) NOT REGEXP '{DEMO_REGEXP}'
   AND EXISTS (SELECT 1 FROM JOB_HIRING_TYPE j2 JOIN HIRING_TYPE h2 ON h2.ID=j2.HIRING_TYPE_ID
@@ -1054,8 +1089,11 @@ GROUP BY gyear, yr, mo""" % (DEMO_REGEXP, THREEL_NOISE))
         "2026": cycle_series(by[2026], 2025, length=18),   # Class of 2026: Jun 2025 – Nov 2026
         "2027": cycle_series(by[2027], 2026, length=18),   # Class of 2027: Jun 2026 – Nov 2027
     }
-    data["charts"]["threeL"]["marketByWindow"] = _windows(metabase_sql(MB_DB, _market_sql(THREEL_COND)), "city")
-    data["charts"]["threeL"]["practiceByWindow"] = _practice_windows(THREEL_COND)
+    # Market/practice/total windows use the table-aligned universe (2027 + recent 2026, takedown-open),
+    # so the "open now" total on the map/bars matches the entry3l table's live count.
+    data["charts"]["threeL"]["marketByWindow"] = _windows(metabase_sql(MB_DB, _threeL_market_sql()), "city")
+    data["charts"]["threeL"]["practiceByWindow"] = _practice_windows(_E3L_MKT_BASE, _E3L_OPEN)
+    data["charts"]["threeL"]["totalByWindow"] = _threeL_totals()
     print(f"  3L charts: timeline + market + practice")
 
 
