@@ -2426,10 +2426,8 @@ class Component extends DCLogic {
         series.forEach((s, si) => s.points.forEach((v, i) => { if (v == null) return;
           const prev = series[si - 1] ? series[si - 1].points[i] : null;
           const yoy = (prev != null && prev !== 0) ? ((v - prev) / prev * 100) : null;
-          const tw = 150, th = 52; let tx = X(i) - tw / 2, ty = Y(v) - th - 10;
-          if (tx < 2) tx = 2; if (tx + tw > VBW - 2) tx = VBW - 2 - tw; if (ty < 2) ty = Y(v) + 12;
-          const yTxt = yoy == null ? 'No prior year' : (yoy >= 0 ? '▲ ' : '▼ ') + Math.abs(Math.round(yoy)) + '% YoY';
-          const yCol = yoy == null ? '#ACB3C3' : (yoy >= 0 ? '#7ED9A0' : '#F2A0A0');
+          const yTxt = (yoy >= 0 ? '▲ ' : '▼ ') + Math.abs(Math.round(yoy)) + '% YoY';
+          const yCol = yoy >= 0 ? '#7ED9A0' : '#F2A0A0';
           const janIdx = MOx.indexOf('Jan');
           let dateLbl;
           if (janIdx === 0) {
@@ -2439,14 +2437,23 @@ class Component extends DCLogic {
             const firstYr = /^\d{4}-/.test(s.label) ? parseInt(s.label.slice(0, 4), 10) : parseInt((s.label.match(/\d{4}/) || ['0'])[0], 10) - 3;
             dateLbl = MOx[i] + ' ' + (firstYr + (janIdx >= 0 && i >= janIdx ? 1 : 0));
           }
+          // Tooltip lines, built in order. `s.name` (e.g. the class year) leads when present; a series with
+          // a name also suppresses the "No prior year" note — otherwise that note still shows for context.
+          const lines = [];
+          if (s.name) lines.push([s.name, 10.5, 700, s.color]);
+          lines.push([dateLbl, 10.5, 700, '#E9D9E2']);
+          lines.push([rawFmt(v), 13, 800, '#fff']);
+          if (yoy != null) lines.push([yTxt, 10, 700, yCol]);
+          else if (!s.name) lines.push(['No prior year', 10, 700, '#ACB3C3']);
+          const tw = 150, th = 12 + lines.length * 15; let tx = X(i) - tw / 2, ty = Y(v) - th - 10;
+          if (tx < 2) tx = 2; if (tx + tw > VBW - 2) tx = VBW - 2 - tw; if (ty < 2) ty = Y(v) + 12;
+          const tip = [e('rect', { key: 'tb', x: tx, y: ty, width: tw, height: th, rx: 7, fill: '#1E0A16' })];
+          lines.forEach((ln, li) => tip.push(e('text', { key: 'tt' + li, x: tx + 11, y: ty + 17 + li * 15, fontSize: ln[1], fontWeight: ln[2], fill: ln[3], fontFamily: 'Zalando Sans,sans-serif' }, ln[0])));
           kids.push(e('g', { key: 'pt' + si + '_' + i, className: 'mkt-pt' },
             e('circle', { cx: X(i), cy: Y(v), r: 10, fill: 'transparent' }),
             e('g', { className: 'mkt-tip' },
               e('circle', { cx: X(i), cy: Y(v), r: 4.5, fill: s.color, stroke: '#fff', strokeWidth: 1.5 }),
-              e('rect', { x: tx, y: ty, width: tw, height: th, rx: 7, fill: '#1E0A16' }),
-              e('text', { x: tx + 11, y: ty + 17, fontSize: 10.5, fontWeight: 700, fill: '#E9D9E2', fontFamily: 'Zalando Sans,sans-serif' }, dateLbl),
-              e('text', { x: tx + 11, y: ty + 33, fontSize: 13, fontWeight: 800, fill: '#fff', fontFamily: 'Zalando Sans,sans-serif' }, rawFmt(v)),
-              e('text', { x: tx + 11, y: ty + 46, fontSize: 10, fontWeight: 700, fill: yCol, fontFamily: 'Zalando Sans,sans-serif' }, yTxt)
+              ...tip
             )
           ));
         }));
@@ -2684,7 +2691,7 @@ class Component extends DCLogic {
         const tl2026 = DATA.charts.threeL.timeline['2026'];
         const tl2027 = DATA.charts.threeL.timeline['2027'];
         const timeline = { title: '3L entry-level postings on Flo by month', sub: 'By open date · distinct roles · 18-month hiring cycle (Jun before 3L year → the next Nov)',
-          svg: lineChart([{ label: '2025-26', color: '#FC97C2', points: tl2026 }, { label: '2026-27', color: '#4DA54C', points: tl2027 }], '3ltl', 0, MO_3L, GRAD_MARK),
+          svg: lineChart([{ label: '2025-26', name: 'Class of 2026', color: '#FC97C2', points: tl2026 }, { label: '2026-27', name: 'Class of 2027', color: '#4DA54C', points: tl2027 }], '3ltl', 0, MO_3L, GRAD_MARK),
           legend: [{ label: 'Class of 2026 (Listed 2025-2026)', color: '#FC97C2' }, { label: 'Class of 2027 (Listed 2026-2027)', color: '#4DA54C' }] };
         // Windows are nested (open now ⊆ past 3 mo ⊆ past 12 mo): a role counts if it was open at any point in
         // the window, so everything open now is in every window. Past 3 mo = open now + closed in last 3 months.
@@ -2803,7 +2810,7 @@ class Component extends DCLogic {
         const s = mkSA(D.ls_all, SY, SYC);
         tableChart = { title: 'Law school student interview volume on Flo', sub: 'On-campus interviews · monthly', svg: lineChart(s, 'tcls'), legend: _lg(s), showMarketLink: true, onMarket: () => this.selectTab('market') };
       } else if (_sid === 'entrylevel3l' && _tid === 'entry3l') {
-        const s = [{ label: '2025-26', color: '#FC97C2', points: DATA.charts.threeL.timeline['2026'] }, { label: '2026-27', color: '#4DA54C', points: DATA.charts.threeL.timeline['2027'] }];
+        const s = [{ label: '2025-26', name: 'Class of 2026', color: '#FC97C2', points: DATA.charts.threeL.timeline['2026'] }, { label: '2026-27', name: 'Class of 2027', color: '#4DA54C', points: DATA.charts.threeL.timeline['2027'] }];
         tableChart = { title: '3L entry-level postings on Flo by month', sub: 'By open date · 18-month hiring cycle', svg: lineChart(s, 'tc3l', 0, MO_3Lt, GRAD_MARK_3L), legend: [{ label: 'Class of 2026 (Listed 2025-2026)', color: '#FC97C2' }, { label: 'Class of 2027 (Listed 2026-2027)', color: '#4DA54C' }], showMarketLink: true, onMarket: () => this.selectTab('market') };
       } else if (_sid === 'lateralassoc' && _tid === 'lateral') {
         const s = [{ label: '2025', color: '#4D8EFF', points: DATA.charts.lateral.timeline['2025'] }, { label: '2026', color: '#192B92', points: DATA.charts.lateral.timeline['2026'] }];
