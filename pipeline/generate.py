@@ -474,13 +474,19 @@ def _practice_norm(firm, position):
 
 def _practice_dup(a, b) -> bool:
     """True when two (firm_key, token_set) roles are the same posting under different titles:
-    same firm and one token set contains the other, with >=2 shared meaningful tokens so a lone
+    matching firm and one token set contains the other, with >=2 shared meaningful tokens so a lone
     'associate' never collapses genuinely distinct roles. This subset (not exact) match is what
     lets a survey title with an appended office ('Entry Level Associate – New York') dedupe against
     a live posting that omits it ('Associate- Entry Level'). Leans toward dropping a redundant
-    'upcoming' survey row when the firm already has a live posting for the same core role."""
+    'upcoming' survey row when the firm already has a live posting for the same core role.
+    Firms match when equal OR one normalized name is a prefix of the other (Airtable uses short
+    brands, Metabase full legal names — e.g. 'weil' ⊂ 'weilgotshalmanges'); the shorter must be
+    >=4 chars, and the token-set rule guards against merging different roles at a shared prefix."""
     (fa, ta), (fb, tb) = a, b
-    if fa != fb or not ta or not tb:
+    if not fa or not fb or not ta or not tb:
+        return False
+    firm_ok = fa == fb or (min(len(fa), len(fb)) >= 4 and (fa.startswith(fb) or fb.startswith(fa)))
+    if not firm_ok:
         return False
     small = ta if len(ta) <= len(tb) else tb
     return len(small) >= 2 and (ta <= tb or tb <= ta)
