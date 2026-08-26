@@ -47,25 +47,25 @@
   "#DED9D0": "#C8D0DF",
   "#E0DBD2": "#C8D0DF",
   "#E4D5DE": "#E7E7E7",
-  "#E4E0D8": "#E7E7E7",
-  "#E7E3DB": "#E7E7E7",
+  "#E4E0D8": "#C8D0DF",
+  "#E7E3DB": "#C8D0DF",
   "#E7E4DC": "#E7E7E7",
-  "#E7E4DD": "#E7E7E7",
-  "#E8E4DC": "#E7E7E7",
+  "#E7E4DD": "#C8D0DF",
+  "#E8E4DC": "#C8D0DF",
   "#E9D9E2": "#E7E7E7",
-  "#ECE7DE": "#E7E7E7",
+  "#ECE7DE": "#DEE4ED",
   "#ECE9E3": "#E7E7E7",
   "#EDE7DE": "#F8FAFC",
   "#EDEAE2": "#E7E7E7",
-  "#EDEAE4": "#E7E7E7",
+  "#EDEAE4": "#DEE4ED",
   "#EFE3EB": "#E7E7E7",
   "#EFECE4": "#DEE4ED",
-  "#EFECE6": "#FAFBFC",
-  "#EFEDE7": "#FAFBFC",
+  "#EFECE6": "#DEE4ED",
+  "#EFEDE7": "#DEE4ED",
   "#F0EDE6": "#FAFBFC",
   "#F1EDE4": "#EDF2F8",
   "#F1EEE7": "#EDF5FC",
-  "#F1EEE8": "#FAFBFC",
+  "#F1EEE8": "#DEE4ED",
   "#F4F1EA": "#F8FAFC",
   "#F4F1EB": "#F8FAFC",
   "#F6F4EF": "#EDF2F8",
@@ -105,6 +105,43 @@
    "find": "<div style=\"font-size:13px;color:#8A857C;margin-top:3px;\">",
    "to": "<div style=\"font-size:13px;color:#9A948C;margin-top:3px;\">",
    "why": "All eight overview-card subheaders are this one markup shape; seven use #9A948C and the 1L-2L card uses #8A857C. In the warm palette the two greys were 3.67 vs 3.36 on white -- indistinguishable. The Flo Kit mapping puts them either side of the muted/faint boundary (6.29 vs 3.00), so an invisible inconsistency became a loud one. Normalise to the other seven before the flat pass; #8A857C's other 19 uses are real secondary text and keep muted."
+  },
+  {
+   "find": "fill: '#F1EEE8'",
+   "to": "fill: '#EDF2F8'",
+   "why": "Bar-chart track plate -- a surface, not a rule. #F1EEE8's other ten uses are borders and now take an outline token, so this one has to be pinned first."
+  },
+  {
+   "find": "dPanelBg: dBright ? '#fff' : '#E7E3DB'",
+   "to": "dPanelBg: dBright ? '#fff' : '#EDF2F8'",
+   "why": "Panel background -- a surface. #E7E3DB's other sixteen uses are rules."
+  },
+  {
+   "find": "letter-spacing:-0.02em;line-height:1;color:#192B92;",
+   "to": "letter-spacing:-0.02em;line-height:1;color:#172D45;",
+   "why": "Overview-card stat numerals (27px, 26px)."
+  },
+  {
+   "find": "line-height:1;letter-spacing:-0.02em;color:#192B92;",
+   "to": "line-height:1;letter-spacing:-0.02em;color:#172D45;",
+   "why": "Stat numeral, 22px."
+  },
+  {
+   "find": "line-height:1.1;letter-spacing:-0.01em;color:#192B92;",
+   "to": "line-height:1.1;letter-spacing:-0.01em;color:#172D45;",
+   "why": "Stat numeral, 16px display."
+  },
+  {
+   "find": "letter-spacing:-0.01em;color:#192B92;line-height:1.15;",
+   "to": "letter-spacing:-0.01em;color:#172D45;line-height:1.15;",
+   "why": "Stat numeral, 16px inline."
+  },
+  {
+   "find": "letter-spacing:-0.02em;line-height:1;color:#0174BE;margin-top:7px;",
+   "to": "letter-spacing:-0.02em;line-height:1;color:#172D45;margin-top:7px;",
+   "why": "The remaining three stat numerals are already #0174BE in the template (the public-interest cards), so the #192B92-keyed rules cannot reach them. Same numeral shape, same destination."
   }
- ]
+ ],
+ "_dividers": "Rules and dividers take outline tokens, never surface tokens. Three source hexes (#EFEDE7, #EFECE6, #F1EEE8 -- 49 border uses) had landed on background/surface/canvas #FAFBFC, which scores 1.036 against a white card: invisible. Two tiers preserve the tracker's own hierarchy -- lighter rules to outline/neutral/faint #DEE4ED, heavier ones to outline/neutral/default #C8D0DF, which 15 borders in the template already use directly.",
+ "_stats": "Overview-card stat numerals take info/90 #172D45 -- the exact colour of the preview sparkline they sit above. Primary #0174BE is too bright for the in-app density. There are 13 numerals arriving as two source hexes (#192B92 on the law-firm cards, #0174BE on the public-interest ones), so both are pinned. Scoped by letter-spacing, which every numeral carries and the chrome (active tab, section headings, links) does not; those stay primary."
 }
