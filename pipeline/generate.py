@@ -789,37 +789,51 @@ def monthly12(rows, year: int, yr_key="yr", mo_key="mo", n_key="n") -> list:
     return out
 
 
-def _job_window_totals(base_where: str) -> dict:
-    """open (published now) ⊆ 3mo ⊆ 12mo (published OR OPEN_DATE within the window)."""
+# The "open now" expression for a window breakdown. Default = published (permanent). Callers whose
+# companion TABLE applies a takedown rule pass that rule instead, so the map/bars "open now" matches
+# the table (lateral, 3L). 3mo/12mo always add roles opened within the window.
+_PUBLISHED_OPEN = "j.FORWARD_PUBLISHING_STATUS='PUBLISHED'"
+
+
+def _job_window_totals(base_where: str, open_expr: str = _PUBLISHED_OPEN) -> dict:
+    """open (currently open per `open_expr`) ⊆ 3mo ⊆ 12mo (open OR OPEN_DATE within the window)."""
     r = metabase_sql(MB_DB, f"""
-SELECT SUM(CASE WHEN j.FORWARD_PUBLISHING_STATUS='PUBLISHED' THEN 1 ELSE 0 END) AS open_now,
-  SUM(CASE WHEN j.FORWARD_PUBLISHING_STATUS='PUBLISHED' OR j.OPEN_DATE >= DATE_SUB(NOW(), INTERVAL 3 MONTH) THEN 1 ELSE 0 END) AS w3,
-  SUM(CASE WHEN j.FORWARD_PUBLISHING_STATUS='PUBLISHED' OR j.OPEN_DATE >= DATE_SUB(NOW(), INTERVAL 12 MONTH) THEN 1 ELSE 0 END) AS w12
+SELECT COUNT(DISTINCT CASE WHEN {open_expr} THEN j.ID END) AS open_now,
+  COUNT(DISTINCT CASE WHEN ({open_expr}) OR j.OPEN_DATE >= DATE_SUB(NOW(), INTERVAL 3 MONTH) THEN j.ID END) AS w3,
+  COUNT(DISTINCT CASE WHEN ({open_expr}) OR j.OPEN_DATE >= DATE_SUB(NOW(), INTERVAL 12 MONTH) THEN j.ID END) AS w12
 {base_where}""")[0]
     return {"open": int(r["open_now"]), "3mo": int(r["w3"]), "12mo": int(r["w12"])}
 
 
-# Breakdown windows (open ⊆ 3mo ⊆ 12mo): open=published now; 3mo/12mo = published OR
-# OPEN_DATE within the window. Reusable across lateral/partner/3L market + grad panels.
-_WIN_CASE = ("""COUNT(DISTINCT CASE WHEN j.FORWARD_PUBLISHING_STATUS='PUBLISHED' THEN j.ID END) AS o,
-  COUNT(DISTINCT CASE WHEN j.FORWARD_PUBLISHING_STATUS='PUBLISHED' OR j.OPEN_DATE>=DATE_SUB(NOW(),INTERVAL 3 MONTH) THEN j.ID END) AS w3,
-  COUNT(DISTINCT CASE WHEN j.FORWARD_PUBLISHING_STATUS='PUBLISHED' OR j.OPEN_DATE>=DATE_SUB(NOW(),INTERVAL 12 MONTH) THEN j.ID END) AS w12""")
+# Breakdown window CASEs (open ⊆ 3mo ⊆ 12mo). Reusable across lateral/3L market + grad panels.
+def _win_case(open_expr: str = _PUBLISHED_OPEN) -> str:
+    return (f"""COUNT(DISTINCT CASE WHEN {open_expr} THEN j.ID END) AS o,
+  COUNT(DISTINCT CASE WHEN ({open_expr}) OR j.OPEN_DATE>=DATE_SUB(NOW(),INTERVAL 3 MONTH) THEN j.ID END) AS w3,
+  COUNT(DISTINCT CASE WHEN ({open_expr}) OR j.OPEN_DATE>=DATE_SUB(NOW(),INTERVAL 12 MONTH) THEN j.ID END) AS w12""")
+
+
+# Lateral non-partner: align the market/grad/practice/total windows to the entry3l-style TABLE
+# (Hannah 2026-08-26). Universe = tag Lateral Associate/Counsel/Staff Attorney (not Partner), law
+# firm, ATS/MANUAL_ENTRY (matching _JOB_SELECT); "open now" = published + the standard takedown
+# (close-date, else opened <=6 mo) so the map "open now" matches the table's live count.
 LAT_COND = f"""j.DELETED_AT IS NULL AND j.JOB_CLASSIFICATION='LAW_FIRM'
+  AND (j.JOB_TYPE IN ('ATS','MANUAL_ENTRY') OR j.JOB_TYPE IS NULL)
   AND LOWER(o.NAME) NOT REGEXP '{DEMO_REGEXP}'
   AND EXISTS (SELECT 1 FROM JOB_HIRING_TYPE j2 JOIN HIRING_TYPE h2 ON h2.ID=j2.HIRING_TYPE_ID WHERE j2.JOB_ID=j.ID AND h2.NAME IN ('Lateral Associate','Lateral Counsel','Staff Attorney'))
   AND NOT EXISTS (SELECT 1 FROM JOB_HIRING_TYPE j3 JOIN HIRING_TYPE h3 ON h3.ID=j3.HIRING_TYPE_ID WHERE j3.JOB_ID=j.ID AND h3.NAME='Lateral Partner')"""
+_LAT_OPEN = "(j.FORWARD_PUBLISHING_STATUS='PUBLISHED' AND ((j.CLOSE_DATE IS NOT NULL AND j.CLOSE_DATE>=NOW()) OR (j.CLOSE_DATE IS NULL AND j.OPEN_DATE>=DATE_SUB(NOW(),INTERVAL 6 MONTH))))"
 
 
-def _market_sql(cond):
-    return f"""SELECT loc.OPTION AS city, {_WIN_CASE}
+def _market_sql(cond, open_expr: str = _PUBLISHED_OPEN):
+    return f"""SELECT loc.OPTION AS city, {_win_case(open_expr)}
 FROM JOB j JOIN ORG o ON o.ID=j.ORG_ID
 JOIN JOB_OFFICE jo ON jo.JOB_ID=j.ID JOIN ORG_OFFICE ofc ON ofc.ID=jo.OFFICE_ID
 JOIN STATIC_LIST_OPTION loc ON loc.ID=ofc.OFFICE_LOCATION_ID
 WHERE {cond} GROUP BY loc.OPTION HAVING w12 > 0"""
 
 
-def _grad_sql(cond):
-    return f"""SELECT YEAR(r.MIN_GRAD_DATE) AS gy, {_WIN_CASE}
+def _grad_sql(cond, open_expr: str = _PUBLISHED_OPEN):
+    return f"""SELECT YEAR(r.MIN_GRAD_DATE) AS gy, {_win_case(open_expr)}
 FROM JOB j JOIN ORG o ON o.ID=j.ORG_ID
 JOIN FORWARD_JOB_GRAD_DATE_TARGET_RULE r ON r.JOB_ID=j.ID AND r.IS_NOT_DELETED=1 AND r.RULE_TYPE='INDIVIDUAL_YEARS'
 WHERE {cond} AND YEAR(r.MIN_GRAD_DATE) BETWEEN 2011 AND 2026 GROUP BY gy"""
@@ -960,10 +974,11 @@ SELECT YEAR(j.OPEN_DATE) AS yr, MONTH(j.OPEN_DATE) AS mo, COUNT(DISTINCT j.ID) A
 GROUP BY yr, mo""")
     ch = data["charts"]["lateral"]
     ch["timeline"] = {"2025": monthly12(tl, 2025), "2026": monthly12(tl, 2026)}
-    ch["totalByWindow"] = _job_window_totals(LATERAL_BASE)
-    ch["marketByWindow"] = _windows(metabase_sql(MB_DB, _market_sql(LAT_COND)), "city")
-    ch["gradByWindow"] = _windows(metabase_sql(MB_DB, _grad_sql(LAT_COND)), "gy", as_int=True, by_label=True)
-    ch["practiceByWindow"] = _practice_windows(LAT_COND)
+    # "open now" = published + takedown (matches the lateral TABLE's live count); 3mo/12mo add recent opens
+    ch["totalByWindow"] = _job_window_totals(f"FROM JOB j JOIN ORG o ON o.ID=j.ORG_ID WHERE {LAT_COND}", _LAT_OPEN)
+    ch["marketByWindow"] = _windows(metabase_sql(MB_DB, _market_sql(LAT_COND, _LAT_OPEN)), "city")
+    ch["gradByWindow"] = _windows(metabase_sql(MB_DB, _grad_sql(LAT_COND, _LAT_OPEN)), "gy", as_int=True, by_label=True)
+    ch["practiceByWindow"] = _practice_windows(LAT_COND, _LAT_OPEN)
     ch["source"] = _apply_source(ch["source"], _source_funnel(("Lateral Associate", "Lateral Counsel", "Staff Attorney")))
     print(f"  lateral charts: timeline + totals + market + grad + practice + source")
 
