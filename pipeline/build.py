@@ -233,6 +233,39 @@ def extract_body(dc_text: str) -> str:
     return body
 
 
+# Every chart legend is a set of series that must stay visually distinct. The retheme maps
+# colours by hex, which has no idea two of them sit in the same legend -- mapping #4D8EFF and
+# #192B92 onto one ramp step once rendered "Class of 2026" and "Class of 2028" identical, and
+# nothing caught it but a screenshot. This asserts the property directly on the built body.
+SERIES_SETS = (
+    # (description, pattern, how many the template is known to contain)
+    ("year/class series map", re.compile(r"\{ *'(?:\d{4}-\d{4}|Class of \d{4})':.{0,240}?\};"), 2),
+    ("lineChart() call", re.compile(r"lineChart\(\[\{.{0,300}?\}\]"), 3),
+)
+SERIES_COLOUR = re.compile(r"'(#[0-9A-Fa-f]{6})'")
+
+
+def check_series_distinct(body, name):
+    """Fail the build if any one chart draws two series in the same colour."""
+    for label, pattern, expected in SERIES_SETS:
+        found = pattern.findall(body)
+        # A regex that silently stops matching would make this check pass by doing nothing,
+        # which is the failure mode this guard exists to prevent. Pin the count.
+        assert len(found) == expected, (
+            "[%s] %s: matched %d, expected %d -- the markup moved, so this check is no longer "
+            "looking at the charts. Fix the pattern, do not lower the number."
+            % (name, label, len(found), expected))
+        for chunk in found:
+            colours = [c.upper() for c in SERIES_COLOUR.findall(chunk)]
+            if len(colours) < 2:
+                continue
+            dupes = {c for c in colours if colours.count(c) > 1}
+            assert not dupes, (
+                "[%s] %s draws two series in %s -- they will be indistinguishable in the legend.\n"
+                "   %s\n   Give one of them a different step in app-palette.json."
+                % (name, label, ", ".join(sorted(dupes)), chunk[:200]))
+
+
 def build_variant(template_text, shell_text, variant):
     """Write one variant's page. Same template and data for every variant; only the injected
     VARIANT config, the head metadata and the trailing CSS differ."""
@@ -250,6 +283,7 @@ def build_variant(template_text, shell_text, variant):
         print("  [%s] retheme: %d colour, %d button, %d size, %d font swaps, %d context, %d @font-face dropped"
               % (variant["name"], swapped["colour"], swapped.get("button", 0), swapped.get("size", 0), swapped["font"],
                  swapped.get("context", 0), swapped.get("faces_dropped", 0)))
+    check_series_distinct(body, variant["name"])
     enc = json.dumps(body).replace("</script", "<\\/script").replace("<!--", "<\\!--")
 
     i = shell_text.find("window.__DC_SRC__=")
