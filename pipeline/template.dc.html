@@ -2759,9 +2759,10 @@ class Component extends DCLogic {
         // search volume. Remaining partner charts: practice area, market (by city), candidate source.
         // Past 12 months only (no window toggle). Practice title-derived; most partner pipelines name no area.
         const pPrac = DATA.charts.partner.practice;
-        const practiceBar = { title: 'Lateral partner hiring on Flo by practice area', sub: 'Past 12 months · 69 pipelines · title-derived where specified', svg: barChart(pPrac, '#192B92', 8), legend: [] };
+        const pTot = DATA.charts.partner.total12mo;
+        const practiceBar = { title: 'Lateral partner hiring on Flo by practice area', sub: 'Past 12 months · ' + pTot + ' pipelines · title-derived where specified', svg: barChart(pPrac, '#192B92', 8), legend: [] };
         const pMkt = DATA.charts.partner.market;
-        const marketBar = { title: 'Lateral partner hiring on Flo by market', sub: 'Past 12 months · 69 pipelines across ' + pMkt.length + ' U.S. markets · bubble size = pipelines (roles may span markets)', svg: usMap(pMkt), legend: [] };
+        const marketBar = { title: 'Lateral partner hiring on Flo by market', sub: 'Past 12 months · ' + pTot + ' pipelines across ' + pMkt.length + ' U.S. markets · bubble size = pipelines (roles may span markets)', svg: usMap(pMkt), legend: [] };
         // Candidate source by funnel stage (warehouse job_applications, job_type='Lateral Partner', since Jan 2025).
         // Distinct candidates (matches the non-partner donut method); stage = furthest core bucket reached, rolled up
         // from the custom status string (Interview+/Offer+ include candidates rejected AT that stage). Demo orgs

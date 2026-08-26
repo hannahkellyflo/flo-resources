@@ -1080,8 +1080,11 @@ def wire_partner_charts(data: dict) -> None:
     data["charts"]["partner"].pop("timeline", None)
     data["charts"]["partner"]["market"] = _market_single(PARTNER_TAG_COND)
     data["charts"]["partner"]["practice"] = _practice_windows(PARTNER_TAG_COND)["12mo"]
+    # trailing-12-month pipeline count (published or opened in the last 12mo) for the chart subtitles
+    data["charts"]["partner"]["total12mo"] = _job_window_totals(
+        f"FROM JOB j JOIN ORG o ON o.ID=j.ORG_ID WHERE {PARTNER_TAG_COND}")["12mo"]
     data["charts"]["partner"]["source"] = _apply_source(data["charts"]["partner"]["source"], _source_funnel(("Lateral Partner",)))
-    print(f"  partner charts: market + practice + source")
+    print(f"  partner charts: market + practice + source + total12mo")
 
 
 def wire_threeL_charts(data: dict) -> None:
