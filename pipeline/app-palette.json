@@ -72,8 +72,7 @@
   "#F7F5F0": "#FAFBFC",
   "#FAF9F6": "#EDF4FA",
   "#FBFAF6": "#EDF2F8",
-  "#FC97C2": "#B27EBB",
-  "#FCEBD5": "#E7E7E7"
+  "#FC97C2": "#B27EBB"
  },
  "_scope": "Derived from every hex in the template, not just inline style= attributes -- chart gridlines, scrollbars and hover states live only in <style> blocks and JS.",
  "_protected": "Anything with chroma > 60 that carries meaning on its own (errors, warnings, status tints). Chart series are no longer protected -- they map onto the Flo Kit accent ramps.",
