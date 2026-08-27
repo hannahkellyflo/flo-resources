@@ -171,7 +171,7 @@
             <div style="font-size:14px;color:#7C766F;margin-bottom:18px;">Across law firms and public interest organizations</div>
             <div style="display:flex;flex-direction:column;gap:16px;">
               <sc-if value="{{ landingMode }}">
-              <div class="ovblock" style="position:sticky;top:40px;z-index:3;background:#fff;padding-top:2px;display:flex;gap:26px;border-bottom:1.5px solid #E8E4DC;margin-bottom:2px;">
+              <div class="ovblock" style="position:sticky;top:40px;z-index:3;background:#fff;padding-top:2px;display:flex;align-self:stretch;gap:26px;border-bottom:1.5px solid #E8E4DC;margin-bottom:2px;">
                 <sc-if value="{{ studentLawfirm }}"><div style="padding:7px 2px 11px;font-size:15px;font-weight:600;color:#192B92;border-bottom:2.5px solid #192B92;margin-bottom:-1.5px;cursor:pointer;white-space:nowrap;">Law Firms</div></sc-if>
                 <sc-if value="{{ studentPI }}"><div onClick="{{ onStudentLawfirm }}" style="padding:7px 2px 11px;font-size:15px;font-weight:600;color:#8A857C;border-bottom:2.5px solid transparent;margin-bottom:-1.5px;cursor:pointer;white-space:nowrap;" style-hover="color:#3E0C2D;">Law Firms</div></sc-if>
                 <sc-if value="{{ studentPI }}"><div style="padding:7px 2px 11px;font-size:15px;font-weight:600;color:#0174BE;border-bottom:2.5px solid #0174BE;margin-bottom:-1.5px;cursor:pointer;white-space:nowrap;">Public Interest</div></sc-if>
@@ -352,7 +352,7 @@
             <div style="font-size:14px;color:#7C766F;margin-bottom:18px;">For practicing attorneys including judicial clerks</div>
             <div style="display:{{ latContentDisplay }};grid-template-columns:repeat(2,1fr);grid-template-areas:'lfhdr lfhdr' 'jud latnp' 'latpart latnp' 'pihdr pihdr' 'pi pi';flex-direction:column;align-items:start;gap:16px;">
               <sc-if value="{{ landingMode }}">
-              <div class="ovblock" style="position:sticky;top:40px;z-index:3;background:#fff;padding-top:2px;display:flex;gap:26px;border-bottom:1.5px solid #E8E4DC;margin-bottom:2px;">
+              <div class="ovblock" style="position:sticky;top:40px;z-index:3;background:#fff;padding-top:2px;display:flex;align-self:stretch;gap:26px;border-bottom:1.5px solid #E8E4DC;margin-bottom:2px;">
                 <sc-if value="{{ attorneyLawfirm }}"><div style="padding:7px 2px 11px;font-size:15px;font-weight:600;color:#192B92;border-bottom:2.5px solid #192B92;margin-bottom:-1.5px;cursor:pointer;white-space:nowrap;">Law Firms</div></sc-if>
                 <sc-if value="{{ attorneyPI }}"><div onClick="{{ onAttorneyLawfirm }}" style="padding:7px 2px 11px;font-size:15px;font-weight:600;color:#8A857C;border-bottom:2.5px solid transparent;margin-bottom:-1.5px;cursor:pointer;white-space:nowrap;" style-hover="color:#3E0C2D;">Law Firms</div></sc-if>
                 <sc-if value="{{ attorneyPI }}"><div style="padding:7px 2px 11px;font-size:15px;font-weight:600;color:#0174BE;border-bottom:2.5px solid #0174BE;margin-bottom:-1.5px;cursor:pointer;white-space:nowrap;">Public Interest</div></sc-if>
@@ -1549,7 +1549,7 @@ const TAB_SLUG = {
 class Component extends DCLogic {
   state = Object.assign(
     { view: 'overview', worldId: 'entry', subId: 'lawfirm', tabId: '1lsummer', worldFocus: null, alerts: {}, search: '', sortCol: null, sortDir: 'asc', mktScope: 'all', hover: null, rowOpen: null, chartZoom: null, descExpanded: false, donutHover: null, gradHover: null, isMobile: false, linkCopied: false },
-    this.routeState() || (IS_APP ? { view: 'overview', worldFocus: 'entry' } : {})
+    this.routeState() || {}
   );
 
   constructor(...args) {
@@ -1878,8 +1878,10 @@ class Component extends DCLogic {
   routeMatch(tail) {
     // App variant lands on the Law Student grid; the overview keeps its own path so users
     // can still navigate out to it.
-    if (!tail || !tail.length) return { view: 'overview', worldFocus: IS_APP ? 'entry' : null };
-    if (IS_APP && tail.length === 1 && tail[0] === OVERVIEW_SLUG) return { view: 'overview', worldFocus: null };
+    if (!tail || !tail.length) return { view: 'overview', worldFocus: null };
+    // Back-compat: the app used to put the overview on its own segment, before it landed there
+    // by default. Old links still resolve; routePath normalizes them back to the bare base.
+    if (tail.length === 1 && tail[0] === OVERVIEW_SLUG) return { view: 'overview', worldFocus: null };
     const worldId = SLUG_WORLD[tail[0]];
     if (!worldId) return null;
     // A group on its own isn't a distinct view (the focused grid shows both groups), so it
@@ -1915,12 +1917,6 @@ class Component extends DCLogic {
       const base = ROUTE_BASE + '/' + WORLD_SLUG[st.worldId] + '/' + this.groupSlug(st.subId) + '/' + this.sectionSlug(st.subId);
       // The default tab is left off, so the section's own URL is the short one.
       return st.tabId === sub.tabs[0].id ? base : base + '/' + this.tabSlug(st.tabId);
-    }
-    if (IS_APP) {
-      // Mirror of routeMatch: the student grid is the bare base, the overview is a segment.
-      if (!st.worldFocus) return ROUTE_BASE + '/' + OVERVIEW_SLUG;
-      if (st.worldFocus === 'entry') return ROUTE_BASE;
-      return ROUTE_BASE + '/' + WORLD_SLUG[st.worldFocus];
     }
     return WORLD_SLUG[st.worldFocus] ? ROUTE_BASE + '/' + WORLD_SLUG[st.worldFocus] : ROUTE_BASE;
   }
