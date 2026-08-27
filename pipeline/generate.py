@@ -700,6 +700,15 @@ def _upcoming_key(rec: dict, lvl: str):
         return (1, datetime.date.max)
 
 
+# TEMP manual override — see the note at the 2L open filter in wire_summer_split(). Remove together.
+_TEMP_2L_OPEN_FIRMS = {
+    "Jackson Walker",
+    "McDermott Will & Schulte",
+    "Parker, Hudson, Rainer & Dobbs LLP",
+    "Withers",
+}
+
+
 def wire_summer_split(data: dict) -> None:
     rows = metabase_sql(MB_DB, SUMMER_SQL)
     out = {"1L": {"open": [], "upcoming": []}, "2L": {"open": [], "upcoming": []}}
@@ -734,7 +743,17 @@ def wire_summer_split(data: dict) -> None:
         if od_d and (od_d.year, od_d.month) == (now.year, now.month):
             mcur.add(r.get("job_id"))
         for lv in levels:
-            out[lv]["upcoming" if upcoming else "open"].append(_summer_record(r, lv, upcoming))
+            bucket = "upcoming" if upcoming else "open"
+            # TEMP (Hannah 2026-08-26): the 2L Class-of-2028 OPEN list over-includes closed postings
+            # that carry no close date on Flo Forward — the source data can't distinguish open from
+            # closed there. Until a durable rule is agreed, hard-limit the 2L open list to the firms
+            # confirmed open, current-cycle rows only (drops their own stale/prior-cycle listings too).
+            # Remove this block once the open/closed signal is resolved.
+            if lv == "2L" and bucket == "open":
+                _od = str(r.get("open_date") or "")[:10]
+                if r.get("firm") not in _TEMP_2L_OPEN_FIRMS or _od < "2026-06-01":
+                    continue
+            out[lv][bucket].append(_summer_record(r, lv, upcoming))
 
     # ── merge Airtable Direct-Apply survey jobs (Approved) — Tier-1 dedup vs Metabase by Job ID ──
     live_ids = {str(r.get("job_id")) for r in rows if r.get("job_id") is not None}
