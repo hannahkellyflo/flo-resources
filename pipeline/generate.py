@@ -514,8 +514,12 @@ def wire_entry3l(data: dict) -> None:
     # Class of 2026: recent openings only; a job also targeting 2027 is already shown above (dedupe by id).
     rows_2026 = [r for r in metabase_sql(MB_DB, _JOB_SELECT % _entry3l_where(2026, recent_only=True))
                  if str(r.get("job_id")) not in ids_2027]
-    table = [_entry3l_live_row(r, "Class of 2027") for r in rows] \
-          + [_entry3l_live_row(r, "Class of 2026") for r in rows_2026]
+    table, live_by_id = [], {}   # live_by_id: job_id -> row, so the Airtable merge can adopt its title
+    for r, cls in ([(r, "Class of 2027") for r in rows] + [(r, "Class of 2026") for r in rows_2026]):
+        lr = _entry3l_live_row(r, cls)
+        table.append(lr)
+        if r.get("job_id") is not None:
+            live_by_id[str(r.get("job_id"))] = lr
 
     # ── merge Airtable Direct-Apply 3L survey jobs (Class of 2027) — Tier-1 dedup by Job ID ──
     # (Class-of-2026 survey rows are intentionally not merged: a "not yet open" 2026 role is a
@@ -533,7 +537,10 @@ def wire_entry3l(data: dict) -> None:
         if row["level"] != "3L" or row["class"] != 2027:
             continue
         if row["jobid"] and row["jobid"] in live_ids:
-            continue                                    # already live in Metabase → drop Airtable
+            lr = live_by_id.get(row["jobid"])           # same job → keep live row, adopt Airtable title
+            if lr and row["position"]:
+                lr["3L Position"] = row["position"]
+            continue
         k2 = (row["firm"].strip().lower(), row["position"].strip().lower())
         if k2 in seen:
             continue
@@ -700,6 +707,58 @@ def _upcoming_key(rec: dict, lvl: str):
         return (1, datetime.date.max)
 
 
+# ── near-duplicate dedup (Hannah 2026-08-26) ─────────────────────────────────
+# Two rows are "the same job" when the employer and open date match and the titles are close; the
+# only meaningful difference is often office location. Rules: (1) keep the located row and drop its
+# location-less twin; (2) when a Flo Forward row is deduped against an Airtable survey row, adopt the
+# Airtable job title — it carries human oversight.
+_DD_STOP = {"the", "a", "an", "of", "for", "and", "amp"}
+
+
+def _dd_firm_key(s):
+    return re.sub(r"[^a-z0-9]+", "", (s or "").lower())
+
+
+def _dd_title_tokens(s):
+    return {t for t in re.findall(r"[a-z0-9]+", (s or "").lower()) if t not in _DD_STOP}
+
+
+def _dd_titles_similar(a, b):
+    ta, tb = _dd_title_tokens(a), _dd_title_tokens(b)
+    if not ta or not tb:
+        return False
+    return len(ta & tb) / len(ta | tb) >= 0.7   # high bar so distinct practices/offices don't merge
+
+
+def _dd_open(rec, lvl):
+    return str(rec.get(f"{lvl} Application Open Date", "")).replace("Opens ", "").strip()
+
+
+def _dd_has_office(rec):
+    o = str(rec.get("Office Location", "")).strip()
+    return bool(o) and o != "—"
+
+
+def _dd_same_job(a, b, lvl):
+    return (_dd_firm_key(a.get("Employer")) == _dd_firm_key(b.get("Employer"))
+            and _dd_open(a, lvl) == _dd_open(b, lvl)
+            and _dd_titles_similar(a.get(f"{lvl} Position"), b.get(f"{lvl} Position")))
+
+
+def _dedup_prefer_located(rows, lvl):
+    """Drop a location-less row when a located near-duplicate exists (same firm, open date, ~title).
+    Rows that all carry offices (a firm's multi-office postings) are left intact."""
+    drop = set()
+    for i, r in enumerate(rows):
+        if _dd_has_office(r):
+            continue
+        for j, k in enumerate(rows):
+            if j != i and _dd_has_office(k) and _dd_same_job(r, k, lvl):
+                drop.add(i)
+                break
+    return [r for i, r in enumerate(rows) if i not in drop]
+
+
 # TEMP manual override — see the note at the 2L open filter in wire_summer_split(). Remove together.
 _TEMP_2L_OPEN_FIRMS = {
     "Jackson Walker",
@@ -712,6 +771,7 @@ _TEMP_2L_OPEN_FIRMS = {
 def wire_summer_split(data: dict) -> None:
     rows = metabase_sql(MB_DB, SUMMER_SQL)
     out = {"1L": {"open": [], "upcoming": []}, "2L": {"open": [], "upcoming": []}}
+    ff_by_id = {"1L": {}, "2L": {}}  # job_id -> the record object, so the Airtable merge can retitle it
     now = datetime.datetime.now(datetime.timezone.utc)
     mcur = set()  # distinct job ids opened this calendar month (as shown in the tables)
     for r in rows:
@@ -753,23 +813,46 @@ def wire_summer_split(data: dict) -> None:
                 _od = str(r.get("open_date") or "")[:10]
                 if r.get("firm") not in _TEMP_2L_OPEN_FIRMS or _od < "2026-06-01":
                     continue
-            out[lv][bucket].append(_summer_record(r, lv, upcoming))
+            rec = _summer_record(r, lv, upcoming)
+            out[lv][bucket].append(rec)
+            if r.get("job_id") is not None:
+                ff_by_id[lv][str(r.get("job_id"))] = rec
 
-    # ── merge Airtable Direct-Apply survey jobs (Approved) — Tier-1 dedup vs Metabase by Job ID ──
+    # ── merge Airtable Direct-Apply survey jobs (Approved), deduped against Metabase ──
     live_ids = {str(r.get("job_id")) for r in rows if r.get("job_id") is not None}
     seen = {(str(r.get("firm") or "").strip().lower(), str(r.get("position") or "").strip().lower()) for r in rows}
     da_added = {"1L": 0, "2L": 0}
     for row in direct_apply_rows():
+        lv = row["level"]
+        if lv not in ("1L", "2L") or row["class"] != 2029:
+            continue                                    # tracker surfaces incoming Class of 2029 as "upcoming"
+        at_rec = _da_summer_record(row, lv)
+        at_title = at_rec[f"{lv} Position"]
+        # (1) Same underlying job by Flo Forward id: keep the live row, adopt the Airtable title.
         if row["jobid"] and row["jobid"] in live_ids:
-            continue                                    # already live in Metabase → keep Metabase, drop Airtable
+            ff = ff_by_id[lv].get(row["jobid"])
+            if ff:
+                ff[f"{lv} Position"] = at_title          # Airtable title wins (human oversight)
+            continue
+        # (2) Near-duplicate of an existing row (same firm + open date + ~title): keep the existing
+        # row — it carries the office/location — and, on a 1:1 match, adopt the Airtable title. (Don't
+        # retitle when it matches several rows, so a firm's multi-office postings aren't collapsed.)
+        near = [ex for bkt in ("open", "upcoming") for ex in out[lv][bkt] if _dd_same_job(ex, at_rec, lv)]
+        if near:
+            if len(near) == 1:
+                near[0][f"{lv} Position"] = at_title
+            continue
+        # (3) Exact firm+title already present.
         k2 = (row["firm"].strip().lower(), row["position"].strip().lower())
         if k2 in seen:
-            continue                                    # exact firm+title already present → skip
-        # tracker's summer tables surface the incoming Class of 2029 as the "upcoming" section
-        if row["level"] == "1L" and row["class"] == 2029:
-            out["1L"]["upcoming"].append(_da_summer_record(row, "1L")); seen.add(k2); da_added["1L"] += 1
-        elif row["level"] == "2L" and row["class"] == 2029:
-            out["2L"]["upcoming"].append(_da_summer_record(row, "2L")); seen.add(k2); da_added["2L"] += 1
+            continue
+        out[lv]["upcoming"].append(at_rec); seen.add(k2); da_added[lv] += 1
+
+    # Location rule (also catches Flo-Forward-only dups): drop a location-less row when a located
+    # near-duplicate exists.
+    for lv in ("1L", "2L"):
+        for bkt in ("open", "upcoming"):
+            out[lv][bkt] = _dedup_prefer_located(out[lv][bkt], lv)
 
     for lv, key in (("1L", "summer1L"), ("2L", "summer2L")):
         out[lv]["upcoming"].sort(key=lambda rec, _lv=lv: _upcoming_key(rec, _lv))   # soonest-first (Metabase + Airtable)
