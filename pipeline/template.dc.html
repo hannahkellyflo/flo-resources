@@ -1988,7 +1988,7 @@ class Component extends DCLogic {
     // application, so _top replaces the whole page and lands the user on a real admin URL with a
     // working back button, rather than opening yet another browser tab from inside an app tab.
     // The public build keeps _blank so readers don't lose the tracker.
-    const linkTarget = IS_APP ? '_top' : '_blank';
+    const linkTarget = '_blank';
     // The marketing nav links carry no target today, so they'd try to load inside the iframe and
     // be refused by the host's frame-ancestors. _self is the default, i.e. web is unchanged.
     const navTarget = IS_APP ? '_top' : '_self';
