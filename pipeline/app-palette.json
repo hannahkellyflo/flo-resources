@@ -7,7 +7,6 @@
   "#FCEBD5"
  ],
  "map": {
-  "#192B92": "#0174BE",
   "#1A1A1A": "#161617",
   "#1C6FD6": "#0174BE",
   "#1E0A16": "#161617",
@@ -18,7 +17,6 @@
   "#3B3D44": "#161617",
   "#3E0C2D": "#161617",
   "#4A444C": "#161617",
-  "#4D8EFF": "#3B6DA3",
   "#4DA54C": "#2E9C56",
   "#574463": "#161617",
   "#57534C": "#393B41",
@@ -28,7 +26,6 @@
   "#7D766C": "#5C606B",
   "#8A857C": "#5C606B",
   "#9A948C": "#8E95A5",
-  "#9DC3FF": "#7DADD0",
   "#A39D93": "#8E95A5",
   "#A8A29A": "#8E95A5",
   "#B0A99F": "#8E95A5",
@@ -79,23 +76,8 @@
  "_protected": "Anything with chroma > 60 that carries meaning on its own (errors, warnings, status tints). Chart series are no longer protected -- they map onto the Flo Kit accent ramps.",
  "_tint": "Tinted surfaces split by role rather than by hex. True hover states (.campus-row, .share-item, .row-expand) take white/10 #F8FAFC = background/surface/hover. Static tints -- table footer bands, chart label plates, scrollbar tracks, the preview-card header band -- take neutral/10 #EDF2F8 = background/neutral/faint, so they separate from the white card instead of hovering a hair above it. Chart gridlines are an SVG stroke, not a surface: they take outline/neutral/faint #DEE4ED. Mapping them to a surface token scored 1.046 against the white card, which is invisible.",
  "_contrast": "Stat numerals take the sparkline colour (see _stats); the active tab and section headings keep primary #0174BE. Three tinted surfaces, three values: the segmented toggle track sits on primary/10 #EDF5FC, the preview-card header band on #EDF4FA -- deliberately off-ramp, the midpoint between primary/10 and neutral/10, asked for because both ramp steps read wrong at that size -- and the other static tints (footer bands, chart label plates, scrollbar tracks) on neutral/10 #EDF2F8. Uppercase table headers take neutral/80 #393B41 rather than foreground/muted #5C606B; small letterspaced caps need the weight back.",
- "_charts": "Chart series -> accent ramps, by CIELAB distance, with three departures from nearest-neighbour. (1) Both light blues go to the info ramp rather than primary, so data never wears the same blue as buttons, links and the active tab. (2) #4D8EFF darkens further than distance alone would ask, because it also sets uppercase label text that scored only 3.17 on white. (3) #192B92-as-series goes to info/90, not the nearest step, to hold its separation from #4D8EFF's info/50 -- they are two series in the same chart four times over. Final: #4D8EFF -> info/50 #3B6DA3, #9DC3FF -> info/30 #7DADD0, #4DA54C -> success/40 #2E9C56, #FC97C2 -> purple/30 #B27EBB, #192B92-as-series -> info/90 #172D45. #EB232D stays (semantic red). Worst-pair separation across the 5-series set is dE 31.7, vs 40.4 before.",
+ "_charts": "Chart series keep the tracker's own colours in the app variant, including the light/dark blue pair #4D8EFF and #192B92 (and #9DC3FF). The Flo Kit info ramp was tried here and the two blues it gave -- info/50 and info/90 -- read as too similar to tell apart in a two-series chart, so the design-system colours are deliberately not used for chart marks. The three blues are therefore absent from the flat map; the handful of UI elements that happen to share those hexes (active tab, column headings, a hover, one uppercase label link) are pinned to primary #0174BE by context rule instead. Non-blue series still map to the accent ramps: #4DA54C -> success/40 #2E9C56, #FC97C2 -> purple/30 #B27EBB. #EB232D stays (semantic red).",
  "context": [
-  {
-   "find": "'#192B92'",
-   "to": "'#172D45'",
-   "why": "Quoted = JS chart config: lineChart/barChart series colours, donut and point fills, the series-by-year maps. #192B92 pairs with #4D8EFF as two series in four charts (a light/dark blue year-over-year pairing), so it takes info/90 -- the far end of the same ramp #4D8EFF's replacement sits at. Mapping both to info/50 collapsed two distinct series onto one colour."
-  },
-  {
-   "find": "stroke=\"#192B92\"",
-   "to": "stroke=\"#172D45\"",
-   "why": "Donut ring in the static SVG."
-  },
-  {
-   "find": "background:#192B92",
-   "to": "background:#172D45",
-   "why": "Legend swatch beside a series label."
-  },
   {
    "find": ".campus-row:hover { background: #FBFAF6; }",
    "to": ".campus-row:hover { background: #F8FAFC; }",
@@ -117,31 +99,31 @@
    "why": "Panel background -- a surface. #E7E3DB's other sixteen uses are rules."
   },
   {
-   "find": "letter-spacing:-0.02em;line-height:1;color:#192B92;",
-   "to": "letter-spacing:-0.02em;line-height:1;color:#172D45;",
-   "why": "Overview-card stat numerals (27px, 26px)."
-  },
-  {
-   "find": "line-height:1;letter-spacing:-0.02em;color:#192B92;",
-   "to": "line-height:1;letter-spacing:-0.02em;color:#172D45;",
-   "why": "Stat numeral, 22px."
-  },
-  {
-   "find": "line-height:1.1;letter-spacing:-0.01em;color:#192B92;",
-   "to": "line-height:1.1;letter-spacing:-0.01em;color:#172D45;",
-   "why": "Stat numeral, 16px display."
-  },
-  {
-   "find": "letter-spacing:-0.01em;color:#192B92;line-height:1.15;",
-   "to": "letter-spacing:-0.01em;color:#172D45;line-height:1.15;",
-   "why": "Stat numeral, 16px inline."
-  },
-  {
    "find": "letter-spacing:-0.02em;line-height:1;color:#0174BE;margin-top:7px;",
-   "to": "letter-spacing:-0.02em;line-height:1;color:#172D45;margin-top:7px;",
-   "why": "The remaining three stat numerals are already #0174BE in the template (the public-interest cards), so the #192B92-keyed rules cannot reach them. Same numeral shape, same destination."
+   "to": "letter-spacing:-0.02em;line-height:1;color:#192B92;margin-top:7px;",
+   "why": "Public-interest card numerals are already #0174BE in the template, so they need their own rule to reach the dark chart blue the law-firm numerals sit on."
+  },
+  {
+   "find": "font-weight:600;color:#192B92;border-bottom:2.5px",
+   "to": "font-weight:600;color:#0174BE;border-bottom:2.5px",
+   "why": "Active section tab."
+  },
+  {
+   "find": "font-weight:700;color:#192B92;padding-bottom:10px",
+   "to": "font-weight:700;color:#0174BE;padding-bottom:10px",
+   "why": "Law Firms / Public Interest column headings."
+  },
+  {
+   "find": "style-hover=\"color:#192B92;\"",
+   "to": "style-hover=\"color:#0174BE;\"",
+   "why": "Explore-market-data hover."
+  },
+  {
+   "find": "text-transform:uppercase;color:#4D8EFF;cursor:pointer",
+   "to": "text-transform:uppercase;color:#0174BE;cursor:pointer",
+   "why": "Uppercase label link beside a chart."
   }
  ],
  "_dividers": "Rules and dividers take outline tokens, never surface tokens. Three source hexes (#EFEDE7, #EFECE6, #F1EEE8 -- 49 border uses) had landed on background/surface/canvas #FAFBFC, which scores 1.036 against a white card: invisible. Two tiers preserve the tracker's own hierarchy -- lighter rules to outline/neutral/faint #DEE4ED, heavier ones to outline/neutral/default #C8D0DF, which 15 borders in the template already use directly.",
- "_stats": "Overview-card stat numerals take info/90 #172D45 -- the exact colour of the preview sparkline they sit above. Primary #0174BE is too bright for the in-app density. There are 13 numerals arriving as two source hexes (#192B92 on the law-firm cards, #0174BE on the public-interest ones), so both are pinned. Scoped by letter-spacing, which every numeral carries and the chrome (active tab, section headings, links) does not; those stay primary."
+ "_stats": "Overview-card stat numerals sit on #192B92, the same dark blue as the chart line above them. They arrive as two source hexes -- #192B92 on the law-firm cards (left alone) and #0174BE on the public-interest ones (pinned by rule) -- and are scoped by letter-spacing, which every numeral carries and the chrome does not."
 }
