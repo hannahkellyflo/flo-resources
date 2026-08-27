@@ -60,7 +60,9 @@
   .tscroll::-webkit-scrollbar-track { background: #F6F4EF; border-radius: 999px; }
   .tscroll::-webkit-scrollbar-thumb { background: #D2CCC1; border-radius: 999px; border: 2px solid #F6F4EF; }
   .tscroll:hover::-webkit-scrollbar-thumb { background: #BDB6AA; }
-  .tscroll thead th { position: sticky; top: 0; z-index: 2; background: #fff; box-shadow: inset 0 -1px 0 #E7E4DD; }
+  /* Table headers carry the same tint as the table footer band (#FBFAF6; the app retheme maps it). */
+  thead th { background: #FBFAF6; }
+  .tscroll thead th { position: sticky; top: 0; z-index: 2; background: #FBFAF6; box-shadow: inset 0 -1px 0 #E7E4DD; }
   .mkt-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .mkt-zoom { cursor: zoom-in; }
   /* Enlarge affordance: a small expand hint in the plot's top-right, revealed on hover anywhere over
