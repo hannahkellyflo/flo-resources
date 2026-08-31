@@ -870,12 +870,11 @@ def wire_summer_split(data: dict) -> None:
         for bkt in ("open", "upcoming"):
             out[lv][bkt] = _dedup_prefer_located(out[lv][bkt], lv)
 
-    # TEMP (Hannah 2026-08-31): Herbert Smith Freehills is reconsidering their 2L open date — hide it
-    # until further notice. Remove this block once they confirm the date.
-    for bkt, blanked in (("open", "—"), ("upcoming", "Opens TBD")):
-        for rec in out["2L"][bkt]:
-            if "herbert smith freehills" in str(rec.get("Employer", "")).lower():
-                rec["2L Application Open Date"] = blanked
+    # TEMP (Hannah 2026-08-31): Herbert Smith Freehills is reconsidering their 2L posting — hide the
+    # whole row until further notice. Remove this block once they confirm.
+    for bkt in ("open", "upcoming"):
+        out["2L"][bkt] = [rec for rec in out["2L"][bkt]
+                          if "herbert smith freehills" not in str(rec.get("Employer", "")).lower()]
 
     for lv, key in (("1L", "summer1L"), ("2L", "summer2L")):
         out[lv]["upcoming"].sort(key=lambda rec, _lv=lv: _upcoming_key(rec, _lv))   # soonest-first (Metabase + Airtable)
