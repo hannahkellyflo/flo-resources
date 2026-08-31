@@ -377,7 +377,7 @@ LATERAL_WHERE = """
 PC_WHERE = """
   EXISTS (SELECT 1 FROM JOB_HIRING_TYPE j2 JOIN HIRING_TYPE h2 ON h2.ID=j2.HIRING_TYPE_ID
           WHERE j2.JOB_ID=j.ID AND h2.NAME='Judicial Clerk')
-  OR LOWER(j.TITLE) REGEXP 'post[- ]clerkship'"""
+  OR LOWER(j.TITLE) REGEXP 'post[- ]clerkship|judicial clerk|judicial clerkship'"""
 
 
 def strip_html(s) -> str:
