@@ -374,10 +374,29 @@ LATERAL_WHERE = """
   AND NOT EXISTS (SELECT 1 FROM JOB_HIRING_TYPE j3 JOIN HIRING_TYPE h3 ON h3.ID=j3.HIRING_TYPE_ID
                   WHERE j3.JOB_ID=j.ID AND h3.NAME='Lateral Partner')"""
 
-PC_WHERE = """
-  EXISTS (SELECT 1 FROM JOB_HIRING_TYPE j2 JOIN HIRING_TYPE h2 ON h2.ID=j2.HIRING_TYPE_ID
-          WHERE j2.JOB_ID=j.ID AND h2.NAME='Judicial Clerk')
-  OR LOWER(j.TITLE) REGEXP 'post[- ]clerkship|judicial clerk|judicial clerkship'"""
+# Post-Judicial Clerkship mirrors the Metabase question "Clerk Jobs Posted to Forward
+# (Judicial Clerk + Post-Clerkship)" (card 10595) verbatim: published, non-deleted, demo orgs
+# excluded, NO date filter. Two buckets — ATS jobs tagged 'Judicial Clerk', unioned with jobs whose
+# JOB_POST_AUDIENCE = 'POST_CLERKSHIP'. Validated to return the same 17 job ids as the question.
+# (Deliberately NOT gated on the _JOB_SELECT takedown window or JOB_CLASSIFICATION — the question
+# isn't, and this section is defined by that question.)
+PC_SQL = """
+SELECT j.ID AS job_id, o.NAME AS firm, j.TITLE AS position,
+  j.DESCRIPTION AS descr, j.OPEN_DATE AS open_date, j.UPDATED_AT AS updated_at,
+  CASE WHEN EXISTS (SELECT 1 FROM JOB_HIRING_TYPE jh JOIN HIRING_TYPE h ON h.ID=jh.HIRING_TYPE_ID
+                    WHERE jh.JOB_ID=j.ID AND h.NAME='Judicial Clerk')
+       THEN 'Judicial Clerk' ELSE 'Post-Judicial Clerkship' END AS clerk_type,
+  (SELECT GROUP_CONCAT(DISTINCT loc.OPTION SEPARATOR '; ')
+     FROM JOB_OFFICE jo JOIN ORG_OFFICE ofc ON ofc.ID = jo.OFFICE_ID
+     JOIN STATIC_LIST_OPTION loc ON loc.ID = ofc.OFFICE_LOCATION_ID
+     WHERE jo.JOB_ID = j.ID) AS offices
+FROM JOB j JOIN ORG o ON o.ID = j.ORG_ID
+WHERE j.FORWARD_PUBLISHING_STATUS = 'PUBLISHED' AND j.DELETED_AT IS NULL
+  AND LOWER(o.NAME) NOT REGEXP '%s'
+  AND ((j.JOB_TYPE = 'ATS' AND EXISTS (SELECT 1 FROM JOB_HIRING_TYPE jh JOIN HIRING_TYPE h ON h.ID=jh.HIRING_TYPE_ID
+                                       WHERE jh.JOB_ID=j.ID AND h.NAME='Judicial Clerk'))
+       OR j.JOB_POST_AUDIENCE = 'POST_CLERKSHIP')
+ORDER BY j.OPEN_DATE DESC;""" % DEMO_REGEXP
 
 
 def strip_html(s) -> str:
@@ -418,12 +437,9 @@ def wire_lateral(data: dict) -> None:
 
 
 def wire_pc(data: dict) -> None:
-    rows = metabase_sql(MB_DB, _JOB_SELECT % PC_WHERE)
-    data["tables"]["pc"] = [
-        job_record(r, "Judicial Clerk" if "Judicial Clerk" in (r.get("hiring_types") or "")
-                   else "Post-Judicial Clerkship")
-        for r in rows]
-    print(f"  post-judicial-clerkship: {len(rows)} listings")
+    rows = metabase_sql(MB_DB, PC_SQL)
+    data["tables"]["pc"] = [job_record(r, r.get("clerk_type") or "Post-Judicial Clerkship") for r in rows]
+    print(f"  post-judicial-clerkship: {len(rows)} listings (mirrors Metabase card 10595)")
 
 
 # ── 3L ENTRY-LEVEL (Metabase db 2, LIVE) ─────────────────────────────────────
