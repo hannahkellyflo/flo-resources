@@ -1,15 +1,20 @@
 name: Opening-today heads-up for Juli
 
-# Every weekday at 13:00 UTC (~8 AM CT) — after the 11:00 UTC data refresh — post to
-# #forward-job-postings the tracked jobs whose open date is today and that aren't live on Flo
-# Forward yet (i.e. the ones Juli needs to add). Monday also sweeps Sat/Sun. Point-in-time read
-# of data.json; no watermark/state. Zero openings -> a clear "no intel for today" note.
+# Every weekday, post to #forward-job-postings the tracked jobs whose open date is today and that
+# aren't live on Flo Forward yet (the ones Juli needs to add). Monday also sweeps Sat/Sun.
+# Point-in-time read of data.json; no watermark/state. Zero openings -> a clear "no intel" note.
 #
-# Note on time: 13:00 UTC = 8 AM CDT (daylight) / 7 AM CST (standard). Adjust if you need a
-# hard 8 AM year-round.
+# Timing: the job runs at 12:00 UTC (after the 11:00 UTC data refresh) but does NOT post
+# immediately — opening_today.py schedules the Slack message for 8:00 AM America/Chicago
+# (DST-correct) via chat.scheduleMessage. GitHub cron fires late and unpredictably, so pinning
+# delivery in Slack is what actually gets it to 8 AM CT. Running at 12:00 UTC leaves headroom for
+# GitHub's delay so the run still lands before the 8 AM target most days.
+#
+# Paused: opening_today.py has a RESUME_ON date guard — it skips until 2026-09-29, then resumes on
+# its own. (The workflow stays enabled so it can auto-resume.)
 on:
   schedule:
-    - cron: "0 13 * * 1-5"
+    - cron: "0 12 * * 1-5"
   workflow_dispatch: {}
 
 jobs:
