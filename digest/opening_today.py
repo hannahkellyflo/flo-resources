@@ -14,11 +14,17 @@ dates (the refresh doesn't run weekends) so nothing is missed. Zero openings →
 Prod: SLACK_BOT_TOKEN → chat.postMessage to SLACK_CHANNEL. Dry-run: prints (no token).
 """
 import os, sys, json, re, datetime, urllib.request
+from zoneinfo import ZoneInfo
 
 DATA_PATH = "pipeline/data.json"
 CHANNEL = os.environ.get("SLACK_CHANNEL", "C073ZL436BB")   # #forward-job-postings
 JULI = os.environ.get("JULI_USER_ID", "U09HWPD25JS")       # Juli Davis
 JOB_ID_RE = re.compile(r"/jobs/\d+")
+CT = ZoneInfo("America/Chicago")
+
+# Paused through this date (exclusive): before it, scheduled runs skip silently and auto-resume on it.
+# Set to None to remove the pause. (Hannah 2026-09-02: hold Juli's heads-ups until 2026-09-29.)
+RESUME_ON = datetime.date(2026, 9, 29)
 
 # (table, open-date col, position col, listing col)
 SUMMER = [("summer1L", "1L Application Open Date", "1L Position", "1L Job Listing", "1L Summer"),
@@ -93,14 +99,29 @@ def compose(hits, today):
     return "\n".join(L)
 
 
+def _post_at_8am_ct():
+    """Unix ts for 8:00 AM America/Chicago today if it's still ahead (DST-correct), else None.
+    GitHub cron fires late and unpredictably, so we pin *delivery* to 8 AM via Slack rather than
+    trust the run time. If the run itself lands after 8 AM CT, return None -> send immediately
+    (better a bit late than pushed to tomorrow, since the content is for today)."""
+    now = datetime.datetime.now(CT)
+    target = now.replace(hour=8, minute=0, second=0, microsecond=0)
+    return int(target.timestamp()) if target > now + datetime.timedelta(seconds=60) else None
+
+
 def post(message):
     token = os.environ.get("SLACK_BOT_TOKEN")
     if not token:
         raise RuntimeError("SLACK_BOT_TOKEN required to post")
+    post_at = _post_at_8am_ct()
+    payload = {"channel": CHANNEL, "text": message, "unfurl_links": False, "mrkdwn": True}
+    if post_at:
+        payload["post_at"] = post_at
+        url = "https://slack.com/api/chat.scheduleMessage"   # delivered at 8 AM CT regardless of run time
+    else:
+        url = "https://slack.com/api/chat.postMessage"       # already past 8 AM CT -> send now
     req = urllib.request.Request(
-        "https://slack.com/api/chat.postMessage",
-        data=json.dumps({"channel": CHANNEL, "text": message,
-                         "unfurl_links": False, "mrkdwn": True}).encode(),
+        url, data=json.dumps(payload).encode(),
         headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json; charset=utf-8"})
     res = json.load(urllib.request.urlopen(req))
     if not res.get("ok"):
@@ -112,6 +133,10 @@ def main(argv):
     today = datetime.date.today()
     if "--date" in argv:  # testing override, e.g. --date 2026-11-01
         today = datetime.date.fromisoformat(argv[argv.index("--date") + 1])
+    # Paused window: real runs skip until RESUME_ON, then resume on their own. --dry-run/--force test through it.
+    if RESUME_ON and today < RESUME_ON and "--dry-run" not in argv and "--force" not in argv:
+        print(f"opening-today paused until {RESUME_ON.isoformat()} — skipping (today {today.isoformat()})")
+        return
     tables = json.load(open(DATA_PATH)).get("tables", {})
     hits = find_openings(tables, target_dates(today))
     message = compose(hits, today)
