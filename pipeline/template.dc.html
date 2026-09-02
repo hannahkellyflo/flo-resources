@@ -2039,8 +2039,10 @@ class Component extends DCLogic {
     const sc = this.state.sortCol;
     const sdir = this.state.sortDir === 'desc' ? -1 : 1;
     const sortRows = (rows) => (sc == null ? rows : rows.slice().sort((a, b) => {
-      const av = a.cells[sc] && a.cells[sc].text != null ? String(a.cells[sc].text) : '';
-      const bv = b.cells[sc] && b.cells[sc].text != null ? String(b.cells[sc].text) : '';
+      // trim() the sort key: some source titles carry a stray leading space, which would otherwise
+      // sort before every letter/digit and jump those rows to the top regardless of direction.
+      const av = a.cells[sc] && a.cells[sc].text != null ? String(a.cells[sc].text).trim() : '';
+      const bv = b.cells[sc] && b.cells[sc].text != null ? String(b.cells[sc].text).trim() : '';
       return av.localeCompare(bv, undefined, { numeric: true, sensitivity: 'base' }) * sdir;
     }));
     const splitOpenSrc = is2L ? DATA.tables.summer2L.open : DATA.tables.summer1L.open;
