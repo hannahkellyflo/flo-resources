@@ -6,23 +6,50 @@ name: Opening-today heads-up for Juli
 # of data.json; no watermark/state. Zero openings -> a clear "no intel for today" note.
 #
 # Note on time: 13:00 UTC = 8 AM CDT (daylight) / 7 AM CST (standard). Adjust if you need a
-# hard 8 AM year-round.
+# hard 8 AM year-round. GitHub delivers scheduled runs on a best-effort basis and has been
+# starting this one 50-60 min late most days, with one run delayed ~10h — the cron is a floor,
+# not a guarantee, and there is no setting that changes that.
+#
+# PAUSED until START_DATE below. The schedule keeps firing so the workflow stays alive (GitHub
+# disables cron in repos idle for 60 days), but the job posts nothing before that date. Nothing
+# needs switching back on — it starts itself. A manual run posts regardless, for testing.
 on:
   schedule:
     - cron: "0 13 * * 1-5"
   workflow_dispatch: {}
 
+env:
+  START_DATE: "2026-09-28"      # first weekday it posts (a Monday)
+
 jobs:
   heads-up:
     runs-on: ubuntu-latest
     steps:
+      - name: Hold until the start date
+        id: gate
+        run: |
+          today="$(date -u +%F)"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual run — posting regardless of the ${START_DATE} hold."
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          elif [ "$today" \< "$START_DATE" ]; then
+            echo "Paused: today is ${today}, scheduled posting starts ${START_DATE}. Doing nothing."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Active: today is ${today} (on or after ${START_DATE})."
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4          # default depth is fine — point-in-time read, no diff
+        if: steps.gate.outputs.go == 'true'
 
       - uses: actions/setup-python@v5
+        if: steps.gate.outputs.go == 'true'
         with:
           python-version: "3.12"
 
       - name: Post opening-today heads-up to #forward-job-postings
+        if: steps.gate.outputs.go == 'true'
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         run: python digest/opening_today.py
