@@ -2843,7 +2843,7 @@ class Component extends DCLogic {
         // Jan–Dec calendar year, new listings/month by OPEN_DATE. 2026 has data through Jul (rest null).
         const tl2025 = DATA.charts.lateral.timeline['2025'];
         const tl2026 = DATA.charts.lateral.timeline['2026'];
-        const timeline = { title: 'Lateral non-partner listings on Flo by month', sub: 'By open date · calendar year · unique searches per month',
+        const timeline = { title: 'Lateral non-partner searches on Flo by month', sub: 'By open date · calendar year · unique searches per month',
           svg: lineChart([{ label: '2025', color: '#4D8EFF', points: tl2025 }, { label: '2026', color: '#192B92', points: tl2026 }], 'lattl'),
           legend: [{ label: '2025', color: '#4D8EFF' }, { label: '2026', color: '#192B92' }] };
         // Windows nest (open now ⊆ past 3 mo ⊆ past 12 mo): a listing counts if open at any point in the window
@@ -2949,7 +2949,7 @@ class Component extends DCLogic {
         tableChart = { title: '3L entry-level postings on Flo by month', sub: 'By open date · 18-month hiring cycle', svg: lineChart(s, 'tc3l', 0, MO_3Lt, GRAD_MARK_3L), legend: [{ label: 'Class of 2026 (Listed 2025-2026)', color: '#FC97C2' }, { label: 'Class of 2027 (Listed 2026-2027)', color: '#4DA54C' }], showMarketLink: true, onMarket: () => this.selectTab('market') };
       } else if (_sid === 'lateralassoc' && _tid === 'lateral') {
         const s = [{ label: '2025', color: '#4D8EFF', points: DATA.charts.lateral.timeline['2025'] }, { label: '2026', color: '#192B92', points: DATA.charts.lateral.timeline['2026'] }];
-        tableChart = { title: 'Lateral non-partner listings on Flo by month', sub: 'By open date · calendar year · unique searches per month', svg: lineChart(s, 'tclat', 0, CAL), legend: [{ label: '2025', color: '#4D8EFF' }, { label: '2026', color: '#192B92' }], showMarketLink: true, onMarket: () => this.selectTab('market') };
+        tableChart = { title: 'Lateral non-partner searches on Flo by month', sub: 'By open date · calendar year · unique searches per month', svg: lineChart(s, 'tclat', 0, CAL), legend: [{ label: '2025', color: '#4D8EFF' }, { label: '2026', color: '#192B92' }], showMarketLink: true, onMarket: () => this.selectTab('market') };
       } else if (isPI) {
         // Public interest is mapped by STATE (dispersed small towns), one bubble per state. No market tab yet.
         const _piRecs = isPISummer ? DATA.tables.piSummerOpen : isPIExtern ? DATA.tables.piExternOpen : DATA.tables.piAttorneyOpen;
