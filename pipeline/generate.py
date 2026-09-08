@@ -374,6 +374,49 @@ LATERAL_WHERE = """
   AND NOT EXISTS (SELECT 1 FROM JOB_HIRING_TYPE j3 JOIN HIRING_TYPE h3 ON h3.ID=j3.HIRING_TYPE_ID
                   WHERE j3.JOB_ID=j.ID AND h3.NAME='Lateral Partner')"""
 
+# ── Lateral "grace" rule: public-but-not-yet-published fresh roles (Hannah 2026-09-08) ──
+# Lateral Non-Partners also surfaces roles a firm has marked public (IS_PUBLIC=1) and opened in the
+# last 60 days, even when they aren't PUBLISHED on the Flo Forward job feed yet. Why this is safe:
+# the public job-detail page (forward/jobs/<id>) renders — with a live Apply button — whenever
+# IS_PUBLIC=1; FORWARD_PUBLISHING_STATUS only governs the Forward *feed*. So the "View listing" link
+# always works (an IS_PUBLIC=0 job returns "Job Details Not Found"), and we never post a dead row.
+# This catches genuinely-fresh postings (e.g. Dickinson Wright "Real Estate Finance Associate", open
+# 2026-09-04) that just haven't been flipped to published — WITHOUT pulling in the intentionally
+# do-not-publish back-catalog (templates, talent pools, "general application" buckets, internal-only,
+# tests). Gates: IS_PUBLIC=1 + opened ≤60d + not-yet-closed + a junk-title guard, on top of every
+# existing lateral gate (tags, not-partner, ATS/MANUAL, LAW_FIRM, demo exclusion). Published rows are
+# unchanged; grace rows are merged on top and de-duped by job id in wire_lateral.
+_GRACE_JUNK_TITLE = (r"\\btest\\b|template|self.?identification|internal apply only|not posted|"
+                     r"talent community|\\bpipeline\\b|prospects|inquiries|referral candidates|"
+                     r"opportunistic|unsolicited|submissions|general application|general lateral|"
+                     r"attorney general application|lateral attorney general|incoming associates|"
+                     r"partner team candidates|[0-9]{4}.*candidates|target .*candidates")
+
+LATERAL_GRACE_SQL = """
+SELECT j.ID AS job_id, o.NAME AS firm, j.TITLE AS position,
+  j.DESCRIPTION AS descr, j.OPEN_DATE AS open_date, j.UPDATED_AT AS updated_at,
+  GROUP_CONCAT(DISTINCT ht.NAME) AS hiring_types,
+  (SELECT GROUP_CONCAT(DISTINCT loc.OPTION SEPARATOR '; ')
+     FROM JOB_OFFICE jo JOIN ORG_OFFICE ofc ON ofc.ID = jo.OFFICE_ID
+     JOIN STATIC_LIST_OPTION loc ON loc.ID = ofc.OFFICE_LOCATION_ID
+     WHERE jo.JOB_ID = j.ID) AS offices
+FROM JOB j
+JOIN ORG o ON o.ID = j.ORG_ID
+LEFT JOIN JOB_HIRING_TYPE jht ON jht.JOB_ID = j.ID
+LEFT JOIN HIRING_TYPE ht ON ht.ID = jht.HIRING_TYPE_ID
+WHERE (j.FORWARD_PUBLISHING_STATUS IS NULL OR j.FORWARD_PUBLISHING_STATUS <> 'PUBLISHED')
+  AND j.DELETED_AT IS NULL
+  AND j.IS_PUBLIC = TRUE                                   -- guarantees the listing link renders
+  AND j.OPEN_DATE >= DATE_SUB(NOW(), INTERVAL 60 DAY)      -- freshness: "just posted, not flipped yet"
+  AND (j.CLOSE_DATE IS NULL OR j.CLOSE_DATE >= NOW())      -- and not already closed
+  AND (j.JOB_TYPE IN ('ATS','MANUAL_ENTRY') OR j.JOB_TYPE IS NULL) AND j.JOB_CLASSIFICATION = 'LAW_FIRM'
+  AND LOWER(o.NAME) NOT REGEXP '%s'
+  AND LOWER(o.NAME) <> 'your company'
+  AND LOWER(j.TITLE) NOT REGEXP '%s'                       -- junk-title guard (evergreen/pool/test)
+  AND (%s)
+GROUP BY j.ID, o.NAME, j.TITLE, j.DESCRIPTION, j.OPEN_DATE, j.UPDATED_AT
+ORDER BY j.OPEN_DATE DESC;""" % (DEMO_REGEXP, _GRACE_JUNK_TITLE, LATERAL_WHERE)
+
 # Post-Judicial Clerkship mirrors the Metabase question "Clerk Jobs Posted to Forward
 # (Judicial Clerk + Post-Clerkship)" (card 10595) verbatim: published, non-deleted, demo orgs
 # excluded, NO date filter. Two buckets — ATS jobs tagged 'Judicial Clerk', unioned with jobs whose
@@ -425,7 +468,12 @@ def job_record(row: dict, type_val: str) -> dict:
 
 
 def wire_lateral(data: dict) -> None:
-    rows = metabase_sql(MB_DB, _JOB_SELECT % LATERAL_WHERE)
+    rows = metabase_sql(MB_DB, _JOB_SELECT % LATERAL_WHERE)                    # PUBLISHED on Flo Forward
+    published_ids = {r.get("job_id") for r in rows}
+    grace = [r for r in metabase_sql(MB_DB, LATERAL_GRACE_SQL)                 # public + fresh, not yet published
+             if r.get("job_id") not in published_ids]
+    rows = _dedup_lateral(rows + grace)                                        # drop location-less near-dup twins
+    rows = sorted(rows, key=lambda r: (r.get("open_date") or ""), reverse=True)
 
     def typ(hts):
         s = hts or ""
@@ -433,7 +481,7 @@ def wire_lateral(data: dict) -> None:
                 "Counsel" if "Lateral Counsel" in s else
                 "Staff Attorney" if "Staff Attorney" in s else "Associate")
     data["tables"]["lateral"] = [job_record(r, typ(r.get("hiring_types"))) for r in rows]
-    print(f"  lateral: {len(rows)} non-partner listings")
+    print(f"  lateral: {len(rows)} non-partner listings ({len(grace)} public-but-unpublished grace)")
 
 
 def wire_pc(data: dict) -> None:
@@ -770,6 +818,31 @@ def _dedup_prefer_located(rows, lvl):
             continue
         for j, k in enumerate(rows):
             if j != i and _dd_has_office(k) and _dd_same_job(r, k, lvl):
+                drop.add(i)
+                break
+    return [r for i, r in enumerate(rows) if i not in drop]
+
+
+def _dedup_lateral(rows):
+    """Prefer-located dedup for the lateral table's raw Metabase rows (fields firm/position/
+    open_date/offices), applying the same rule as _dedup_prefer_located: same firm + same open day +
+    similar title, keep the one WITH an office and drop the location-less twin. Rows that both carry
+    offices (a firm's real multi-office postings) are left intact. Matters now that PUBLISHED and
+    public-but-unpublished grace rows are merged — the same role can surface from both paths."""
+    def has_office(r):
+        return bool((r.get("offices") or "").strip())
+
+    def same_job(a, b):
+        return (_dd_firm_key(a.get("firm")) == _dd_firm_key(b.get("firm"))
+                and str(a.get("open_date") or "")[:10] == str(b.get("open_date") or "")[:10]
+                and _dd_titles_similar(a.get("position"), b.get("position")))
+
+    drop = set()
+    for i, r in enumerate(rows):
+        if has_office(r):
+            continue
+        for j, k in enumerate(rows):
+            if j != i and has_office(k) and same_job(r, k):
                 drop.add(i)
                 break
     return [r for i, r in enumerate(rows) if i not in drop]
