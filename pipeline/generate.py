@@ -779,8 +779,21 @@ def _upcoming_key(rec: dict, lvl: str):
 _DD_STOP = {"the", "a", "an", "of", "for", "and", "amp"}
 
 
+# Legal-entity suffixes stripped from the firm key so the same firm matches across sources even when
+# one spelling carries the designator and the other doesn't (e.g. Airtable "Elsberg Baker & Maruri"
+# vs Flo Forward "Elsberg Baker & Maruri PLLC"). Longest-first so "pllc" wins over "llc". Applied
+# after non-alphanumerics are stripped, and only while something is left, so a two-firm collision
+# still needs matching open date + ~title before the prefer-located pass would touch it.
+_DD_FIRM_SUFFIX = re.compile(r"(?:pllc|lllp|llp|llc|plc|chartered|ltd|inc|lp|pc|pa)$")
+
+
 def _dd_firm_key(s):
-    return re.sub(r"[^a-z0-9]+", "", (s or "").lower())
+    k = re.sub(r"[^a-z0-9]+", "", (s or "").lower())
+    while True:
+        stripped = _DD_FIRM_SUFFIX.sub("", k)
+        if stripped == k or not stripped:      # nothing more to strip / don't reduce to empty
+            return stripped if stripped else k
+        k = stripped
 
 
 def _dd_title_tokens(s):
