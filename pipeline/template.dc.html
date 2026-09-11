@@ -2269,7 +2269,7 @@ class Component extends DCLogic {
     const pcEmpty = isPostClerk && !pcHasRows;
     const pcNoMatch = 'No matches for “' + this.state.search.trim() + '” — try a firm, position, or office.';
     const pcEmptyMsg = hasQuery ? pcNoMatch : 'No post-judicial clerkship or judicial clerk roles open right now — check back soon.';
-    const pcCaption = 'Judicial clerk & post-judicial clerkship associate roles · live law-firm roles';
+    const pcCaption = 'Post-judicial clerkship roles with law firms · Live on Flo Forward';
     const downloadPC = () => this.exportCsv(pcColLabels, pcRows, 'forward-post-judicial-clerkship-associates.csv');
     pcRows.forEach((r, i) => { r.onOpen = () => this.setState({ rowOpen: i }); });
 
