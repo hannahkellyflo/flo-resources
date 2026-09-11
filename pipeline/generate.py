@@ -962,6 +962,19 @@ def wire_summer_split(data: dict) -> None:
         out["2L"][bkt] = [rec for rec in out["2L"][bkt]
                           if "herbert smith freehills" not in str(rec.get("Employer", "")).lower()]
 
+    # One-off removal (Hannah 2026-09-11): Cahill "Talent Profile - Class of 2029" (Flo Forward job
+    # 25041) is an evergreen talent-intake profile, not a real 1L summer posting. Not a rule — a single
+    # id drop; remove this entry if the source listing is ever taken down.
+    _DROP_JOB_IDS = ("25041",)
+
+    def _kept(rec, lv):
+        lk = rec.get(f"{lv} Job Listing")
+        href = lk.get("href", "") if isinstance(lk, dict) else ""
+        return not any(f"/jobs/{jid}" in href for jid in _DROP_JOB_IDS)
+    for lv in ("1L", "2L"):
+        for bkt in ("open", "upcoming"):
+            out[lv][bkt] = [rec for rec in out[lv][bkt] if _kept(rec, lv)]
+
     for lv, key in (("1L", "summer1L"), ("2L", "summer2L")):
         out[lv]["upcoming"].sort(key=lambda rec, _lv=lv: _upcoming_key(rec, _lv))   # soonest-first (Metabase + Airtable)
         data["tables"][key] = out[lv]
