@@ -1069,7 +1069,7 @@
               <thead>
                 <tr>
                   <th style="width:40px;border-bottom:1px solid #E7E4DD;padding:8px 0 8px 16px;"></th>
-                  <sc-for list="{{ pcColumns }}" as="c" hint-placeholder-count="8">
+                  <sc-for list="{{ pcColumns }}" as="c" hint-placeholder-count="7">
                     <th class="{{ c.thClass }}" onClick="{{ c.onClick }}" style="text-align:left;font-weight:600;font-size:11.5px;letter-spacing:0.03em;text-transform:uppercase;color:#57534C;padding:11px 16px;white-space:nowrap;border-bottom:1px solid #E7E4DD;">{{ c.label }}<span class="sort-arrow">{{ c.arrow }}</span></th>
                   </sc-for>
                 </tr>
@@ -2254,8 +2254,11 @@ class Component extends DCLogic {
     // Type column always shows 'Post-Judicial Clerkship' for this table (Hannah) — regardless of the raw hiring type.
     // Low volume (4 live). Same columns/behavior as the lateral table. TEMP samples = validated 2026-07-31.
     const isPostClerk = this.state.subId === 'judicial' && activeTab.id === 'postclerk';
-    const pcColLabels = lateralColLabels; // Law Firm, Job Listing, Position, Offices, Job Description, Open Date, Type, Last Updated
-    const pcRowsAll = buildRows(DATA.tables.pc, pcColLabels, { wraps: { 2: true, 3: true }, desc: { 4: true }, pills: { 6: true }, muted: { 7: true } });
+    // PC section drops the "Type" column lateral carries: Judicial Clerk vs Post-Judicial Clerkship is a
+    // data-provenance artifact (hiring-type tag vs POST_CLERKSHIP audience), not a user-facing distinction
+    // under this section's "post-judicial clerkship roles" header (Hannah 2026-09-11).
+    const pcColLabels = ['Law Firm', 'Job Listing', 'Position', 'Offices', 'Job Description', 'Open Date', 'Last updated'];
+    const pcRowsAll = buildRows(DATA.tables.pc, pcColLabels, { wraps: { 2: true, 3: true }, desc: { 4: true }, muted: { 6: true } });
     const pcMatch = (r) => { if (!q) return true; return [0, 2, 3, 4].some((i) => { const c = r.cells[i]; return !!(c && c.text && String(c.text).toLowerCase().indexOf(q) !== -1); }); };
     const pcRows = sortRows(pcRowsAll.filter(pcMatch));
     const pcColumns = pcColLabels.map((label, i) => ({
@@ -2279,7 +2282,7 @@ class Component extends DCLogic {
       : isExams ? { rows: examsRows, labels: examsColLabels, pills: {}, titleIdx: 0, fallback: 'Law School' }
       : isPI ? { rows: piAllRows, labels: piColLabels, pills: {}, titleIdx: 0, fallback: 'Position' }
       : isLateralNP ? { rows: lateralRows, labels: lateralColLabels, pills: { 6: true }, titleIdx: 2, fallback: 'Lateral Role' }
-      : isPostClerk ? { rows: pcRows, labels: pcColLabels, pills: { 6: true }, titleIdx: 2, fallback: 'Clerkship Role' }
+      : isPostClerk ? { rows: pcRows, labels: pcColLabels, pills: {}, titleIdx: 2, fallback: 'Clerkship Role' }
       : is3L ? { rows: entry3lRows, labels: entry3lColLabels, pills: {}, titleIdx: 1, fallback: '3L Role' }
       : isSplitApply ? { rows: splitUpcomingRows.concat(splitOpenRows), labels: splitColumns, pills: {}, titleIdx: 1, fallback: 'Summer Role' }
       : null;
