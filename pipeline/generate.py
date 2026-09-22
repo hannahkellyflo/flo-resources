@@ -80,11 +80,13 @@ def apply_link(richtext: str | None):
 
 
 # ── FIRM PROFILE LINKS (the "Firm Profile" column) ───────────────────────────
-# Live Flo Forward "base" profile URLs live in pipeline/firm-profiles.json (Firm -> Base URL only;
-# Tier/Status deliberately NOT stored — this repo is public). Table firm names are matched to the
-# CSV by normalized name, then a prefix fallback (a full legal name that STARTS with the brand, e.g.
-# "Baker, Donelson, Bearman, Caldwell & Berkowitz, PC" -> "Baker Donelson"). Verified no false
-# positives on the current data. No match -> muted "—" (grey, not clickable = "no profile yet").
+# Profile slugs live in pipeline/firm-profiles.json (Firm -> profile URL only; Tier/Status deliberately
+# NOT stored — this repo is public). We only link firms on a PAID Forward tier, and we point at the
+# firm's STUDENT profile; a free-tier (or untiered) firm renders a muted "—", same as a firm with no
+# profile at all (Hannah 2026-09-22). Tier is read live from Metabase at build time (ORG_FORWARD_TIER
+# / FORWARD_TIER) rather than baked into the public file, so links track tier changes on every refresh.
+# Table firm names are matched to the JSON by normalized name, then a prefix fallback (a full legal name
+# that STARTS with the brand, e.g. "Baker, Donelson, …, PC" -> "Baker Donelson").
 def _norm_firm(s: str) -> str:
     s = (s or "").lower()
     s = re.sub(r"\(.*?\)", "", s)
@@ -93,16 +95,17 @@ def _norm_firm(s: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", s)
 
 
-def _load_firm_profiles():
+def _load_firm_profiles_raw():
     try:
         raw = json.loads((PIPE / "firm-profiles.json").read_text(encoding="utf-8"))
     except FileNotFoundError:
-        return {}, []
-    m = {_norm_firm(f): u for f, u in raw.items()}
-    return m, sorted(m, key=len, reverse=True)
+        return {}
+    return {_norm_firm(f): u for f, u in raw.items()}
 
 
-_FIRM_PROFILE_MAP, _FIRM_PROFILE_KEYS = _load_firm_profiles()
+_FIRM_PROFILE_RAW = _load_firm_profiles_raw()   # normalized firm -> profile URL (ALL firms; no network)
+_FIRM_PROFILE_MAP = None                         # paid-only, /student URLs; built lazily (needs Metabase)
+_FIRM_PROFILE_KEYS = None
 
 # Explicit aliases for firms whose tracker name and profile key differ by more than casing/legal-suffix
 # (abbreviations, rebrands) so the prefix fallbacks can't bridge them. Keys/values are matched after
@@ -112,24 +115,81 @@ _FIRM_PROFILE_ALIASES = {
     _norm_firm("Herbert Smith Freehills Kramer"): _norm_firm("HSF Kramer"),
 }
 
+# ── Forward tier gate ──
+_PAID_TIERS = {"Standard", "Premium", "Spotlight"}   # everything but "Free" (and untiered)
+TIER_SQL = """
+SELECT o.NAME AS firm, ft.NAME AS tier
+FROM ORG_FORWARD_TIER oft
+JOIN ORG o ON o.ID = oft.ORG_ID
+JOIN FORWARD_TIER ft ON ft.ID = oft.FORWARD_TIER_ID
+WHERE oft.DELETED_AT IS NULL"""
+# firm-profiles.json key (normalized) -> ORG.NAME key (normalized), where a brand abbreviation/rebrand
+# stops the name/prefix match from finding the tier row.
+_TIER_NAME_ALIASES = {
+    _norm_firm("Bryan Cave Leighton Paisner"): _norm_firm("BCLP"),
+    _norm_firm("HSF Kramer"): _norm_firm("Herbert Smith Freehills Kramer"),
+    _norm_firm("Weil"): _norm_firm("Weil, Gotshal & Manges LLP"),
+}
+
+
+def _ensure_profiles():
+    """Build the paid-only, /student profile map lazily (needs Metabase tier data). Free/untiered firms
+    are dropped entirely so they render '—'. Cached after the first call."""
+    global _FIRM_PROFILE_MAP, _FIRM_PROFILE_KEYS
+    if _FIRM_PROFILE_MAP is not None:
+        return _FIRM_PROFILE_MAP, _FIRM_PROFILE_KEYS
+    try:
+        rows = metabase_sql(MB_DB, TIER_SQL)
+    except Exception:
+        rows = []
+    tmap = {}
+    for r in rows:
+        k = _norm_firm(r.get("firm"))
+        if k:
+            tmap[k] = r.get("tier")
+    tkeys = sorted(tmap, key=len, reverse=True)
+
+    def tier_of(nkey):
+        nkey = _TIER_NAME_ALIASES.get(nkey, nkey)
+        if nkey in tmap:
+            return tmap[nkey]
+        for k in tkeys:
+            if len(k) >= 6 and len(nkey) >= 6 and (nkey.startswith(k) or k.startswith(nkey)):
+                return tmap[k]
+        return None
+
+    m = {}
+    for firm, url in _FIRM_PROFILE_RAW.items():
+        if tier_of(firm) in _PAID_TIERS:
+            m[firm] = url[:-5] + "/student" if url.endswith("/base") else url   # base -> student
+    _FIRM_PROFILE_MAP, _FIRM_PROFILE_KEYS = m, sorted(m, key=len, reverse=True)
+    return _FIRM_PROFILE_MAP, _FIRM_PROFILE_KEYS
+
 
 def firm_profile_cell(firm_name):
-    """{text:'View profile', href} when the firm has a live Flo Forward profile, else '—' (muted grey)."""
+    """{text:'View profile', href} for a PAID firm's student profile, else '—' (free/untiered/no profile)."""
+    fmap, fkeys = _ensure_profiles()
     n = _norm_firm(firm_name)
     n = _FIRM_PROFILE_ALIASES.get(n, n)
-    url = _FIRM_PROFILE_MAP.get(n)
+    url = fmap.get(n)
     if not url:
-        # data name is a longer legal name that starts with a CSV brand ("Baker Donelson Bearman…" -> "Baker Donelson")
-        for cn in _FIRM_PROFILE_KEYS:
+        # data name is a longer legal name that starts with a JSON brand ("Baker Donelson Bearman…" -> "Baker Donelson")
+        for cn in fkeys:
             if len(cn) >= 6 and n.startswith(cn):
-                url = _FIRM_PROFILE_MAP[cn]
+                url = fmap[cn]
                 break
     if not url and len(n) >= 5:
         # data name is a SHORT brand (Airtable survey rows use e.g. "Katten"/"Sheppard"/"Orrick") that is a
-        # prefix of the CSV's full legal name — accept only if it uniquely identifies one firm (avoids "Baker").
-        matches = [cn for cn in _FIRM_PROFILE_KEYS if cn.startswith(n)]
+        # prefix of the JSON's full legal name — accept only if it uniquely identifies one firm (avoids "Baker").
+        matches = [cn for cn in fkeys if cn.startswith(n)]
         if len(matches) == 1:
-            url = _FIRM_PROFILE_MAP[matches[0]]
+            url = fmap[matches[0]]
+    if not url:
+        # reverse of the above: a long tracker legal name whose leading brand is a SHORT (<6) JSON key the
+        # prefix rule above skips — e.g. "Weil, Gotshal & Manges LLP" -> "Weil". Unique-match guarded.
+        pre = [cn for cn in fkeys if 3 <= len(cn) < 6 and n.startswith(cn)]
+        if len(pre) == 1:
+            url = fmap[pre[0]]
     return {"text": "View profile", "href": url} if url else "—"
 
 
