@@ -508,13 +508,29 @@ def _entry3l_where(grad_year: int, recent_only: bool = False) -> str:
   EXISTS (SELECT 1 FROM FORWARD_JOB_GRAD_DATE_TARGET_RULE r
           WHERE r.JOB_ID = j.ID AND r.IS_NOT_DELETED = 1
             AND r.RULE_TYPE = 'INDIVIDUAL_YEARS' AND YEAR(r.MIN_GRAD_DATE) = {grad_year})
-  AND LOWER(j.TITLE) NOT REGEXP '{_E3L_TITLE_NOISE}'"""
+  AND (LOWER(j.TITLE) NOT REGEXP '{_E3L_TITLE_NOISE}'
+       OR LOWER(j.TITLE) REGEXP 'pre.?clerkship')"""   # keep grad-tagged pre-clerkship 3L roles despite 'summer'/'clerk' in the title
     if recent_only:  # Class 2026: tighten the base 6-month window to 3 months (opened recently only)
         clause += "\n  AND j.OPEN_DATE >= DATE_SUB(NOW(), INTERVAL 3 MONTH)"
     return clause
 
 
 ENTRY3L_WHERE = _entry3l_where(2027)
+
+# All PUBLISHED Class-of-2027 entry-level Forward postings, IGNORING the close-date takedown window and
+# the title-noise filter. Used ONLY to suppress stale Airtable "Not yet open" survey placeholders: once
+# a firm has actually posted a role, we must stop showing "Not yet open" for it even when its live row
+# was filtered out of the table above — because its application close date passed, or its title tripped
+# the noise filter (e.g. a "Pre-Clerkship Summer Associate"). (Hannah 2026-09-22)
+E3L_POSTED_SQL = f"""
+SELECT j.ID AS job_id, o.NAME AS firm, j.TITLE AS position
+FROM JOB j JOIN ORG o ON o.ID = j.ORG_ID
+WHERE j.FORWARD_PUBLISHING_STATUS = 'PUBLISHED' AND j.DELETED_AT IS NULL
+  AND (j.JOB_TYPE IN ('ATS','MANUAL_ENTRY') OR j.JOB_TYPE IS NULL) AND j.JOB_CLASSIFICATION = 'LAW_FIRM'
+  AND LOWER(o.NAME) NOT REGEXP '{DEMO_REGEXP}'
+  AND EXISTS (SELECT 1 FROM FORWARD_JOB_GRAD_DATE_TARGET_RULE r
+              WHERE r.JOB_ID = j.ID AND r.IS_NOT_DELETED = 1
+                AND r.RULE_TYPE = 'INDIVIDUAL_YEARS' AND YEAR(r.MIN_GRAD_DATE) = 2027)"""
 
 
 _PRACTICE_STOP = {"the", "and", "of", "for", "a", "an"}  # non-distinguishing filler tokens
@@ -596,6 +612,14 @@ def wire_entry3l(data: dict) -> None:
     # vs "Position", "(offices)" suffix) — e.g. Latham's 19 roles were showing twice. Only the
     # not-yet-open Airtable side is dropped; live rows are untouched.
     live_practice = [_practice_norm(r.get("firm"), r.get("position")) for r in all_live]
+    # Also suppress survey placeholders against roles the firm HAS posted but that were filtered out of
+    # the live rows above (close date passed → dropped by takedown; or title tripped the noise filter).
+    # Without this, a role the firm already posted keeps showing a contradictory "Not yet open". Closed
+    # roles thus simply drop out (per the "drop them entirely" rule); a still-open one that slipped the
+    # noise filter is already recovered as a live linked row by the pre-clerkship exception above.
+    posted = metabase_sql(MB_DB, E3L_POSTED_SQL)
+    live_ids |= {str(p["job_id"]) for p in posted if p.get("job_id") is not None}
+    live_practice += [_practice_norm(p.get("firm"), p.get("position")) for p in posted]
     da_added = 0
     for row in direct_apply_rows():
         if row["level"] != "3L" or row["class"] != 2027:
