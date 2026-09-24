@@ -35,12 +35,37 @@ def load(path=DATA):
     return out, src
 
 
+# CATEGORIES and JOBS are authored as one-liners; the rest are indented. Matching
+# each export's own style keeps a sync diff to the values that actually changed.
+COMPACT = {"CATEGORIES", "JOBS"}
+
+
+def dump(name, value):
+    if name in COMPACT:
+        return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+    return json.dumps(value, indent=1, ensure_ascii=False)
+
+
 def write(values, src, path=DATA):
     """Splice new values back in, preserving everything else byte-for-byte."""
     spans = sorted(((_span(src, n), n) for n in EXPORTS), reverse=True)
     for (a, b), name in spans:
-        src = src[:a] + json.dumps(values[name], indent=1, ensure_ascii=False) + src[b:]
+        src = src[:a] + dump(name, values[name]) + src[b:]
     pathlib.Path(path).write_text(src, encoding="utf-8")
+
+
+def roundtrip_drift(src):
+    """Exports whose re-serialisation would not reproduce the file byte-for-byte.
+
+    Any name returned here means an unchanged sync would still rewrite that
+    literal, burying real edits in formatting noise.
+    """
+    drift = []
+    for name in EXPORTS:
+        a, b = _span(src, name)
+        if dump(name, json.loads(src[a:b])) != src[a:b]:
+            drift.append(name)
+    return drift
 
 
 def slugify(s):

@@ -393,7 +393,7 @@ export const PROMPTS = [
   "title": "Rank interviewers by volume",
   "prompt": "Which interviewers have done the most interviews this year? Give me names and counts.",
   "category": "Lateral and partner hiring",
-  "theme": "Interviewers and feedback",
+  "theme": "Interviewing and feedback",
   "jobs": [
    "Compare or spot a pattern"
   ],
@@ -405,7 +405,7 @@ export const PROMPTS = [
   "title": "Find your toughest and most generous graders",
   "prompt": "Rank our interviewers from most generous to toughest grader based on the scores they give in candidate evaluations.",
   "category": "Lateral and partner hiring",
-  "theme": "Interviewers and feedback",
+  "theme": "Interviewing and feedback",
   "jobs": [
    "Compare or spot a pattern"
   ],
@@ -417,7 +417,7 @@ export const PROMPTS = [
   "title": "Read the language behind the scores",
   "prompt": "Give me direct quote examples from the evaluations written by our highest-rating and lowest-rating interviewers.",
   "category": "Lateral and partner hiring",
-  "theme": "Interviewers and feedback",
+  "theme": "Interviewing and feedback",
   "jobs": [
    "Compare or spot a pattern"
   ],
@@ -429,7 +429,7 @@ export const PROMPTS = [
   "title": "Find the right panel for a key candidate",
   "prompt": "Who are my top interviewers for [Practice Group] candidates in the [Office] office, based on who meets candidates who go on to accept offers?",
   "category": "Lateral and partner hiring",
-  "theme": "Interviewers and feedback",
+  "theme": "Interviewing and feedback",
   "jobs": [
    "Compare or spot a pattern"
   ],
@@ -445,7 +445,7 @@ export const PROMPTS = [
   "title": "Connect interviewers to offer acceptance",
   "prompt": "Which interviewers correlate with the highest candidate offer-acceptance rate, and which correlate with the most declines?",
   "category": "Lateral and partner hiring",
-  "theme": "Interviewers and feedback",
+  "theme": "Interviewing and feedback",
   "jobs": [
    "Compare or spot a pattern"
   ],
@@ -457,7 +457,7 @@ export const PROMPTS = [
   "title": "Check one interviewer's track record",
   "prompt": "For [Interviewer], show me every candidate they interviewed this cycle and what percentage of those candidates accepted or declined their offer.",
   "category": "Lateral and partner hiring",
-  "theme": "Interviewers and feedback",
+  "theme": "Interviewing and feedback",
   "jobs": [
    "Compare or spot a pattern"
   ],
@@ -471,7 +471,7 @@ export const PROMPTS = [
   "title": "Find who owes you feedback",
   "prompt": "Which candidates have no submitted interview feedback yet? Provide their interviewers.",
   "category": "Lateral and partner hiring",
-  "theme": "Interviewers and feedback",
+  "theme": "Interviewing and feedback",
   "jobs": [
    "Chase or follow up"
   ],
@@ -483,7 +483,7 @@ export const PROMPTS = [
   "title": "Draft the feedback chase-up",
   "prompt": "Draft an email to each interviewer listing the candidates from their interviews with no submitted evaluation, Include the link to submit it.",
   "category": "Lateral and partner hiring",
-  "theme": "Interviewers and feedback",
+  "theme": "Interviewing and feedback",
   "jobs": [
    "Chase or follow up",
    "Draft something"
@@ -496,7 +496,7 @@ export const PROMPTS = [
   "title": "Summarize what everyone said about a candidate",
   "prompt": "Give me a summary of what all of our interviewers said about [Candidate Name].",
   "category": "Lateral and partner hiring",
-  "theme": "Interviewers and feedback",
+  "theme": "Interviewing and feedback",
   "jobs": [
    "Find people or records"
   ],
@@ -510,7 +510,7 @@ export const PROMPTS = [
   "title": "Mine your free-text evaluation questions",
   "prompt": "What are the themes in interview evaluations for [Job]? Include supporting quotes from free-text comments.",
   "category": "Lateral and partner hiring",
-  "theme": "Interviewers and feedback",
+  "theme": "Interviewing and feedback",
   "jobs": [
    "Compare or spot a pattern"
   ],
@@ -1735,7 +1735,7 @@ export const THEMES = {
   "Look up a candidate",
   "Agencies and search firms",
   "Speed, timing, and trends",
-  "Interviewers and feedback",
+  "Interviewing and feedback",
   "Write it up",
   "Screening criteria",
   "Recurring reporting"

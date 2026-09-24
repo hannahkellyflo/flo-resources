@@ -5,10 +5,10 @@ Run:  python3 tools/validate-data.py
 """
 import sys
 from collections import Counter
-from lib_data import load, slugify, bracket_vars
+from lib_data import load, slugify, bracket_vars, roundtrip_drift
 
 def main():
-    v, _ = load()
+    v, src = load()
     P, CATS, THEMES = v["PROMPTS"], v["CATEGORIES"], v["THEMES"]
     JOBS, CNOTES, JNOTES = v["JOBS"], v["CATEGORY_NOTES"], v["JOB_NOTES"]
 
@@ -88,6 +88,11 @@ def main():
         for t in THEMES.get(c, []):
             if not any(p["category"] == c and p["theme"] == t for p in P):
                 w(f"subheading '{c} / {t}' has no prompts")
+
+    # --- formatting -------------------------------------------------------
+    for name in roundtrip_drift(src):
+        e(f"{name} is not written the way lib_data serialises it — a sync would "
+          f"reformat it and bury real changes in noise")
 
     # --- report -----------------------------------------------------------
     counts = Counter(p["category"] for p in P)
