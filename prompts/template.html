@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Flo AI Prompt Library</title>
+<meta name="description" content="Prompts you can copy into Flo AI to get answers out of your recruiting and performance data.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zalando+Sans:ital,wdth,wght@0,75..125,400..700;1,75..125,400..700&display=swap">
+<link rel="stylesheet" href="./styles.css">
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="The Flo AI Prompt Library">
+<meta property="og:description" content="Prompts you can copy into Flo AI to get answers out of your recruiting and performance data.">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+<body>
+
+<div class="page">
+
+  <!-- 1. Hero -->
+  <header class="hero">
+    <div class="hero__card">
+      <div class="hero__ribbon" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+      <div class="hero__row">
+        <div class="hero__text">
+          <div class="hero__eyebrow">Flo AI &middot; Prompt Library</div>
+          <h1 class="hero__title">The Flo AI Prompt Library</h1>
+          <p class="hero__lede">Prompts you can copy into Flo AI to get answers out of your recruiting and performance data.</p>
+          <p class="hero__sublede">Ask where a pipeline stands, what a pattern looks like across years, or which themes run through your written reviews and interview feedback. Flo AI answers in plain language, and you can follow up the way you would in conversation.</p>
+        </div>
+        <div class="hero__mark">
+          <svg width="72" height="46" viewBox="0 0 126 80" fill="none" role="img" aria-label="Flo"><path d="M 51.126 14.721 L 41.764 14.721 C 39.596 14.721 37.711 16.242 36.957 18.426 L 35.259 23.649 L 47.888 23.649 L 42.865 38.845 L 30.357 38.845 L 17.346 78.926 L 0 78.926 L 12.916 38.845 L 4.337 38.845 L 9.239 23.649 L 17.818 23.649 L 20.174 16.43 C 23.379 6.46 32.054 0 41.859 0 L 56.048 0 L 51.126 14.721 Z" fill="currentColor"/><path d="M 59.256 78.926 L 52.384 78.926 C 42.579 78.926 38.125 72.467 41.436 62.495 L 62.094 0 L 79.44 0 L 59.519 60.501 C 58.846 62.686 59.74 64.206 61.906 64.206 L 64.234 64.206 L 59.255 78.927 L 59.256 78.926 Z" fill="currentColor"/><path d="M 102.819 22.443 C 87.264 22.443 74.253 33.556 70.767 51.221 C 67.278 68.413 76.329 80 93.206 80 C 108.948 80 121.677 68.983 125.259 51.221 C 128.748 34.03 119.696 22.443 102.822 22.443 L 102.819 22.443 Z M 107.909 51.221 C 105.835 59.486 100.839 64.232 94.804 64.232 C 88.769 64.232 85.943 59.579 88.111 51.221 C 90.184 42.957 95.277 38.211 101.215 38.211 C 107.154 38.211 109.983 42.96 107.909 51.221 Z" fill="currentColor"/></svg>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 2. Category blocks -->
+  <div class="cat-blocks" id="catBlocks" data-print-hide></div>
+
+  <!-- 3. Search -->
+  <div class="search-wrap" data-print-hide>
+    <label class="search">
+      <span class="sr-only">Search prompts</span>
+      <svg class="search__icon" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#C74500" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input class="search__input" id="search" type="text" autocomplete="off" placeholder="Search all prompts by key word">
+      <button class="search__clear" id="clearQuery" type="button" aria-label="Clear search" hidden>&times;</button>
+    </label>
+  </div>
+
+  <!-- 4. Two-column shell -->
+  <div class="shell">
+
+    <aside class="rail" data-print-hide>
+      <div class="rail__head">
+        <span class="micro-label">Category</span>
+        <button class="rail__toggle" id="collapseToggle" type="button"></button>
+      </div>
+
+      <div class="rail__rows" id="railRows"></div>
+
+      <div id="filterCard"></div>
+
+      <div class="habits">
+        <div class="micro-label habits__title">Four habits</div>
+        <div class="habits__list">
+          <p><b>Start broad.</b> Open wide, then follow the next steps Flo AI offers.</p>
+          <p><b>Give your definition.</b> Tell it what &ldquo;best&rdquo; means at your firm.</p>
+          <p><b>Show an example.</b> One concrete case beats three sentences of criteria.</p>
+          <p><b>Ask for the draft.</b> Chain the email or memo onto the same prompt.</p>
+        </div>
+      </div>
+    </aside>
+
+    <main>
+      <p class="instruction" data-print-hide>Replace the <span class="bracket">[square brackets]</span> with a real job, practice group or review cycle from your account, and rewrite the rest in your own words.</p>
+
+      <div class="main-rule"></div>
+
+      <p class="sr-only" role="status" aria-live="polite" id="liveCount"></p>
+
+      <div id="results"></div>
+
+      <footer class="footer">Flo AI prompt library &middot; September 2026 &middot; <span data-total></span> prompts</footer>
+    </main>
+  </div>
+</div>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>
