@@ -11,6 +11,11 @@
   /* Core palette */
   --plum:#261025;
   --bone:#F3F2ED;
+  /* The page ground matches the site header bar, so the two read as one
+     continuous surface the way /tracker does. Kept separate from --bone,
+     which still fills prompt blocks, the selected category block and the
+     clear buttons — all of which sit on white or plum, never on the page. */
+  --page-bg:#F0EDE6;
   --white:#FFFFFF;
   --orange:#C74500;
   --teal:#12655C;
@@ -52,7 +57,7 @@ body{
   margin:0;
   font-family:var(--body);
   color:var(--plum);
-  background:var(--bone);
+  background:var(--page-bg);
   -webkit-font-smoothing:antialiased;
   text-wrap:pretty;
 }
@@ -75,6 +80,42 @@ input::placeholder{color:var(--muted);}
 }
 
 .page{max-width:1300px;margin:0 auto;padding:0 clamp(16px,4vw,40px) 90px;}
+
+/* ---------- Site header (matches /tracker) ---------- */
+/* Values copied from pipeline/template.dc.html. This bar keeps the tracker's
+   own palette (#F0EDE6 / #E4E0D8) rather than the library's --bone, so the two
+   pages read as the same site. */
+.site-nav-bar{background:#F0EDE6;border-bottom:1px solid #E4E0D8;}
+.site-nav{
+  max-width:1280px;margin:0 auto;padding:18px 40px;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:20px 32px;flex-wrap:wrap;
+}
+.site-nav__brand{display:flex;align-items:center;gap:16px;flex-shrink:0;}
+.site-nav__logo{display:inline-flex;align-items:center;}
+.site-nav__rule{width:1px;height:24px;background:#D8D3C9;flex-shrink:0;}
+.site-nav__label{
+  font-family:var(--body);font-weight:700;font-size:15px;letter-spacing:0.15em;
+  text-transform:uppercase;color:var(--plum);white-space:nowrap;
+}
+.site-nav__actions{display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.site-nav__btn{
+  display:inline-flex;align-items:center;height:44px;padding:0 24px;
+  border-radius:var(--r-pill);font-size:15px;font-weight:600;text-decoration:none;
+  white-space:nowrap;
+}
+.site-nav__btn--ghost{border:1.5px solid #2A0A1C;color:#2A0A1C;}
+.site-nav__btn--solid{gap:8px;background:var(--plum);color:#fff;}
+.site-nav__btn--ghost:hover,.site-nav__btn--solid:hover{color:inherit;}
+.site-nav__btn--solid:hover{color:#fff;}
+
+@media (max-width:640px){
+  .site-nav{padding:14px 16px;gap:12px 16px;}
+}
+
+@media print{
+  .site-nav-bar{display:none;}
+}
 
 /* ---------- 1. Hero ---------- */
 .hero{padding:34px 0 0;}
