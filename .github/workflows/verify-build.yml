@@ -1,5 +1,5 @@
-# The tracker's HTML is generated: pipeline/ is the source, site/ is the output, and Vercel
-# serves site/ directly. Nothing else checks that the two agree -- the Vercel check only
+# The generated pages are built from source directories: pipeline/ builds the tracker and
+# prompts/ builds the prompt library. site/ is the output, and Vercel serves site/ directly. Nothing else checks that the two agree -- the Vercel check only
 # reports that a deploy succeeded, and every other workflow here is a scheduled data job that
 # never runs on a pull request. So a PR could merge with a stale artifact, or with pipeline
 # changes whose output was never regenerated, and the live page would silently disagree with
@@ -10,6 +10,7 @@ on:
   pull_request:
     paths:
       - 'pipeline/**'
+      - 'ai/**'
       - 'site/**'
       - '.github/workflows/verify-build.yml'
 
@@ -26,16 +27,24 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Rebuild both variants
+      - name: Rebuild both tracker variants
         working-directory: pipeline
+        run: python3 build.py
+
+      - name: Validate prompt data
+        working-directory: ai/prompts
+        run: python3 validate_data.py
+
+      - name: Rebuild the prompt library
+        working-directory: ai/prompts
         run: python3 build.py
 
       - name: Fail if the committed output is stale
         run: |
           if git diff --quiet -- site/; then
-            echo "site/ matches a fresh build of pipeline/."
+            echo "site/ matches a fresh build of pipeline/ and ai/."
           else
-            echo "::error::site/ does not match a fresh build of pipeline/. Run 'python3 pipeline/build.py' and commit the result."
+            echo "::error::site/ does not match a fresh build. Run 'python3 pipeline/build.py' and 'python3 ai/prompts/build.py', then commit the result."
             echo
             echo "Files that differ:"
             git diff --stat -- site/
