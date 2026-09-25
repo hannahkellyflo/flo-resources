@@ -36,6 +36,11 @@
   /* Core palette */
   --plum:#261025;
   --bone:#F3F2ED;
+  /* The page ground matches the site header bar, so the two read as one
+     continuous surface the way /tracker does. Kept separate from --bone,
+     which still fills prompt blocks, the selected category block and the
+     clear buttons — all of which sit on white or plum, never on the page. */
+  --page-bg:#F0EDE6;
   --white:#FFFFFF;
   --orange:#C74500;
   --teal:#12655C;
@@ -77,7 +82,7 @@ body{
   margin:0;
   font-family:var(--body);
   color:var(--plum);
-  background:var(--bone);
+  background:var(--page-bg);
   -webkit-font-smoothing:antialiased;
   text-wrap:pretty;
 }
