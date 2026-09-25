@@ -12,7 +12,7 @@ structure. Add a new page as `site/<slug>/index.html` and it's live at
 site/
   vercel.json          # / -> /tracker redirect; /tracker/* rewrite (see below)
   tracker/index.html   # -> resources.joinflo.com/tracker
-  prompts/index.html   # -> resources.joinflo.com/prompts
+  ai-library/index.html # -> resources.joinflo.com/ai-library
 ```
 
 Deploy on Vercel with **Root Directory = `site`** (Framework preset: *Other*).
@@ -179,20 +179,20 @@ focused grid shows both groups. An explicitly named default tab canonicalizes to
 form. Served from anywhere other than `/tracker` — a local `file://`, a bare static server —
 routing switches off and the dashboard behaves as it did before it existed.
 
-## /prompts — Flo AI Prompt Library
+## /ai-library — Flo AI Prompt Library
 
 A searchable, filterable library of prompts customers copy into Flo AI. Also a single
 self-contained `index.html` with CSS, JS, data and fonts inlined.
 
-Generated, so don't hand-edit `site/prompts/index.html`. The source is `prompts/`:
+Generated, so don't hand-edit `site/ai-library/index.html`. The source is `ai-library/`:
 
 ```sh
-cd prompts
-python3 build.py      # write ../site/prompts/index.html
+cd ai-library
+python3 build.py      # write ../site/ai-library/index.html
 ```
 
-Prompt content is edited in Airtable and synced down with `prompts/sync-airtable.py`.
-See `prompts/README.md`.
+Prompt content is edited in Airtable and synced down with `ai-library/sync-airtable.py`.
+See `ai-library/README.md`.
 
 ## /tracker — Legal Recruiting Tracker
 
