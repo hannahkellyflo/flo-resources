@@ -10,7 +10,7 @@ on:
   pull_request:
     paths:
       - 'pipeline/**'
-      - 'ai-library/**'
+      - 'ai/**'
       - 'site/**'
       - '.github/workflows/verify-build.yml'
 
@@ -32,19 +32,19 @@ jobs:
         run: python3 build.py
 
       - name: Validate prompt data
-        working-directory: ai-library
+        working-directory: ai/prompts
         run: python3 validate_data.py
 
       - name: Rebuild the prompt library
-        working-directory: ai-library
+        working-directory: ai/prompts
         run: python3 build.py
 
       - name: Fail if the committed output is stale
         run: |
           if git diff --quiet -- site/; then
-            echo "site/ matches a fresh build of pipeline/ and ai-library/."
+            echo "site/ matches a fresh build of pipeline/ and ai/."
           else
-            echo "::error::site/ does not match a fresh build. Run 'python3 pipeline/build.py' and 'python3 ai-library/build.py', then commit the result."
+            echo "::error::site/ does not match a fresh build. Run 'python3 pipeline/build.py' and 'python3 ai/prompts/build.py', then commit the result."
             echo
             echo "Files that differ:"
             git diff --stat -- site/

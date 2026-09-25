@@ -1,14 +1,14 @@
-# /ai-library — Flo AI Prompt Library
+# /ai/prompts — Flo AI Prompt Library
 
-`resources.joinflo.com/ai-library`. A searchable, filterable library of 129 prompts
+`resources.joinflo.com/ai/prompts`. A searchable, filterable library of 129 prompts
 customers copy into Flo AI. Like the tracker, the page is generated: this
-directory is the source, `site/ai-library/index.html` is the output.
+directory is the source, `site/ai/prompts/index.html` is the output.
 
-**Don't hand-edit `site/ai-library/index.html`.** Change the inputs here and rebuild:
+**Don't hand-edit `site/ai/prompts/index.html`.** Change the inputs here and rebuild:
 
 ```sh
-cd ai-library
-python3 build.py      # write ../site/ai-library/index.html
+cd ai/prompts
+python3 build.py      # write ../../site/ai/prompts/index.html
 ```
 
 `.github/workflows/verify-build.yml` rebuilds on every PR and fails if the
@@ -53,7 +53,7 @@ tables: Categories (4), Subheadings (21), Jobs (5), Prompts (129).
 export AIRTABLE_TOKEN=pat...          # data.records:read, scoped to that base
 export AIRTABLE_BASE_ID=app0rvRiD5FKs7ucR
 
-cd ai-library
+cd ai/prompts
 python3 sync-airtable.py --dry-run    # report changes, write nothing
 python3 sync-airtable.py              # rewrite prompt-data-v4.js
 python3 build.py                      # rebuild the page

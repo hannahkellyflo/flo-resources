@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Build site/ai-library/index.html from the sources in this directory.
+"""Build site/ai/prompts/index.html from the sources in this directory.
 
-    cd ai-library && python3 build.py
+    cd ai/prompts && python3 build.py
 
 Like pipeline/, this directory is the source and site/ is the output: never
-hand-edit site/ai-library/index.html. The page ships as one self-contained file
+hand-edit site/ai/prompts/index.html. The page ships as one self-contained file
 with CSS, JS, prompt data and both fonts inlined, so it makes no external
 requests — same contract as site/tracker/index.html.
 
@@ -15,12 +15,14 @@ should not come from a CDN in any case.
 import base64, pathlib, re, sys
 
 HERE = pathlib.Path(__file__).resolve().parent
-OUT = HERE.parent / "site" / "ai-library" / "index.html"
+REPO = HERE.parent.parent                       # ai/prompts/ -> repo root
+SLUG = "ai/prompts"                             # URL path, and the path under site/
+OUT = REPO / "site" / SLUG / "index.html"
 
 TITLE = "The Flo AI Prompt Library"
 DESCRIPTION = ("Prompts you can copy into Flo AI to get answers out of your "
                "recruiting and performance data.")
-CANONICAL = "https://resources.joinflo.com/ai-library"
+CANONICAL = f"https://resources.joinflo.com/{SLUG}"
 
 # Mirrors the icon set pipeline/build.py wires up; the files live at the site root.
 HEAD = f"""<!doctype html>
@@ -94,7 +96,7 @@ def build():
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(html, encoding="utf-8")
     kb = len(html.encode("utf-8")) / 1024
-    print(f"wrote {OUT.relative_to(HERE.parent)}  ({kb:,.0f} KB)")
+    print(f"wrote {OUT.relative_to(REPO)}  ({kb:,.0f} KB)")
 
 
 if __name__ == "__main__":
