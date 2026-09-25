@@ -1,3 +1,9 @@
 __pycache__/
 *.pyc
 .claude/
+
+# Local secrets. The Airtable sync reads a personal access token from .env.local;
+# this repo is public, so a token committed by accident would be exposed the
+# moment it is pushed.
+.env
+.env.local

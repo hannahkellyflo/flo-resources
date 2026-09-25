@@ -49,15 +49,28 @@ that page's layout and isn't a repo-wide convention.
 Prompts are edited in **Airtable**, not here. Base `app0rvRiD5FKs7ucR` — four
 tables: Categories (4), Subheadings (21), Jobs (5), Prompts (129).
 
-```sh
-export AIRTABLE_TOKEN=pat...          # data.records:read, scoped to that base
-export AIRTABLE_BASE_ID=app0rvRiD5FKs7ucR
+The sync reads an Airtable **personal access token**. Create one at
+airtable.com/create/tokens with the `data.records:read` scope, scoped to that
+base only, and keep it in `ai/prompts/.env.local`:
 
+```sh
+# ai/prompts/.env.local — gitignored, never commit this
+export AIRTABLE_TOKEN=pat...
+export AIRTABLE_BASE_ID=app0rvRiD5FKs7ucR
+```
+
+```sh
 cd ai/prompts
+source .env.local
 python3 sync-airtable.py --dry-run    # report changes, write nothing
 python3 sync-airtable.py              # rewrite prompt-data-v4.js
 python3 build.py                      # rebuild the page
 ```
+
+`.env` and `.env.local` are in `.gitignore`. This repository is public, so a
+token committed by accident would be readable by anyone the moment it is
+pushed — if that ever happens, revoke it in Airtable rather than just deleting
+the commit.
 
 The sync validates before it keeps anything; on failure it restores the file
 verbatim, so a bad Airtable edit fails at your desk rather than on the live page.
