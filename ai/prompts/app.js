@@ -5,8 +5,8 @@ import { PROMPTS, CATEGORIES, THEMES, JOBS, CATEGORY_NOTES } from "./prompt-data
  * ------------------------------------------------------------------ */
 
 const COLORS = {
-  "Lateral and partner hiring": "#C74500",
-  "Candidate sourcing":         "#12655C",
+  "Lateral non-partner and partner hiring": "#C74500",
+  "Entry-level hiring":                     "#12655C",
   "Reviews and development":    "#1F4E8C",
   "Firm-wide talent strategy":  "#6B2A63"
 };
