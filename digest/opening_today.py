@@ -11,7 +11,14 @@ Posts to #forward-job-postings tagging Juli. On Monday it also sweeps Saturday/S
 dates (the refresh doesn't run weekends) so nothing is missed. Zero openings → a clear
 "no intel for today" note.
 
-Prod: SLACK_BOT_TOKEN → chat.postMessage to SLACK_CHANNEL. Dry-run: prints (no token).
+Delivery timing: GitHub's scheduled cron fires 4-7 hours late and unpredictably, so we do NOT
+rely on the run landing at 8 AM. Instead the workflow runs the EVENING BEFORE, and we hand the
+message to Slack's chat.scheduleMessage pinned to 8:00 AM CT on the next weekday (next_delivery()).
+Because the run fires the night before, that 8 AM target is always comfortably in the future even
+when GitHub is hours late, so delivery actually lands at 8 AM. `--now` sends immediately instead
+(manual catch-up); `--date YYYY-MM-DD` overrides the delivery date for testing.
+
+Prod: SLACK_BOT_TOKEN → chat.scheduleMessage (or chat.postMessage with --now). Dry-run: prints.
 """
 import os, sys, json, re, datetime, urllib.request
 from zoneinfo import ZoneInfo
@@ -99,27 +106,36 @@ def compose(hits, today):
     return "\n".join(L)
 
 
-def _post_at_8am_ct():
-    """Unix ts for 8:00 AM America/Chicago today if it's still ahead (DST-correct), else None.
-    GitHub cron fires late and unpredictably, so we pin *delivery* to 8 AM via Slack rather than
-    trust the run time. If the run itself lands after 8 AM CT, return None -> send immediately
-    (better a bit late than pushed to tomorrow, since the content is for today)."""
-    now = datetime.datetime.now(CT)
-    target = now.replace(hour=8, minute=0, second=0, microsecond=0)
-    return int(target.timestamp()) if target > now + datetime.timedelta(seconds=60) else None
+def next_delivery(now):
+    """The soonest weekday whose 8 AM CT is still ahead — the morning this run targets. Run the
+    evening before and this returns the next day; run before 8 AM and it returns today; Sat/Sun
+    roll to Monday. This is what lets an evening (or hours-late) run still land at 8 AM."""
+    eight_today = now.replace(hour=8, minute=0, second=0, microsecond=0)
+    d = now.date()
+    if now + datetime.timedelta(seconds=60) >= eight_today:   # today's 8 AM window is gone
+        d += datetime.timedelta(days=1)
+    while d.weekday() >= 5:                                    # roll Sat/Sun -> Mon
+        d += datetime.timedelta(days=1)
+    return d
 
 
-def post(message):
+def _post_at_8am_ct(delivery):
+    """Unix ts for 8:00 AM America/Chicago on the delivery date (DST-correct via zoneinfo)."""
+    dt = datetime.datetime(delivery.year, delivery.month, delivery.day, 8, 0, 0, tzinfo=CT)
+    return int(dt.timestamp())
+
+
+def post(message, post_at):
+    """Schedule for post_at (Unix ts) via chat.scheduleMessage, or send now when post_at is None."""
     token = os.environ.get("SLACK_BOT_TOKEN")
     if not token:
         raise RuntimeError("SLACK_BOT_TOKEN required to post")
-    post_at = _post_at_8am_ct()
     payload = {"channel": CHANNEL, "text": message, "unfurl_links": False, "mrkdwn": True}
     if post_at:
         payload["post_at"] = post_at
         url = "https://slack.com/api/chat.scheduleMessage"   # delivered at 8 AM CT regardless of run time
     else:
-        url = "https://slack.com/api/chat.postMessage"       # already past 8 AM CT -> send now
+        url = "https://slack.com/api/chat.postMessage"       # --now: immediate
     req = urllib.request.Request(
         url, data=json.dumps(payload).encode(),
         headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json; charset=utf-8"})
@@ -130,21 +146,24 @@ def post(message):
 
 
 def main(argv):
-    today = datetime.date.today()
-    if "--date" in argv:  # testing override, e.g. --date 2026-11-01
-        today = datetime.date.fromisoformat(argv[argv.index("--date") + 1])
+    if "--date" in argv:  # testing override of the delivery date, e.g. --date 2026-11-01
+        delivery = datetime.date.fromisoformat(argv[argv.index("--date") + 1])
+    else:
+        delivery = next_delivery(datetime.datetime.now(CT))
     # Paused window: real runs skip until RESUME_ON, then resume on their own. --dry-run/--force test through it.
-    if RESUME_ON and today < RESUME_ON and "--dry-run" not in argv and "--force" not in argv:
-        print(f"opening-today paused until {RESUME_ON.isoformat()} — skipping (today {today.isoformat()})")
+    if RESUME_ON and delivery < RESUME_ON and "--dry-run" not in argv and "--force" not in argv:
+        print(f"opening-today paused until {RESUME_ON.isoformat()} — skipping (delivery {delivery.isoformat()})")
         return
     tables = json.load(open(DATA_PATH)).get("tables", {})
-    hits = find_openings(tables, target_dates(today))
-    message = compose(hits, today)
+    hits = find_openings(tables, target_dates(delivery))
+    message = compose(hits, delivery)
+    send_now = "--now" in argv
     if "--dry-run" in argv or not os.environ.get("SLACK_BOT_TOKEN"):
+        print(f"[would {'send immediately' if send_now else 'schedule for 8 AM CT ' + delivery.isoformat()}]")
         print(message)
     else:
-        post(message)
-        print("posted")
+        post(message, None if send_now else _post_at_8am_ct(delivery))
+        print("posted (immediately)" if send_now else f"scheduled for 8 AM CT {delivery.isoformat()}")
 
 
 if __name__ == "__main__":
