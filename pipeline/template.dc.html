@@ -2104,9 +2104,16 @@ class Component extends DCLogic {
     const splitUpcomingRows = sortRows(buildRows(splitUpcomingSrc, splitColumns, { muted: { 2: true, 8: true }, firm: { 1: true }, wraps: { 4: true, 5: true } }).filter(matchRow));  // upcoming: 'Not yet open' (col 2) + Last updated (8) muted; Position/Office (4,5) wrap+clamp; Employer (col 1) → firm-profile link
     splitUpcomingRows.forEach((r, i) => { r.onOpen = () => this.setState({ rowOpen: i }); });
     splitOpenRows.forEach((r, i) => { r.onOpen = () => this.setState({ rowOpen: splitUpcomingRows.length + i }); });
-    // Static per-column header tweak: let the long "… Open/Close Date" headers wrap so those columns
-    // stop hogging width (the date values are short); everything else is unaffected.
-    const colStyle = (label) => (/(open|close) date$/i.test(String(label)) ? 'white-space:normal;width:1%;' : '');
+    // Static per-column width tweaks: (1) wrap the long "… Open/Close Date" headers to ~2 lines via a
+    // fixed width (not 1%, which collapses them to 3 lines); (2) give Position a min-width floor so the
+    // column actually reserves room — the cell's max-width clamp alone is just a cap, and the line-clamp
+    // box otherwise collapses the column to the longest word.
+    const colStyle = (label) => {
+      const l = String(label);
+      if (/(open|close) date$/i.test(l)) return 'white-space:normal;width:122px;';
+      if (/\bposition$/i.test(l)) return 'min-width:280px;';
+      return '';
+    };
     const sortColumns = splitColumns.map((label, i) => ({
       label,
       thClass: sc === i ? 'sort-th active' : 'sort-th',
