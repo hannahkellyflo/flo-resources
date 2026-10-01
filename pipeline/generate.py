@@ -956,26 +956,28 @@ _TEMP_2L_OPEN_FIRMS = {
 
 def wire_summer_split(data: dict) -> None:
     rows = metabase_sql(MB_DB, SUMMER_SQL)
-    out = {"1L": {"open": [], "upcoming": []}, "2L": {"open": [], "upcoming": []}}
+    # 2L tab carries two open cohorts: the active Class-of-2029 2L-summer cycle (open2029) and the
+    # winding-down Class-of-2028 one (open); 1L tab is Class of 2029 only.
+    out = {"1L": {"open": [], "upcoming": []},
+           "2L": {"open2029": [], "open": [], "upcoming": []}}
     ff_by_id = {"1L": {}, "2L": {}}  # job_id -> the record object, so the Airtable merge can retitle it
     now = datetime.datetime.now(datetime.timezone.utc)
     mcur = set()  # distinct job ids opened this calendar month (as shown in the tables)
     for r in rows:
-        levels = []
-        if int(r.get("g1L") or 0):
-            levels.append("1L")           # Class of 2029
-        if int(r.get("g2L") or 0):
-            levels.append("2L")           # Class of 2028
-        # A grad-2029 role whose TITLE marks it as a 2L program or a Summer-2028 role is the Class of
-        # 2029's *2L* summer (next cycle), not a 1L Summer 2027 role — show it on the 2L tab, not the 1L
-        # tab (Hannah 2026-08-21). Scoped to the 1L bucket so legit Class-of-2029 1L roles are untouched.
+        # Class comes from the Flo Forward grad-year TARGET field (g2L = grad-2028, g1L = grad-2029);
+        # that's the backbone. Grad-year can't tell a class's 1L summer from its 2L summer (both carry
+        # the same grad year), so a "2L"/"2028" title token is the only tiebreaker that moves a Class-
+        # of-2029 role to its 2L summer. (level, class-grad-year) targets:
+        g1, g2 = int(r.get("g1L") or 0), int(r.get("g2L") or 0)
         _title = str(r.get("position") or "").lower()
-        if "1L" in levels and (re.search(r"\b2l\b", _title) or "2028" in _title):
-            levels = [lv for lv in levels if lv != "1L"]
-            if "2L" not in levels:
-                levels.append("2L")
-        if not levels:
-            continue                       # targets neither 2028 nor 2029 -> not a 1L/2L Summer 2027 role
+        is2Lish = bool(re.search(r"\b2l\b", _title) or "2028" in _title)
+        targets = []
+        if g1:
+            targets.append(("2L", 2029) if is2Lish else ("1L", 2029))
+        if g2 and not (g1 and is2Lish):   # a dual-target 2L-title role counts once, as Class of 2029
+            targets.append(("2L", 2028))
+        if not targets:
+            continue                       # targets neither 2028 nor 2029 -> not a 1L/2L Summer role
         od = r.get("open_date")
         upcoming = bool(od) and str(od)[:10] > now.date().isoformat()
         if not upcoming and _close_passed(r.get("close_date")):
@@ -988,17 +990,22 @@ def wire_summer_split(data: dict) -> None:
             od_d = None
         if od_d and (od_d.year, od_d.month) == (now.year, now.month):
             mcur.add(r.get("job_id"))
-        for lv in levels:
-            bucket = "upcoming" if upcoming else "open"
-            # TEMP (Hannah 2026-08-26): the 2L Class-of-2028 OPEN list over-includes closed postings
-            # that carry no close date on Flo Forward — the source data can't distinguish open from
-            # closed there. Until a durable rule is agreed, hard-limit the 2L open list to the firms
-            # confirmed open, current-cycle rows only (drops their own stale/prior-cycle listings too).
-            # Remove this block once the open/closed signal is resolved.
-            if lv == "2L" and bucket == "open":
-                _od = str(r.get("open_date") or "")[:10]
-                if r.get("firm") not in _TEMP_2L_OPEN_FIRMS or _od < "2026-06-01":
-                    continue
+        for lv, cohort in targets:
+            if lv == "2L" and not upcoming:
+                if cohort == 2029:
+                    bucket = "open2029"    # active Class-of-2029 2L cycle — no firm allowlist
+                else:
+                    # TEMP (Hannah 2026-08-26): the Class-of-2028 2L OPEN list over-includes closed
+                    # postings that carry no close date on Flo Forward — the source can't distinguish
+                    # open from closed there. Hard-limit it to confirmed-open current-cycle firms.
+                    # Remove this block once the open/closed signal is resolved. (2029 cohort above is
+                    # intentionally exempt — it's the live cycle.)
+                    _od = str(r.get("open_date") or "")[:10]
+                    if r.get("firm") not in _TEMP_2L_OPEN_FIRMS or _od < "2026-06-01":
+                        continue
+                    bucket = "open"
+            else:
+                bucket = "upcoming" if upcoming else "open"
             rec = _summer_record(r, lv, upcoming)
             out[lv][bucket].append(rec)
             if r.get("job_id") is not None:
@@ -1023,7 +1030,7 @@ def wire_summer_split(data: dict) -> None:
         # (2) Near-duplicate of an existing row (same firm + open date + ~title): keep the existing
         # row — it carries the office/location — and, on a 1:1 match, adopt the Airtable title. (Don't
         # retitle when it matches several rows, so a firm's multi-office postings aren't collapsed.)
-        near = [ex for bkt in ("open", "upcoming") for ex in out[lv][bkt] if _dd_same_job(ex, at_rec, lv)]
+        near = [ex for bkt in out[lv] for ex in out[lv][bkt] if _dd_same_job(ex, at_rec, lv)]
         if near:
             if len(near) == 1:
                 near[0][f"{lv} Position"] = at_title
@@ -1037,12 +1044,12 @@ def wire_summer_split(data: dict) -> None:
     # Location rule (also catches Flo-Forward-only dups): drop a location-less row when a located
     # near-duplicate exists.
     for lv in ("1L", "2L"):
-        for bkt in ("open", "upcoming"):
+        for bkt in out[lv]:
             out[lv][bkt] = _dedup_prefer_located(out[lv][bkt], lv)
 
     # TEMP (Hannah 2026-08-31): Herbert Smith Freehills is reconsidering their 2L posting — hide the
     # whole row until further notice. Remove this block once they confirm.
-    for bkt in ("open", "upcoming"):
+    for bkt in out["2L"]:
         out["2L"][bkt] = [rec for rec in out["2L"][bkt]
                           if "herbert smith freehills" not in str(rec.get("Employer", "")).lower()]
 
@@ -1056,16 +1063,19 @@ def wire_summer_split(data: dict) -> None:
         href = lk.get("href", "") if isinstance(lk, dict) else ""
         return not any(f"/jobs/{jid}" in href for jid in _DROP_JOB_IDS)
     for lv in ("1L", "2L"):
-        for bkt in ("open", "upcoming"):
+        for bkt in out[lv]:
             out[lv][bkt] = [rec for rec in out[lv][bkt] if _kept(rec, lv)]
 
     for lv, key in (("1L", "summer1L"), ("2L", "summer2L")):
         out[lv]["upcoming"].sort(key=lambda rec, _lv=lv: _upcoming_key(rec, _lv))   # soonest-first (Metabase + Airtable)
         data["tables"][key] = out[lv]
-    # m_cur: listings (both classes) opened this month; c2029_open: Class of 2029 (1L) listings open now
-    data["overview"]["_lawfirmFlow"] = {"m_cur": len(mcur), "c2029_open": len(out["1L"]["open"])}
+    # m_cur: listings (both classes) opened this month; c2029_open: Class of 2029 listings open now
+    # (1L summer + the now-surfaced 2L summer cohort).
+    data["overview"]["_lawfirmFlow"] = {"m_cur": len(mcur),
+                                        "c2029_open": len(out["1L"]["open"]) + len(out["2L"]["open2029"])}
     print(f"  summer split: 1L {len(out['1L']['open'])} open/{len(out['1L']['upcoming'])} upcoming, "
-          f"2L {len(out['2L']['open'])} open/{len(out['2L']['upcoming'])} upcoming "
+          f"2L {len(out['2L']['open2029'])} open(C2029)/{len(out['2L']['open'])} open(C2028)/"
+          f"{len(out['2L']['upcoming'])} upcoming "
           f"(+{da_added['1L']} 1L/+{da_added['2L']} 2L from Airtable survey); opened this month {len(mcur)}")
 
 
