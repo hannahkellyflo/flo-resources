@@ -1,20 +1,19 @@
 name: Opening-today heads-up for Juli
 
-# Every weekday, post to #forward-job-postings the tracked jobs whose open date is today and that
-# aren't live on Flo Forward yet (the ones Juli needs to add). Monday also sweeps Sat/Sun.
-# Point-in-time read of data.json; no watermark/state. Zero openings -> a clear "no intel" note.
+# Posts to #forward-job-postings the tracked jobs opening on the NEXT weekday that aren't live on
+# Flo Forward yet (the ones Juli needs to add). Monday delivery also sweeps Sat/Sun. Point-in-time
+# read of data.json; no watermark/state. Zero openings -> a clear "no intel" note.
 #
-# Timing: the job runs at 12:00 UTC (after the 11:00 UTC data refresh) but does NOT post
-# immediately — opening_today.py schedules the Slack message for 8:00 AM America/Chicago
-# (DST-correct) via chat.scheduleMessage. GitHub cron fires late and unpredictably, so pinning
-# delivery in Slack is what actually gets it to 8 AM CT. Running at 12:00 UTC leaves headroom for
-# GitHub's delay so the run still lands before the 8 AM target most days.
+# Timing: runs the EVENING BEFORE (23:00 UTC Sun-Thu) and schedules the Slack message for 8:00 AM
+# America/Chicago the next weekday via chat.scheduleMessage (DST-correct). GitHub cron fires 4-7h
+# late and unpredictably, so a same-morning run can't reliably beat 8 AM; running the night before
+# gives ~9-14h of slack, so even a very late run still schedules for (and lands at) 8 AM CT.
+# 23:00 UTC Sun-Thu -> delivers Mon-Fri. opening_today.py --now sends immediately for manual catch-up.
 #
-# Paused: opening_today.py has a RESUME_ON date guard — it skips until 2026-09-29, then resumes on
-# its own. (The workflow stays enabled so it can auto-resume.)
+# Pause: opening_today.py has a RESUME_ON date guard (currently past). The workflow stays enabled.
 on:
   schedule:
-    - cron: "0 12 * * 1-5"
+    - cron: "0 23 * * 0-4"   # 23:00 UTC Sun-Thu (evening before) -> 8 AM CT Mon-Fri delivery
   workflow_dispatch: {}
 
 jobs:
