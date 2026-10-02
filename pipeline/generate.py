@@ -1622,8 +1622,13 @@ WHERE e.VIRTUAL IS NOT NULL AND e.VIRTUAL NOT IN (3, 5, 7, 9, 11, 13)
   AND o.ID NOT IN ({NET_DEMO_ORGS}) AND er.TIME >= '2022-07-01'
 GROUP BY yr, mo"""
 
-# Flo Forward firm-profile page views by month (Q8185) — DWH/Redshift, pendo.matched_events.
-# accountid demo/test list copied from the source question (broader than the MySQL demo list).
+# Flo Forward firm-profile page views by month — DWH/Redshift, pendo.matched_events. Ported from
+# Metabase Q8185 but BROADENED beyond its single "base" Pendo page id: count `load` events on the
+# firm-profile URL across the variants the profile is actually surfaced at — the bare
+# /forward/firms/<slug>, the /student profile, and the explicit /base profile. (The tiny
+# clerk/lateral/jobs tabs are left out.) Keyed off the URL shape, not a Pendo page-rule id, so
+# overlapping page rules can't double-count and new slugs are caught automatically; the query string
+# and #fragment are stripped before reading the sub-path. accountid demo/test list from Q8185.
 FIRM_VIEWS_DEMO = ("4,32,50,54,61,69,78,80,84,94,111,112,154,155,156,157,172,189,190,226,238,251,323,326,329,"
                    "346,357,374,451,452,463,464,471,477,483,484,486,520,525,526,538,543,547,549,550,551,553,554,"
                    "556,569,585,586,589,608,673,675,679,682,683,684,699,727,741,755,767,790,793,798,804,828,834,"
@@ -1633,7 +1638,9 @@ SELECT DATE_PART(year, TIMESTAMP 'epoch' + periodid) AS yr,
        DATE_PART(month, TIMESTAMP 'epoch' + periodid) AS mo,
        COUNT(DISTINCT eventid) AS n
 FROM pendo.matched_events
-WHERE matchableid = 'Page/SMXwJOK_8LGLIFnGObi4D0UT2P8' AND eventtype = 'load'
+WHERE eventtype = 'load' AND url LIKE '%/forward/firms/%'
+  -- sub-path after /forward/firms/<slug>: '' (bare), 'base', or 'student' (strip ?query and #frag first)
+  AND SPLIT_PART(SPLIT_PART(SPLIT_PART(SPLIT_PART(url,'/forward/firms/',2),'?',1),'#',1),'/',2) IN ('', 'base', 'student')
   AND accountid NOT ILIKE 'uat%' AND accountid NOT ILIKE 'dev%'
   AND accountid NOT IN ({FIRM_VIEWS_DEMO})
 GROUP BY 1, 2"""
