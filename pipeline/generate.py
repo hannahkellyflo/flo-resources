@@ -1015,6 +1015,22 @@ def wire_summer_split(data: dict) -> None:
     live_ids = {str(r.get("job_id")) for r in rows if r.get("job_id") is not None}
     seen = {(str(r.get("firm") or "").strip().lower(), str(r.get("position") or "").strip().lower()) for r in rows}
     da_added = {"1L": 0, "2L": 0}
+    # Firms already LIVE this cycle (Class of 2029): any open 1L row or any Class-2029 2L row carrying a
+    # real listing. A firm's Airtable "upcoming" survey row is then a stale placeholder — its live
+    # postings often sit on the other tab (a "2027 1L + 2028 2L …" title routes to the 2L table) or
+    # under a differently-worded/office-split title the near-dup match can't catch — so drop it.
+    _cycle_live_firms = {_dd_firm_key(rec.get("Employer"))
+                         for lv2, b2 in (("1L", "open"), ("2L", "open2029"))
+                         for rec in out[lv2][b2] if _dd_firm_key(rec.get("Employer"))}
+
+    def _firm_live_this_cycle(firm):
+        k = _dd_firm_key(firm)
+        if not k:
+            return False
+        if k in _cycle_live_firms:
+            return True
+        # firm-name variance (e.g. "O'Melveny" vs "O'Melveny & Myers"): accept a prefix match either way
+        return any(min(len(k), len(lk)) >= 6 and (k.startswith(lk) or lk.startswith(k)) for lk in _cycle_live_firms)
     for row in direct_apply_rows():
         lv = row["level"]
         if lv not in ("1L", "2L") or row["class"] != 2029:
@@ -1035,7 +1051,11 @@ def wire_summer_split(data: dict) -> None:
             if len(near) == 1:
                 near[0][f"{lv} Position"] = at_title
             continue
-        # (3) Exact firm+title already present.
+        # (3) Firm is already live this cycle (any tab, any title) -> the survey row is a stale
+        # "not yet open" placeholder; drop it.
+        if _firm_live_this_cycle(row["firm"]):
+            continue
+        # (4) Exact firm+title already present.
         k2 = (row["firm"].strip().lower(), row["position"].strip().lower())
         if k2 in seen:
             continue
