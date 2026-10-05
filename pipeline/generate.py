@@ -2002,7 +2002,9 @@ def _lu_sig(row):
 def _lu_rows(shape, tbl):
     if tbl is None:
         return []
-    return ((tbl.get("open") or []) + (tbl.get("upcoming") or [])) if shape == "split" else tbl
+    # "split" tables keep rows under multiple buckets (open, upcoming, and the Class-2029 open2029
+    # bucket) — flatten every list-valued bucket so none are skipped by the stamping.
+    return [r for v in tbl.values() if isinstance(v, list) for r in v] if shape == "split" else tbl
 
 
 def _lu_date(v):
