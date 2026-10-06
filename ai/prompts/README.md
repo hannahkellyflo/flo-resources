@@ -1,6 +1,6 @@
 # /ai/prompts — Flo AI Prompt Library
 
-`resources.joinflo.com/ai/prompts`. A searchable, filterable library of 129 prompts
+`resources.joinflo.com/ai/prompts`. A searchable library of 129 prompts
 customers copy into Flo AI. Like the tracker, the page is generated: this
 directory is the source, `site/ai/prompts/index.html` is the output.
 
@@ -20,7 +20,7 @@ committed output is stale, so the two can't drift.
 | --- | --- |
 | `template.html` | Page markup. Only its `<body>` is used; `build.py` writes the head |
 | `styles.css` | All styling. Design tokens are custom properties on `:root` |
-| `app.js` | Filtering, counts, search, bracket highlighting, copy |
+| `app.js` | The rail index and scroll-spy, search, counts, bracket highlighting, copy |
 | `prompt-data-v4.js` | The prompts and taxonomies. Generated from Airtable — see below |
 | `fonts/` | Season Mix SemiBold and Zalando Sans Variable, inlined at build time |
 | `build.py` | Writes the single self-contained output file |
@@ -93,8 +93,27 @@ matters: the design's original data had *"Screening and criteria"* under two
 categories, which made the rail show 5 prompts under each when the real split
 was 2 and 3. They were renamed to `Screening criteria` and `Student screening`.
 
+## The rail is an index, not a filter
+
+Clicking a rail row scrolls the page to that section and leaves everything else
+rendered, so the reader lands mid-category and can keep scrolling through the
+rest of it. Clicking a second row moves them further down rather than adding a
+filter, which is what the old multi-select did — the second selection stacked
+below the first, so from the top of the viewport nothing appeared to happen.
+
+Anchors are `s-<category>` and `s-<category>--<subheading>`, keyed by category
+as well as name so they stay unique if two categories ever share a subheading
+again. They are derived at render time, never stored in Airtable.
+
+The rail tracks the scroll position and marks the current section with
+`aria-current`. The spy is muted for 700ms after a click: a smooth scroll
+crosses every section on the way, and repainting through each one would flicker
+the rail before it settled.
+
 ## Counts
 
 Nothing in the UI hard-codes a total. Category blocks, rail rows, subheading
-rows, section headers and the footer all derive from the data, and each count is
-computed *after* the other active filters, so a dimension never counts itself.
+rows, section headers and the footer all derive from the data. Search is the
+only thing that filters, so every count reflects the current search — a
+subheading the search has emptied shows `0` and its row is disabled rather than
+hidden, which keeps the index from reflowing as you type.

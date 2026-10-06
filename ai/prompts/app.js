@@ -11,17 +11,6 @@ const COLORS = {
   "Firm-wide talent strategy":  "#6B2A63"
 };
 
-/* Subheading names are not unique across categories ("Screening and criteria"
- * lives under two). Every theme is therefore keyed by category + name so that
- * counts and filters stay scoped to one category. */
-/* Internal only — never serialised into the DOM (an HTML attribute would
- * mangle a NUL into U+FFFD). Category and name travel as separate attributes. */
-const SEP = "\u001F";
-const themeKey = (cat, theme) => cat + SEP + theme;
-const keyOf = d => themeKey(d.category, d.theme);
-const themeNameOf = key => key.slice(key.indexOf(SEP) + 1);
-const catOf = key => key.slice(0, key.indexOf(SEP));
-
 const COPIED_MS = 1600;
 
 /* ------------------------------------------------------------------ *
@@ -35,35 +24,26 @@ const DATA = PROMPTS.map(p => ({
 
 const TOTAL = DATA.length;
 
-/* Subheading names that appear under more than one category. Their filter
- * chips get a category prefix so two identical labels stay tellable apart. */
-const SHARED_THEME_NAMES = (() => {
-  const seen = new Set(), shared = new Set();
-  for (const list of Object.values(THEMES)) {
-    for (const t of list) {
-      if (seen.has(t)) shared.add(t); else seen.add(t);
-    }
-  }
-  return shared;
-})();
-
-const chipLabel = key => {
-  const name = themeNameOf(key);
-  return SHARED_THEME_NAMES.has(name) ? `${catOf(key)} \u00b7 ${name}` : name;
-};
-
 /* ------------------------------------------------------------------ *
  * State
  * ------------------------------------------------------------------ */
 
 const state = {
   q: "",
-  selCats: [],
-  selThemes: [],                 // theme keys, not bare names
-  selJobs: [],                   // no UI today; filter logic stays wired
   collapsed: window.innerWidth < 820,
-  copied: null
+  copied: null,
+  active: null                   // anchor id of the section the reader is in
 };
+
+/* The rail is a table of contents, not a filter. Clicking a row scrolls to that
+ * section and leaves the rest of the page rendered, so the reader can keep
+ * scrolling through the category they landed in. Search is the only thing that
+ * removes prompts from the page. */
+const slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+/* Keyed by category as well as name: two categories may carry the same
+ * subheading, and an anchor must stay unique if that ever happens again. */
+const catId   = c      => "s-" + slug(c);
+const themeId = (c, t) => "s-" + slug(c) + "--" + slug(t);
 
 let copyTimer = null;
 
@@ -81,18 +61,12 @@ function stem(t) {
 /* Matches one prompt against the active filters.
  * `skip` names dimensions to ignore, so a dimension can compute its own
  * counts without counting itself. */
-function matches(d, ...skip) {
-  const off = k => skip.indexOf(k) !== -1;
-
+function matches(d) {
   const q = state.q.trim().toLowerCase();
-  if (q) {
-    for (const t of q.split(/\s+/).filter(Boolean)) {
-      if (d.hay.indexOf(stem(t)) === -1) return false;
-    }
+  if (!q) return true;
+  for (const t of q.split(/\s+/).filter(Boolean)) {
+    if (d.hay.indexOf(stem(t)) === -1) return false;
   }
-  if (!off("selCats") && state.selCats.length && !state.selCats.includes(d.category)) return false;
-  if (!off("selJobs") && state.selJobs.length && !d.jobs.some(j => state.selJobs.includes(j))) return false;
-  if (!off("selThemes") && state.selThemes.length && !state.selThemes.includes(keyOf(d))) return false;
   return true;
 }
 
@@ -100,34 +74,8 @@ function matches(d, ...skip) {
  * Mutations
  * ------------------------------------------------------------------ */
 
-function toggle(key, v) {
-  const arr = state[key].slice();
-  const i = arr.indexOf(v);
-  if (i === -1) arr.push(v); else arr.splice(i, 1);
-  state[key] = arr;
-  render();
-}
-
-/* Toggling a category prunes theme selections that are no longer reachable:
- * deselecting a category drops its own themes, selecting one drops themes
- * belonging to categories outside the new selection. */
-function toggleCat(c) {
-  const on = state.selCats.includes(c);
-  const arr = state.selCats.slice();
-  if (on) arr.splice(arr.indexOf(c), 1); else arr.push(c);
-
-  state.selThemes = arr.length
-    ? state.selThemes.filter(k => arr.includes(catOf(k)))
-    : state.selThemes.filter(k => catOf(k) !== c);
-  state.selCats = arr;
-  render();
-}
-
-function clearAll() {
+function clearSearch() {
   state.q = "";
-  state.selCats = [];
-  state.selThemes = [];
-  state.selJobs = [];
   searchInput.value = "";
   render();
 }
@@ -202,19 +150,9 @@ const ICON_INFO = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" s
  * Counts
  * ------------------------------------------------------------------ */
 
-/* A category's count ignores the category and theme dimensions, but still
- * honours theme selections made *within* that category. */
-function catCount(c) {
-  const ownSel = state.selThemes.filter(k => catOf(k) === c);
-  return DATA.filter(d =>
-    d.category === c &&
-    matches(d, "selCats", "selThemes") &&
-    (!ownSel.length || ownSel.includes(keyOf(d)))
-  ).length;
-}
-
-const themeCount = key =>
-  DATA.filter(d => matches(d, "selThemes") && keyOf(d) === key).length;
+/* Counts follow the search, which is now the only filter. */
+const catCount   = c      => DATA.filter(d => d.category === c && matches(d)).length;
+const themeCount = (c, t) => DATA.filter(d => d.category === c && d.theme === t && matches(d)).length;
 
 /* ------------------------------------------------------------------ *
  * Render
@@ -222,7 +160,6 @@ const themeCount = key =>
 
 const catBlocks     = document.getElementById("catBlocks");
 const railRows      = document.getElementById("railRows");
-const filterCard    = document.getElementById("filterCard");
 const results       = document.getElementById("results");
 const searchInput   = document.getElementById("search");
 const clearQueryBtn = document.getElementById("clearQuery");
@@ -230,45 +167,43 @@ const collapseBtn   = document.getElementById("collapseToggle");
 const liveCount     = document.getElementById("liveCount");
 
 function renderCatBlocks() {
-  catBlocks.innerHTML = CATEGORIES.map(c => {
-    const on = state.selCats.includes(c);
-    return `
-      <button class="cat-block" type="button" data-cat="${esc(c)}" aria-pressed="${on}"
-              style="--cat:${COLORS[c]}">
+  catBlocks.innerHTML = CATEGORIES.map(c => `
+      <button class="cat-block" type="button" data-jump="${catId(c)}"
+              aria-current="${state.active === catId(c)}" style="--cat:${COLORS[c]}">
         <span class="cat-block__count">${catCount(c)}</span>
         <span class="cat-block__name">${esc(c)}</span>
         <span class="cat-block__note">${esc(CATEGORY_NOTES[c] || "")}</span>
-        <span class="cat-block__pill">${on ? "&#10003; Selected &mdash; clear" : "View these prompts"}</span>
-      </button>`;
-  }).join("");
+        <span class="cat-block__pill">View these prompts</span>
+      </button>`).join("");
 }
 
 function renderRail() {
-  const anyCat = state.selCats.length > 0;
-  const allOn  = !state.selCats.length && !state.selThemes.length;
+  const shown = DATA.filter(matches).length;
 
   const rows = [`
-    <button class="rail-row" type="button" data-all aria-pressed="${allOn}">
+    <button class="rail-row" type="button" data-jump="top">
       <span class="rail-row__label">All prompts</span>
-      <span class="rail-row__num">${TOTAL}</span>
+      <span class="rail-row__num">${shown}</span>
     </button>`];
 
   for (const c of CATEGORIES) {
-    const on    = state.selCats.includes(c);
     const count = catCount(c);
     const own   = THEMES[c] || [];
-    const showSubs = own.length > 0 && !state.collapsed && (on || !anyCat);
+    /* Every category's subheadings are listed at once: the rail indexes the
+     * whole page now, rather than drilling into one selected category. */
+    const showSubs = own.length > 0 && !state.collapsed;
 
     let subs = "";
     if (showSubs) {
       subs = `<div class="rail__subs" style="--cat-faint:${COLORS[c]}33">` + own.map(t => {
-        const key  = themeKey(c, t);
-        const tOn  = state.selThemes.includes(key);
-        const tCnt = themeCount(key);
+        const id   = themeId(c, t);
+        const tCnt = themeCount(c, t);
+        /* A search can empty a subheading. Disable rather than hide, so the
+         * index keeps its shape and nothing jumps around as you type. */
         return `
-          <button class="sub-row${tCnt === 0 && !tOn ? " is-empty" : ""}" type="button"
-                  data-theme-cat="${esc(c)}" data-theme-name="${esc(t)}"
-                  aria-pressed="${tOn}" style="--cat:${COLORS[c]}">
+          <button class="sub-row${tCnt === 0 ? " is-empty" : ""}" type="button"
+                  data-jump="${id}"${tCnt === 0 ? " disabled" : ""}
+                  aria-current="${state.active === id}" style="--cat:${COLORS[c]}">
             <span>${esc(t)}</span>
             <span class="sub-row__num">${tCnt}</span>
           </button>`;
@@ -277,8 +212,9 @@ function renderRail() {
 
     rows.push(`
       <div>
-        <button class="rail-row${count === 0 && !on ? " is-empty" : ""}" type="button"
-                data-cat="${esc(c)}" aria-pressed="${on}">
+        <button class="rail-row${count === 0 ? " is-empty" : ""}" type="button"
+                data-jump="${catId(c)}"${count === 0 ? " disabled" : ""}
+                aria-current="${state.active === catId(c)}">
           <span class="rail-row__label"><span class="swatch" style="--cat:${COLORS[c]}"></span>${esc(c)}</span>
           <span class="rail-row__num">${count}</span>
         </button>
@@ -289,28 +225,6 @@ function renderRail() {
   railRows.innerHTML = rows.join("");
   collapseBtn.textContent = state.collapsed ? "Show subheadings" : "Hide subheadings";
   collapseBtn.setAttribute("aria-expanded", String(!state.collapsed));
-}
-
-function renderFilterCard() {
-  const chips = state.selCats.map(c => ({ label: c, attr: `data-cat="${esc(c)}"` }))
-    .concat(state.selThemes.map(k => ({ label: chipLabel(k),
-      attr: `data-theme-cat="${esc(catOf(k))}" data-theme-name="${esc(themeNameOf(k))}"` })))
-    .concat(state.selJobs.map(j => ({ label: j, attr: `data-job="${esc(j)}"` })));
-
-  if (!chips.length) { filterCard.innerHTML = ""; return; }
-
-  filterCard.innerHTML = `
-    <div class="filter-card">
-      <div class="filter-card__title">Filtering by</div>
-      <div class="filter-card__chips">
-        ${chips.map(c => `
-          <button class="chip" type="button" ${c.attr}>
-            <span>${esc(c.label)}</span><span class="chip__x" aria-hidden="true">&times;</span>
-            <span class="sr-only">Remove filter</span>
-          </button>`).join("")}
-      </div>
-      <button class="btn-clear" type="button" data-clear>Clear all selections</button>
-    </div>`;
 }
 
 function cardHTML(p) {
@@ -333,14 +247,16 @@ function cardHTML(p) {
 function renderResults() {
   const rows = DATA.filter(d => matches(d));
 
-  liveCount.textContent = `${rows.length} ${rows.length === 1 ? "prompt" : "prompts"} match your selections.`;
+  liveCount.textContent = state.q.trim()
+    ? `${rows.length} ${rows.length === 1 ? "prompt" : "prompts"} match your search.`
+    : `Showing all ${rows.length} prompts.`;
 
   if (!rows.length) {
     results.innerHTML = `
       <div class="empty-state">
-        <p class="empty-state__head">Nothing matches that combination.</p>
-        <p class="empty-state__body">Clear a selection or try a broader term.</p>
-        <button class="btn-solid" type="button" data-clear>Clear all selections</button>
+        <p class="empty-state__head">Nothing matches that search.</p>
+        <p class="empty-state__body">Try a broader term.</p>
+        <button class="btn-solid" type="button" data-clear>Clear search</button>
       </div>`;
     return;
   }
@@ -360,7 +276,7 @@ function renderResults() {
     if (loose.length) groups.push({ name: "", show: false, prompts: loose });
 
     return `
-      <section class="cat-section" style="--cat:${COLORS[c]}">
+      <section class="cat-section" id="${catId(c)}" style="--cat:${COLORS[c]}">
         <div class="cat-section__head">
           <span class="cat-section__swatch"></span>
           <h2 class="cat-section__name">${esc(c)}</h2>
@@ -368,7 +284,7 @@ function renderResults() {
         </div>
         <p class="cat-section__note">${esc(CATEGORY_NOTES[c] || "")}</p>
         ${groups.map(g => `
-          <div class="theme-group">
+          <div class="theme-group"${g.show ? ` id="${themeId(c, g.name)}"` : ""}>
             ${g.show ? `
               <div class="theme-group__head">
                 <h3 class="theme-group__name">${esc(g.name)}</h3>
@@ -386,7 +302,6 @@ function renderResults() {
 function render() {
   renderCatBlocks();
   renderRail();
-  renderFilterCard();
   renderResults();
   clearQueryBtn.hidden = !state.q.trim();
 }
@@ -395,25 +310,79 @@ function render() {
  * Events (delegated)
  * ------------------------------------------------------------------ */
 
+/* Jumping ------------------------------------------------------------- *
+ * The spy is muted while a click-driven scroll is in flight: a smooth scroll
+ * crosses every section on the way, and letting it repaint would flicker the
+ * rail through each one before settling. */
+let spyMuted = false;
+let spyTimer = null;
+
+function sectionAnchors() {
+  return Array.prototype.slice.call(results.querySelectorAll(".cat-section, .theme-group[id]"))
+    .filter(el => el.id);
+}
+
+/* Paints the rail in place. A full render() here would rebuild every card on
+ * each scroll frame and drop focus. */
+function paintActive() {
+  for (const el of document.querySelectorAll("[data-jump]")) {
+    el.setAttribute("aria-current", String(el.getAttribute("data-jump") === state.active));
+  }
+}
+
+function updateActive() {
+  if (spyMuted) return;
+  /* The current section is the last one whose top has passed the reading line. */
+  const line = 120;
+  let id = null;
+  for (const el of sectionAnchors()) {
+    if (el.getBoundingClientRect().top <= line) id = el.id; else break;
+  }
+  if (window.scrollY < 40) id = null;
+  if (id !== state.active) { state.active = id; paintActive(); }
+}
+
+function jumpTo(id) {
+  if (id === "top") {
+    spyMuted = true; state.active = null; paintActive();
+    window.scrollTo({ top: 0, behavior: scrollBehavior() });
+  } else {
+    const el = document.getElementById(id);
+    if (!el) return;
+    spyMuted = true; state.active = id; paintActive();
+    el.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
+  }
+  clearTimeout(spyTimer);
+  spyTimer = setTimeout(() => { spyMuted = false; updateActive(); }, 700);
+}
+
+const scrollBehavior = () =>
+  (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+    ? "auto" : "smooth";
+
+/* ------------------------------------------------------------------ *
+ * Events (delegated)
+ * ------------------------------------------------------------------ */
+
 document.addEventListener("click", e => {
-  const el = e.target.closest("[data-cat],[data-theme-name],[data-job],[data-all],[data-clear],[data-copy]");
+  const el = e.target.closest("[data-jump],[data-clear],[data-copy]");
   if (!el) return;
 
   if (el.hasAttribute("data-copy")) {
     const p = DATA.find(d => d.n === Number(el.getAttribute("data-copy")));
     if (p) copyPrompt(p);
   } else if (el.hasAttribute("data-clear")) {
-    clearAll();
-  } else if (el.hasAttribute("data-all")) {
-    state.selCats = []; state.selThemes = []; render();
-  } else if (el.hasAttribute("data-cat")) {
-    toggleCat(el.getAttribute("data-cat"));
-  } else if (el.hasAttribute("data-theme-name")) {
-    toggle("selThemes", themeKey(el.getAttribute("data-theme-cat"), el.getAttribute("data-theme-name")));
-  } else if (el.hasAttribute("data-job")) {
-    toggle("selJobs", el.getAttribute("data-job"));
+    clearSearch();
+  } else if (el.hasAttribute("data-jump")) {
+    jumpTo(el.getAttribute("data-jump"));
   }
 });
+
+let spyFrame = null;
+window.addEventListener("scroll", () => {
+  if (spyFrame) return;
+  spyFrame = requestAnimationFrame(() => { spyFrame = null; updateActive(); });
+}, { passive: true });
 
 searchInput.addEventListener("input", e => { state.q = e.target.value; render(); });
 clearQueryBtn.addEventListener("click", () => { state.q = ""; searchInput.value = ""; render(); });
