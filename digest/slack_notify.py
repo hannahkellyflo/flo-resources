@@ -88,12 +88,11 @@ EMAIL_KINDS = ("add", "open_date", "program_date")
 
 def compose(changes, flagged, today):
     student = [c for c in changes if c["audience"] == "student" and c["kind"] in EMAIL_KINDS]
-    attorney = [c for c in changes if c["audience"] == "attorney" and c["kind"] in EMAIL_KINDS]
     close = [c for c in changes if c["kind"] == "close_date"]
     removed = [c for c in changes if c["kind"] == "remove"]
     edited = [c for c in changes if c["kind"] == "edit"]
     nxt = next_send_date(today)
-    total = len(student) + len(attorney)
+    total = len(student)
     when = (f"*today's* email update ({_fmt_day(today)})" if nxt == today
             else f"the next email update on *{_fmt_day(nxt)}*")
 
@@ -101,14 +100,13 @@ def compose(changes, flagged, today):
     if not (total or close or removed or edited):
         L.append("No tracker changes today. :white_check_mark:")
     elif total:
-        L.append(f"*{total}* new/date change{'s' if total != 1 else ''} today — "
-                 f"{len(student)} student, {len(attorney)} attorney. "
+        L.append(f"*{total}* new/date change{'s' if total != 1 else ''} today. "
                  f"These will be included in {when}.")
     else:
         L.append(f"No email-worthy changes today (see the sections below). "
                  f"Next email: {when}.")
 
-    for label, items in (("STUDENT", student), ("ATTORNEY", attorney)):
+    for label, items in (("STUDENT", student),):
         if not items:
             continue
         L += ["", f"*{label} ({len(items)})*"]
@@ -175,17 +173,14 @@ def prev_send_date(today):
 
 
 def compose_email(changes, today):
-    """Email-ready aggregate: Student and Attorney blocks Elizabeth can copy/paste per version."""
+    """Email-ready aggregate: the Student block Elizabeth can copy/paste for the send."""
     student = [c for c in changes if c["audience"] == "student" and c["kind"] in EMAIL_KINDS]
-    attorney = [c for c in changes if c["audience"] == "attorney" and c["kind"] in EMAIL_KINDS]
-    total = len(student) + len(attorney)
+    total = len(student)
     since = prev_send_date(today)
-    L = [f":clipboard: *Email-ready update — {_fmt_day(today)}* _(copy/paste for today's send)_",
-         "_Three versions: *Student* = the Student block · *Attorney* = the Attorney block · "
-         "*Both* = both blocks._", ""]
+    L = [f":clipboard: *Email-ready update — {_fmt_day(today)}* _(copy/paste for today's send)_", ""]
     L.append(f"_Suggested intro:_ We've added *{total}* update{'s' if total != 1 else ''} to the "
              f"Recruiting Tracker since {_fmt_day(since)}.")
-    for label, items in (("STUDENT", student), ("ATTORNEY", attorney)):
+    for label, items in (("STUDENT", student),):
         L += ["", f"*━━ {label} EMAIL — {len(items)} item{'s' if len(items) != 1 else ''} ━━*"]
         if not items:
             L.append(f"_No {label.lower()} updates since the last send — skip the {label.lower()} email._")
@@ -214,6 +209,7 @@ def build(argv):
             if len(bots) < 2:
                 return None, None
             changes, flagged = diff_data.diff(bots[-2]["sha"], bots[-1]["sha"]), []
+    changes = [c for c in changes if c.get("audience") == "student"]  # Elizabeth's digest is student-only
     msg = compose_email(changes, today) if email_mode else compose(changes, flagged, today)
     return msg, {"latest": diff_data.latest_bot_sha(), "wm_path": wm_path}
 
