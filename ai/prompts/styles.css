@@ -145,13 +145,24 @@ input::placeholder{color:var(--muted);}
 }
 .hero__lede{
   font-size:clamp(16px,1.6vw,18.5px);line-height:1.55;color:var(--bone);
-  max-width:62ch;margin:0 0 14px;
+  margin:0 0 14px;
 }
 .hero__sublede{
   font-size:clamp(14.5px,1.4vw,16px);line-height:1.6;color:var(--on-plum);
-  max-width:62ch;margin:0;
+  margin:0;
 }
-.hero__mark{color:var(--bone);line-height:0;padding-top:6px;}
+/* One shared measure for both paragraphs. A ch cap would not line their right
+   edges up, since the two sit at different font sizes -- that is what left the
+   sublede visibly short of the lede. 88% of .hero__text puts the text at ~80%
+   of the card's inner width. Only above the breakpoint where .hero__row wraps:
+   once the mark drops below the text, the paragraphs should use the full card
+   rather than leave a gutter against nothing. */
+@media (min-width:641px){
+  .hero__lede,.hero__sublede{max-width:88%;}
+}
+/* The mark is the full-colour Flo AI app icon, so no currentColor here. */
+.hero__mark{line-height:0;padding-top:6px;}
+.hero__mark-img{display:block;width:54px;height:54px;}
 
 /* ---------- 2. Category blocks ---------- */
 .cat-blocks{
