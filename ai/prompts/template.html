@@ -21,6 +21,12 @@
 <!-- Site header, matching /tracker. Markup and values lifted from
      pipeline/template.dc.html so the two pages stay consistent. Links carry no
      target: this is the public variant, where the tracker uses _self. -->
+<div class="site-return">
+  <div class="site-return__inner">
+    <a class="site-return__link" href="https://joinflo.com">&larr; Return to Join Flo</a>
+  </div>
+</div>
+
 <div class="site-nav-bar">
   <div class="site-nav">
     <div class="site-nav__brand">
@@ -30,6 +36,10 @@
       <span aria-hidden="true" class="site-nav__rule"></span>
       <span class="site-nav__label">Resource Center</span>
     </div>
+    <nav class="site-nav__links" aria-label="Resource Center">
+      <a class="site-nav__link" href="/tracker">Recruiting Tracker</a>
+      <a class="site-nav__link" href="/ai/prompts" aria-current="page">AI Prompt Library</a>
+    </nav>
     <div class="site-nav__actions">
       <a href="https://www.joinflo.com/sign-in-to-flo" class="site-nav__btn site-nav__btn--ghost">Sign In</a>
       <a href="https://www.joinflo.com/request-demo" class="site-nav__btn site-nav__btn--solid">Let's Talk &rarr;</a>
