@@ -12,7 +12,7 @@ Fonts are inlined as base64 rather than loaded from Google Fonts: the page is
 served from resources.joinflo.com, and Season Mix is a licensed brand font that
 should not come from a CDN in any case.
 """
-import base64, pathlib, re, sys
+import base64, pathlib, re, shutil, struct, sys
 
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parent.parent                       # ai/prompts/ -> repo root
@@ -22,7 +22,49 @@ OUT = REPO / "site" / SLUG / "index.html"
 TITLE = "The Flo AI Prompt Library"
 DESCRIPTION = ("Prompts you can copy into Flo AI to get answers out of your "
                "recruiting and performance data.")
-CANONICAL = f"https://resources.joinflo.com/{SLUG}"
+SITE = "https://resources.joinflo.com"
+CANONICAL = f"{SITE}/{SLUG}"
+
+# The social card. Master lives beside the other sources; the build copies it to the site
+# root next to the tracker's og-image.png, since nothing under site/ is hand-edited.
+OG_SRC = HERE / "img" / "og-image.png"
+OG_FILE = "og-prompts.png"
+
+
+def png_size(path):
+    """(width, height) of a PNG, or None if it is not one. Same reader as pipeline/build.py."""
+    try:
+        head = path.open("rb").read(24)
+    except OSError:
+        return None
+    if head[:8] != b"\x89PNG\r\n\x1a\n" or head[12:16] != b"IHDR":
+        return None
+    return struct.unpack(">II", head[16:24])
+
+
+def og_image_tags():
+    """The large-card tags, with the master's real pixel dimensions.
+
+    twitter:card carries the weight here, not the file: Slack and X read it to choose
+    between the full-width banner and the compact layout with a small square thumbnail.
+    With "summary" they keep the compact card and ignore a 1200x630 image entirely.
+    """
+    size = png_size(OG_SRC)
+    if size is None:
+        sys.exit(f"build: {OG_SRC} is missing or not a PNG")
+    width, height = size
+    return (
+        f'<meta property="og:image" content="{SITE}/{OG_FILE}">\n'
+        f'<meta property="og:image:type" content="image/png">\n'
+        f'<meta property="og:image:width" content="{width}">\n'
+        f'<meta property="og:image:height" content="{height}">\n'
+        f'<meta property="og:image:alt" content="{TITLE}">\n'
+        f'<meta name="twitter:card" content="summary_large_image">\n'
+        f'<meta name="twitter:image" content="{SITE}/{OG_FILE}">\n'
+        f'<meta name="twitter:title" content="{TITLE}">\n'
+        f'<meta name="twitter:description" content="{DESCRIPTION}">\n'
+    )
+
 
 # Mirrors the icon set pipeline/build.py wires up; the files live at the site root.
 HEAD = f"""<!doctype html>
@@ -35,11 +77,11 @@ HEAD = f"""<!doctype html>
 <link rel="canonical" href="{CANONICAL}">
 
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="Flo Resource Center">
 <meta property="og:title" content="{TITLE}">
 <meta property="og:description" content="{DESCRIPTION}">
 <meta property="og:url" content="{CANONICAL}">
-<meta name="twitter:card" content="summary">
-
+{og_image_tags()}
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
@@ -101,6 +143,10 @@ def build():
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(html, encoding="utf-8")
+
+    # The social card is referenced by absolute URL, so unlike the fonts and the hero mark
+    # it cannot be inlined -- it has to exist as a file Slack and X can fetch.
+    shutil.copyfile(OG_SRC, REPO / "site" / OG_FILE)
     kb = len(html.encode("utf-8")) / 1024
     print(f"wrote {OUT.relative_to(REPO)}  ({kb:,.0f} KB)")
 
