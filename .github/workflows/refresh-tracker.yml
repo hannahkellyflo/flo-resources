@@ -2,8 +2,21 @@ name: Refresh Legal Recruiting Tracker
 
 on:
   schedule:
-    - cron: "0 11 * * 1-5"   # 7:00 AM ET (11:00 UTC) on weekdays
-  workflow_dispatch: {}        # allow manual runs from the Actions tab
+    - cron: "0 11 * * 1-5"    # FULL refresh — 6:00 AM CT (11:00 UTC) weekdays
+    - cron: "20 19 * * 1-5"   # students-only — ~2:00 PM CT (19:20 UTC, CDT) weekdays
+    - cron: "20 22 * * 1-5"   # students-only — ~5:00 PM CT (22:20 UTC, CDT) weekdays
+  workflow_dispatch:           # allow manual runs from the Actions tab
+    inputs:
+      scope:
+        description: "full = everything; students = 1L/2L/3L job tables only"
+        type: choice
+        default: full
+        options: [full, students]
+
+# The two afternoon crons refresh ONLY the student job tables (1L/2L summer + 3L entry-level) during
+# the busy season, since student jobs are added throughout the day; the 6 AM run refreshes everything.
+# NOTE: crons are fixed UTC — the afternoon times track Central during DST (CDT); in standard time
+# (CST, ~Nov–Mar) they land an hour earlier (1 PM / 4 PM CT). GitHub's scheduler can also fire late.
 
 permissions:
   contents: write
@@ -22,12 +35,27 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Determine scope (full vs students-only)
+        id: scope
+        run: |
+          # students-only for the two afternoon crons, or when the manual run selects it; full otherwise.
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            case "${{ github.event.schedule }}" in
+              "0 11 * * 1-5") echo "flag=" >> "$GITHUB_OUTPUT" ;;
+              *)              echo "flag=--students" >> "$GITHUB_OUTPUT" ;;
+            esac
+          elif [ "${{ github.event.inputs.scope }}" = "students" ]; then
+            echo "flag=--students" >> "$GITHUB_OUTPUT"
+          else
+            echo "flag=" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Regenerate data.json from live sources
         working-directory: pipeline
         env:
           METABASE_API_KEY: ${{ secrets.METABASE_API }}
           AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
-        run: python3 generate.py
+        run: python3 generate.py ${{ steps.scope.outputs.flag }}
 
       - name: Rebuild index.html
         working-directory: pipeline
