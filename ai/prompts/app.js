@@ -172,7 +172,6 @@ function renderCatBlocks() {
         <span class="cat-block__count">${catCount(c)}</span>
         <span class="cat-block__name">${esc(c)}</span>
         <span class="cat-block__note">${esc(CATEGORY_NOTES[c] || "")}</span>
-        <span class="cat-block__pill">View these prompts</span>
       </button>`).join("");
 }
 
