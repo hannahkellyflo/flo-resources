@@ -1037,12 +1037,20 @@ def wire_summer_split(data: dict) -> None:
             continue                                    # tracker surfaces incoming Class of 2029 as "upcoming"
         at_rec = _da_summer_record(row, lv)
         at_title = at_rec[f"{lv} Position"]
-        # (1) Same underlying job by Flo Forward id: keep the live row, adopt the Airtable title.
+        at_closed = _close_passed(row.get("close_iso"))  # Airtable application deadline has passed
+        # (1) Same underlying job by Flo Forward id: adopt the Airtable title — but if Airtable marks the
+        # job closed, close it on the Tracker even while Flo Forward still shows it open. "Closed on Flo
+        # Forward OR in Airtable" -> closed (Flo Forward close already drops its own rows upstream).
         if row["jobid"] and row["jobid"] in live_ids:
             ff = ff_by_id[lv].get(row["jobid"])
             if ff:
-                ff[f"{lv} Position"] = at_title          # Airtable title wins (human oversight)
+                if at_closed:
+                    ff["_at_closed"] = True
+                else:
+                    ff[f"{lv} Position"] = at_title      # Airtable title wins (human oversight)
             continue
+        if at_closed:
+            continue                                     # closed in Airtable -> don't surface as upcoming
         # (2) Near-duplicate of an existing row (same firm + open date + ~title): keep the existing
         # row — it carries the office/location — and, on a 1:1 match, adopt the Airtable title. (Don't
         # retitle when it matches several rows, so a firm's multi-office postings aren't collapsed.)
@@ -1060,6 +1068,12 @@ def wire_summer_split(data: dict) -> None:
         if k2 in seen:
             continue
         out[lv]["upcoming"].append(at_rec); seen.add(k2); da_added[lv] += 1
+
+    # Close rule: drop any live row an Airtable record marked closed (deadline passed), so either source
+    # closing the job hides it from the Tracker ("closed on Flo Forward OR in Airtable" -> closed).
+    for lv in ("1L", "2L"):
+        for bkt in out[lv]:
+            out[lv][bkt] = [rec for rec in out[lv][bkt] if not rec.get("_at_closed")]
 
     # Location rule (also catches Flo-Forward-only dups): drop a location-less row when a located
     # near-duplicate exists.
