@@ -5,8 +5,8 @@
 
 Like pipeline/, this directory is the source and site/ is the output: never
 hand-edit site/ai/prompts/index.html. The page ships as one self-contained file
-with CSS, JS, prompt data, the hero mark and both fonts inlined, so it makes no
-external requests — same contract as site/tracker/index.html.
+with CSS, JS, prompt data, the hero mark and both fonts inlined; the only thing
+it fetches is the shared joinflo.com footer in an iframe — same contract as site/tracker/index.html.
 
 Fonts are inlined as base64 rather than loaded from Google Fonts: the page is
 served from resources.joinflo.com, and Season Mix is a licensed brand font that
