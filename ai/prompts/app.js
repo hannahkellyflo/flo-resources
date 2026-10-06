@@ -168,8 +168,7 @@ const liveCount     = document.getElementById("liveCount");
 
 function renderCatBlocks() {
   catBlocks.innerHTML = CATEGORIES.map(c => `
-      <button class="cat-block" type="button" data-jump="${catId(c)}"
-              aria-current="${state.active === catId(c)}" style="--cat:${COLORS[c]}">
+      <button class="cat-block" type="button" data-jump="${catId(c)}" style="--cat:${COLORS[c]}">
         <span class="cat-block__count">${catCount(c)}</span>
         <span class="cat-block__name">${esc(c)}</span>
         <span class="cat-block__note">${esc(CATEGORY_NOTES[c] || "")}</span>
@@ -202,8 +201,7 @@ function renderRail() {
          * index keeps its shape and nothing jumps around as you type. */
         return `
           <button class="sub-row${tCnt === 0 ? " is-empty" : ""}" type="button"
-                  data-jump="${id}"${tCnt === 0 ? " disabled" : ""}
-                  aria-current="${state.active === id}" style="--cat:${COLORS[c]}">
+                  data-jump="${id}"${tCnt === 0 ? " disabled" : ""} style="--cat:${COLORS[c]}">
             <span>${esc(t)}</span>
             <span class="sub-row__num">${tCnt}</span>
           </button>`;
@@ -213,8 +211,7 @@ function renderRail() {
     rows.push(`
       <div>
         <button class="rail-row${count === 0 ? " is-empty" : ""}" type="button"
-                data-jump="${catId(c)}"${count === 0 ? " disabled" : ""}
-                aria-current="${state.active === catId(c)}">
+                data-jump="${catId(c)}"${count === 0 ? " disabled" : ""}>
           <span class="rail-row__label"><span class="swatch" style="--cat:${COLORS[c]}"></span>${esc(c)}</span>
           <span class="rail-row__num">${count}</span>
         </button>
@@ -303,6 +300,7 @@ function render() {
   renderCatBlocks();
   renderRail();
   renderResults();
+  paintActive();
   clearQueryBtn.hidden = !state.q.trim();
 }
 
@@ -325,8 +323,15 @@ function sectionAnchors() {
 /* Paints the rail in place. A full render() here would rebuild every card on
  * each scroll frame and drop focus. */
 function paintActive() {
-  for (const el of document.querySelectorAll("[data-jump]")) {
-    el.setAttribute("aria-current", String(el.getAttribute("data-jump") === state.active));
+  for (const el of railRows.querySelectorAll("[data-jump]")) {
+    const id = el.getAttribute("data-jump");
+    el.setAttribute("aria-current", String(id === state.active));
+    /* A category row also marks itself while the reader is inside one of its
+     * subheadings: "s-cat--sub" starts with "s-cat--". */
+    if (el.classList.contains("rail-row")) {
+      el.classList.toggle("is-within",
+        !!state.active && id !== state.active && state.active.indexOf(id + "--") === 0);
+    }
   }
 }
 

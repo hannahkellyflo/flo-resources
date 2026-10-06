@@ -166,21 +166,16 @@ input::placeholder{color:var(--muted);}
   box-shadow:0 1px 2px rgba(38,16,37,0.12);
 }
 .cat-block:hover{transform:translateY(-2px);}
-.cat-block[aria-current="true"]{
-  background:var(--bone);color:var(--cat);box-shadow:0 4px 0 var(--cat);
-}
 .cat-block__count{
   font-family:var(--display);font-weight:700;font-size:36px;line-height:1;letter-spacing:-0.02em;
 }
 .cat-block__name{font-size:16px;font-weight:600;line-height:1.25;letter-spacing:-0.01em;}
 .cat-block__note{font-size:13px;line-height:1.45;flex:1 1 auto;color:var(--white);}
-.cat-block[aria-current="true"] .cat-block__note{color:#3D2B3C;}
 .cat-block__pill{
   margin-top:8px;display:inline-flex;align-items:center;gap:6px;padding:9px 15px;
   border-radius:var(--r-pill);font-size:11.5px;font-weight:600;letter-spacing:.09em;
   text-transform:uppercase;background:var(--white);color:var(--cat);
 }
-.cat-block[aria-current="true"] .cat-block__pill{background:var(--cat);color:var(--white);}
 
 /* ---------- 3. Search ---------- */
 .search-wrap{padding:24px 0 34px;}
@@ -222,7 +217,12 @@ input::placeholder{color:var(--muted);}
   cursor:pointer;border:1px solid transparent;transition:.12s ease;
   background:transparent;color:var(--grey);font-weight:500;
 }
-.rail-row[aria-current="true"]{background:var(--plum);color:var(--bone);font-weight:600;}
+/* "You are here", not "this filter is on". The old solid fills were a toggle
+   state; an index wants a tint and a weight change. */
+.rail-row[aria-current="true"]{background:rgba(38,16,37,0.06);color:var(--plum);font-weight:600;}
+/* The category that contains the current subheading, so the reader keeps their
+   place in the hierarchy once a long sub list has scrolled past. */
+.rail-row.is-within{color:var(--plum);font-weight:600;}
 .rail-row.is-empty{opacity:.4;}
 /* A jump target the search has emptied: dimmed and unclickable, but still in
    place so the index keeps its shape while you type. */
@@ -230,7 +230,6 @@ input::placeholder{color:var(--muted);}
 .rail-row__label{display:flex;align-items:center;gap:9px;text-align:left;}
 .rail-row__num{font-variant-numeric:tabular-nums;opacity:.6;}
 .swatch{width:8px;height:8px;border-radius:2px;flex:none;background:var(--cat);}
-.rail-row[aria-current="true"] .swatch{outline:1px solid rgba(243,242,237,0.5);}
 
 .rail__subs{
   margin:3px 0 8px;padding-left:12px;border-left:1px solid var(--cat-faint);
@@ -242,31 +241,13 @@ input::placeholder{color:var(--muted);}
   cursor:pointer;border:1px solid transparent;transition:.12s ease;
   background:transparent;color:var(--soft-ink);font-weight:500;
 }
-.sub-row[aria-current="true"]{background:var(--cat);color:var(--white);font-weight:600;}
+.sub-row[aria-current="true"]{
+  background:rgba(38,16,37,0.05);color:var(--plum);font-weight:600;
+  box-shadow:inset 2px 0 0 var(--cat);
+}
 .sub-row.is-empty{opacity:.4;}
 .sub-row__num{font-variant-numeric:tabular-nums;font-size:11px;color:rgba(38,16,37,0.42);}
-.sub-row[aria-current="true"] .sub-row__num{opacity:.75;color:inherit;}
-
-/* Filtering-by card */
-.filter-card{
-  border:1px solid rgba(38,16,37,0.18);border-radius:var(--r-control);background:var(--white);
-  padding:14px 15px 15px;margin-bottom:26px;
-}
-.filter-card__title{
-  font-weight:600;font-stretch:112%;font-size:10px;letter-spacing:.14em;
-  text-transform:uppercase;color:var(--label);margin-bottom:10px;
-}
-.filter-card__chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
-.chip{
-  display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;line-height:1.2;
-  padding:6px 10px;border-radius:var(--r-sub);border:1px solid var(--plum);
-  background:var(--plum);color:var(--bone);cursor:pointer;text-align:left;
-}
-.chip__x{opacity:.6;font-weight:400;}
-.btn-clear{
-  width:100%;padding:9px 12px;font-size:12.5px;font-weight:600;border-radius:var(--r-row);
-  cursor:pointer;border:1px solid var(--control-border-strong);background:var(--bone);color:var(--plum);
-}
+.sub-row[aria-current="true"] .sub-row__num{color:var(--plum);opacity:.55;}
 
 /* Four habits */
 .habits{border-top:1px solid var(--rule);padding-top:20px;}
