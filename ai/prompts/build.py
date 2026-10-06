@@ -5,8 +5,8 @@
 
 Like pipeline/, this directory is the source and site/ is the output: never
 hand-edit site/ai/prompts/index.html. The page ships as one self-contained file
-with CSS, JS, prompt data and both fonts inlined, so it makes no external
-requests — same contract as site/tracker/index.html.
+with CSS, JS, prompt data, the hero mark and both fonts inlined, so it makes no
+external requests — same contract as site/tracker/index.html.
 
 Fonts are inlined as base64 rather than loaded from Google Fonts: the page is
 served from resources.joinflo.com, and Season Mix is a licensed brand font that
@@ -75,6 +75,12 @@ def build():
         f'  src:url("{zalando}") format("truetype");\n'
         '  font-weight:400 700;font-stretch:75% 125%;font-style:normal;font-display:swap;\n'
         '}\n@font-face{', 1)
+
+    # --- images: inline the hero mark so the page still makes no requests -----
+    icon = data_uri(HERE / "img" / "flo-ai-icon.png", "image/png")
+    template, n = re.subn(r'src="\./img/flo-ai-icon\.png"', f'src="{icon}"', template)
+    if n != 1:
+        sys.exit("build: could not inline the hero mark image")
 
     # --- js: fold the data module into the app, dropping import/export --------
     data_js = re.sub(r'^export\s+const\s+', 'const ', data_js, flags=re.M)
