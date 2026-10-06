@@ -13,7 +13,7 @@ Secrets (GitHub Actions env):
 
 Run:  METABASE_API_KEY=… AIRTABLE_TOKEN=… python3 generate.py
 """
-import json, os, re, html, urllib.request, urllib.parse, pathlib, datetime, copy
+import json, os, re, sys, html, urllib.request, urllib.parse, pathlib, datetime, copy
 
 PIPE = pathlib.Path(__file__).parent
 DATA_JSON = PIPE / "data.json"
@@ -2086,11 +2086,19 @@ WIRED = [wire_public_interest, wire_campus_exams, wire_lateral, wire_pc, wire_en
          wire_postclerk_charts, wire_lawstudent_charts, wire_overview_stats]
 
 
-def main() -> None:
+# Student job tables only (1L/2L summer + 3L entry-level) — for the intraday refreshes that just need
+# to pick up newly-posted student jobs, not re-run every attorney/chart/overview query.
+WIRED_STUDENTS = [wire_entry3l, wire_summer_split]
+
+
+def main(argv=None) -> None:
+    argv = argv or []
+    students_only = "--students" in argv
+    wired = WIRED_STUDENTS if students_only else WIRED
     data = json.loads(DATA_JSON.read_text(encoding="utf-8"))  # snapshot base
     prev_tables = copy.deepcopy(data.get("tables", {}))        # prior committed rows, for "Last updated" diffing
-    print(f"loaded snapshot; wiring {len(WIRED)} live section(s)")
-    for fn in WIRED:
+    print(f"loaded snapshot; wiring {len(wired)} live section(s)" + (" [students-only]" if students_only else ""))
+    for fn in wired:
         fn(data)
     stamp_last_updated(data.get("tables", {}), prev_tables)    # per-row "Last updated" date (add/edit detection)
     stamp_last_updated_at(data.get("tables", {}), prev_tables)  # per-row "_luAt" datetime for the detail-view time
@@ -2102,4 +2110,4 @@ def main() -> None:
 if __name__ == "__main__":
     if not AT_TOKEN:
         raise SystemExit("AIRTABLE_TOKEN not set")
-    main()
+    main(sys.argv[1:])
