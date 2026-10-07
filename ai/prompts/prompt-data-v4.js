@@ -363,7 +363,7 @@ export const PROMPTS = [
   "n": 32,
   "slug": "run-a-friction-analysis-on-one-team",
   "title": "Run a friction analysis on one team",
-  "prompt": "Where are candidates slowing down in the [Job] process? Show me the time between each stage, and where feedback, scheduling or handoffs are holding things up.",
+  "prompt": "Where are candidates slowing down in the [Job] process? Show me the time between each stage, and where feedback, scheduling, or handoffs are holding things up.",
   "category": "Lateral non-partner and partner hiring",
   "theme": "Speed, timing, and trends",
   "jobs": [
