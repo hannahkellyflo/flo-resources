@@ -502,6 +502,39 @@ WHERE j.FORWARD_PUBLISHING_STATUS = 'PUBLISHED' AND j.DELETED_AT IS NULL
 ORDER BY j.OPEN_DATE DESC;""" % DEMO_REGEXP
 
 
+# Post-Judicial Clerkship "grace" rule (Hannah 2026-10-07): same rationale as the lateral grace rule.
+# PC_SQL mirrors a Metabase question that is PUBLISHED-only, so a clerk role a firm marked public
+# (IS_PUBLIC=1) and opened recently but hasn't flipped to published on the Forward feed never showed —
+# e.g. Elsberg Baker & Maruri "Associate (Judicial Clerk)" (job 26318, DO_NOT_PUBLISH but IS_PUBLIC).
+# Its public job page + Apply button render whenever IS_PUBLIC=1, so the "View listing" link always
+# works. Same clerk gate as PC_SQL (ATS 'Judicial Clerk' tag, or JOB_POST_AUDIENCE='POST_CLERKSHIP'),
+# plus freshness (≤60d), not-closed, and the lateral junk-title guard. Merged on top of PC_SQL,
+# de-duped by job id in wire_pc. Published rows are unchanged.
+PC_GRACE_SQL = """
+SELECT j.ID AS job_id, o.NAME AS firm, j.TITLE AS position,
+  j.DESCRIPTION AS descr, j.OPEN_DATE AS open_date, j.UPDATED_AT AS updated_at,
+  CASE WHEN EXISTS (SELECT 1 FROM JOB_HIRING_TYPE jh JOIN HIRING_TYPE h ON h.ID=jh.HIRING_TYPE_ID
+                    WHERE jh.JOB_ID=j.ID AND h.NAME='Judicial Clerk')
+       THEN 'Judicial Clerk' ELSE 'Post-Judicial Clerkship' END AS clerk_type,
+  (SELECT GROUP_CONCAT(DISTINCT loc.OPTION SEPARATOR '; ')
+     FROM JOB_OFFICE jo JOIN ORG_OFFICE ofc ON ofc.ID = jo.OFFICE_ID
+     JOIN STATIC_LIST_OPTION loc ON loc.ID = ofc.OFFICE_LOCATION_ID
+     WHERE jo.JOB_ID = j.ID) AS offices
+FROM JOB j JOIN ORG o ON o.ID = j.ORG_ID
+WHERE (j.FORWARD_PUBLISHING_STATUS IS NULL OR j.FORWARD_PUBLISHING_STATUS <> 'PUBLISHED')
+  AND j.DELETED_AT IS NULL
+  AND j.IS_PUBLIC = TRUE                                   -- guarantees the listing link renders
+  AND j.OPEN_DATE >= DATE_SUB(NOW(), INTERVAL 60 DAY)      -- freshness: "just posted, not flipped yet"
+  AND (j.CLOSE_DATE IS NULL OR j.CLOSE_DATE >= NOW())      -- and not already closed
+  AND LOWER(o.NAME) NOT REGEXP '%s'
+  AND LOWER(o.NAME) <> 'your company'
+  AND LOWER(j.TITLE) NOT REGEXP '%s'                       -- junk-title guard (evergreen/pool/test)
+  AND ((j.JOB_TYPE = 'ATS' AND EXISTS (SELECT 1 FROM JOB_HIRING_TYPE jh JOIN HIRING_TYPE h ON h.ID=jh.HIRING_TYPE_ID
+                                       WHERE jh.JOB_ID=j.ID AND h.NAME='Judicial Clerk'))
+       OR j.JOB_POST_AUDIENCE = 'POST_CLERKSHIP')
+ORDER BY j.OPEN_DATE DESC;""" % (DEMO_REGEXP, _GRACE_JUNK_TITLE)
+
+
 def strip_html(s) -> str:
     if not s:
         return "—"
@@ -545,9 +578,13 @@ def wire_lateral(data: dict) -> None:
 
 
 def wire_pc(data: dict) -> None:
-    rows = metabase_sql(MB_DB, PC_SQL)
+    rows = metabase_sql(MB_DB, PC_SQL)                                         # PUBLISHED (mirrors card 10595)
+    published_ids = {r.get("job_id") for r in rows}
+    grace = [r for r in metabase_sql(MB_DB, PC_GRACE_SQL)                      # public + fresh, not yet published
+             if r.get("job_id") not in published_ids]
+    rows = sorted(rows + grace, key=lambda r: (r.get("open_date") or ""), reverse=True)
     data["tables"]["pc"] = [job_record(r, r.get("clerk_type") or "Post-Judicial Clerkship") for r in rows]
-    print(f"  post-judicial-clerkship: {len(rows)} listings (mirrors Metabase card 10595)")
+    print(f"  post-judicial-clerkship: {len(rows)} listings ({len(grace)} public-but-unpublished grace)")
 
 
 # ── 3L ENTRY-LEVEL (Metabase db 2, LIVE) ─────────────────────────────────────
@@ -588,6 +625,27 @@ FROM JOB j JOIN ORG o ON o.ID = j.ORG_ID
 WHERE j.FORWARD_PUBLISHING_STATUS = 'PUBLISHED' AND j.DELETED_AT IS NULL
   AND (j.JOB_TYPE IN ('ATS','MANUAL_ENTRY') OR j.JOB_TYPE IS NULL) AND j.JOB_CLASSIFICATION = 'LAW_FIRM'
   AND LOWER(o.NAME) NOT REGEXP '{DEMO_REGEXP}'
+  AND EXISTS (SELECT 1 FROM FORWARD_JOB_GRAD_DATE_TARGET_RULE r
+              WHERE r.JOB_ID = j.ID AND r.IS_NOT_DELETED = 1
+                AND r.RULE_TYPE = 'INDIVIDUAL_YEARS' AND YEAR(r.MIN_GRAD_DATE) = 2027)"""
+
+
+# Created-but-unpublished entry-level roles (Hannah 2026-10-07): a firm that has CREATED the Class-2027
+# role on Forward but kept it DO_NOT_PUBLISH / UNPUBLISHED (so it has no public listing) should no longer
+# show a contradictory "Not yet open" survey placeholder for it — e.g. Morrison Foerster "2027 Transactions
+# First Year Associate - San Francisco" (job 26285, DO_NOT_PUBLISH) was leaking because E3L_POSTED_SQL
+# above only looks at PUBLISHED roles. Unlike E3L_POSTED these roles are NOT linkable, and the hidden set
+# is noisy (interest forms, pipelines, templates, mis-tagged summer roles), so wire_entry3l suppresses
+# against them by EXACT firm+title match ONLY — never the fuzzy practice-token match, which would drop
+# genuinely-upcoming survey rows. Same entry-level gates as the live query (job type, LAW_FIRM, non-demo,
+# grad-target 2027, title-noise, pre-clerkship exception).
+E3L_CREATED_SQL = f"""
+SELECT j.ID AS job_id, o.NAME AS firm, j.TITLE AS position
+FROM JOB j JOIN ORG o ON o.ID = j.ORG_ID
+WHERE j.FORWARD_PUBLISHING_STATUS IN ('DO_NOT_PUBLISH','UNPUBLISHED') AND j.DELETED_AT IS NULL
+  AND (j.JOB_TYPE IN ('ATS','MANUAL_ENTRY') OR j.JOB_TYPE IS NULL) AND j.JOB_CLASSIFICATION = 'LAW_FIRM'
+  AND LOWER(o.NAME) NOT REGEXP '{DEMO_REGEXP}'
+  AND (LOWER(j.TITLE) NOT REGEXP '{_E3L_TITLE_NOISE}' OR LOWER(j.TITLE) REGEXP 'pre.?clerkship')
   AND EXISTS (SELECT 1 FROM FORWARD_JOB_GRAD_DATE_TARGET_RULE r
               WHERE r.JOB_ID = j.ID AND r.IS_NOT_DELETED = 1
                 AND r.RULE_TYPE = 'INDIVIDUAL_YEARS' AND YEAR(r.MIN_GRAD_DATE) = 2027)"""
@@ -680,6 +738,14 @@ def wire_entry3l(data: dict) -> None:
     posted = metabase_sql(MB_DB, E3L_POSTED_SQL)
     live_ids |= {str(p["job_id"]) for p in posted if p.get("job_id") is not None}
     live_practice += [_practice_norm(p.get("firm"), p.get("position")) for p in posted]
+    # Created-but-unpublished real postings (DO_NOT_PUBLISH / UNPUBLISHED): suppress a survey placeholder
+    # only when it EXACTLY matches one (firm+title) — the firm set up the role on Forward even if it's not
+    # public yet. Added to `live_ids`/`seen` only (NOT `live_practice`): exact-match avoids over-suppressing
+    # genuinely-upcoming rows against the noisy hidden set (interest forms, pipelines, templates).
+    created = metabase_sql(MB_DB, E3L_CREATED_SQL)
+    live_ids |= {str(c["job_id"]) for c in created if c.get("job_id") is not None}
+    seen |= {(str(c.get("firm") or "").strip().lower(), str(c.get("position") or "").strip().lower())
+             for c in created}
     da_added = 0
     for row in direct_apply_rows():
         if row["level"] != "3L" or row["class"] != 2027:
