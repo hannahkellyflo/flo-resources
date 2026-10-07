@@ -184,7 +184,26 @@ input::placeholder{color:var(--muted);}
   color:inherit;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;
 }
 .hero__link:hover{text-decoration-thickness:2px;}
-.hero__mark-link{display:inline-flex;border-radius:50%;}
+/* The icon is a flat PNG, so rotating it would turn the bolt too. Instead an
+   opaque ring is laid over the PNG's own ring -- same geometry, colours sampled
+   off the artwork every 10deg -- and only that spins. The bolt never moves.
+   The PNG's ring sits permanently underneath, hidden. */
+.hero__mark-link{position:relative;display:inline-flex;border-radius:50%;}
+.hero__mark-link::after{
+  content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;
+  background:conic-gradient(
+    #fe5564 0deg, #fb8cb4 40deg, #fb95b0 50deg, #feac6b 90deg, #fdb64a 110deg,
+    #1f3094 190deg, #467ae8 250deg, #8467b4 300deg, #9d5e9c 310deg,
+    #ff383d 340deg, #fe5564 360deg);
+  /* Keep only the annulus. The 83-86% feather stops the inner edge aliasing into
+     a stipple against the white, and it reaches full opacity before the artwork's
+     own ring starts at 86.8%, so none of the static ring shows through. */
+  -webkit-mask:radial-gradient(closest-side,transparent 83%,#000 86%);
+          mask:radial-gradient(closest-side,transparent 83%,#000 86%);
+}
+.hero__mark-link:hover::after,
+.hero__mark-link:focus-visible::after{animation:flo-mark-spin 2.2s linear infinite;}
+@keyframes flo-mark-spin{to{transform:rotate(1turn);}}
 
 /* The mark is the full-colour Flo AI app icon, so no currentColor here. */
 .hero__mark{line-height:0;padding-top:6px;}
@@ -378,4 +397,6 @@ input::placeholder{color:var(--muted);}
 @media (prefers-reduced-motion:reduce){
   *{transition:none!important;}
   .cat-block:hover{transform:none;}
+  .hero__mark-link:hover::after,
+  .hero__mark-link:focus-visible::after{animation:none!important;}
 }
