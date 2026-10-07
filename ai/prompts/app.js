@@ -392,6 +392,17 @@ searchInput.addEventListener("input", e => { state.q = e.target.value; render();
 clearQueryBtn.addEventListener("click", () => { state.q = ""; searchInput.value = ""; render(); });
 collapseBtn.addEventListener("click", () => { state.collapsed = !state.collapsed; render(); });
 
+/* One full turn of the mark's gradient ring per hover, however long you stay.
+ * The class outlives :hover so leaving mid-turn does not snap the ring back,
+ * and re-adding it while it runs is a no-op, so the turn never restarts. */
+const markLink = document.querySelector(".hero__mark-link");
+if (markLink && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  const spin = () => markLink.classList.add("is-spinning");
+  markLink.addEventListener("pointerenter", spin);
+  markLink.addEventListener("focus", spin);
+  markLink.addEventListener("animationend", () => markLink.classList.remove("is-spinning"));
+}
+
 /* ------------------------------------------------------------------ *
  * Boot
  * ------------------------------------------------------------------ */
