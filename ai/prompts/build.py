@@ -20,7 +20,7 @@ SLUG = "ai/prompts"                             # URL path, and the path under s
 OUT = REPO / "site" / SLUG / "index.html"
 
 TITLE = "The Flo AI Prompt Library"
-DESCRIPTION = ("Prompts you can copy into Flo AI to get answers out of your "
+DESCRIPTION = ("Prompts you can copy into Flo AI to get answers from your "
                "recruiting and performance data.")
 CANONICAL = f"https://resources.joinflo.com/{SLUG}"
 
