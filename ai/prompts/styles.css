@@ -178,6 +178,14 @@ input::placeholder{color:var(--muted);}
 @media (min-width:641px){
   .hero__lede,.hero__sublede{max-width:88%;}
 }
+/* Links out to the product, on the dark card. Colour is inherited so the
+   sentence keeps its weight; the underline is what marks them. */
+.hero__link{
+  color:inherit;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;
+}
+.hero__link:hover{text-decoration-thickness:2px;}
+.hero__mark-link{display:inline-flex;border-radius:50%;}
+
 /* The mark is the full-colour Flo AI app icon, so no currentColor here. */
 .hero__mark{line-height:0;padding-top:6px;}
 .hero__mark-img{display:block;width:54px;height:54px;}

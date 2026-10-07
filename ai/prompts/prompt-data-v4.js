@@ -1765,7 +1765,7 @@ export const JOBS = ["Find people or records","Check where things stand","Compar
 export const CATEGORY_NOTES = {
  "Lateral non-partner and partner hiring": "Lateral associates, clerk, staff attorney, and partner hiring: status, agencies, interviewers, scores.",
  "Entry-level hiring": "Law student pipelines end to end: campus events, screening, interview logistics, the summer program.",
- "Reviews and development": "Calibration, reviewer patterns, and the development themes running through your written reviews.",
+ "Reviews and development": "Calibration, reviewer patterns, and the development themes running through your performance reviews.",
  "Firm-wide talent strategy": "Recruiting and performance read together: hiring efficacy, retention, promotion, risk."
 };
 
