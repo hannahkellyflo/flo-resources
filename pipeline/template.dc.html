@@ -2103,7 +2103,27 @@ class Component extends DCLogic {
     // Sort by clicked column (localeCompare with numeric so dates/numbers order correctly).
     const sc = this.state.sortCol;
     const sdir = this.state.sortDir === 'desc' ? -1 : 1;
+    // Date columns must sort chronologically, not by their displayed "Mon D, YYYY" text — a plain string
+    // sort orders by month NAME (Apr, Aug, Dec…). Sort these by a parsed timestamp instead: "Last updated"
+    // prefers the row's ISO _luAt; the rest parse the cell text (minus any "Opens " prefix). Undated
+    // values ("—", "Not yet open") always sort last. Non-date columns keep the string sort below.
+    const DATE_COLS = { "Last updated": 1, "Open Date": 1, "Application Open Date": 1, "Application Close Date": 1,
+                        "Posted Date": 1, "1L Application Open Date": 1, "2L Application Open Date": 1 };
+    const dateKey = (row) => {
+      const cell = row.cells[sc] || {};
+      if (cell.label === "Last updated" && row._luAt) { const t = Date.parse(row._luAt); if (!isNaN(t)) return t; }
+      const s = cell.text != null ? String(cell.text).replace(/^Opens\s+/i, "").trim() : "";
+      const t = Date.parse(s);
+      return isNaN(t) ? null : t;
+    };
     const sortRows = (rows) => (sc == null ? rows : rows.slice().sort((a, b) => {
+      if (DATE_COLS[(a.cells[sc] || b.cells[sc] || {}).label]) {
+        const ax = dateKey(a), bx = dateKey(b);
+        if (ax == null && bx == null) return 0;
+        if (ax == null) return 1;            // undated rows sink to the bottom, either direction
+        if (bx == null) return -1;
+        return (ax - bx) * sdir;
+      }
       // trim() the sort key: some source titles carry a stray leading space, which would otherwise
       // sort before every letter/digit and jump those rows to the top regardless of direction.
       const av = a.cells[sc] && a.cells[sc].text != null ? String(a.cells[sc].text).trim() : '';
