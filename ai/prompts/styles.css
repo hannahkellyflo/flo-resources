@@ -201,8 +201,10 @@ input::placeholder{color:var(--muted);}
   -webkit-mask:radial-gradient(closest-side,transparent 83%,#000 86%);
           mask:radial-gradient(closest-side,transparent 83%,#000 86%);
 }
-.hero__mark-link:hover::after,
-.hero__mark-link:focus-visible::after{animation:flo-mark-spin 2.2s linear infinite;}
+/* One fast turn per hover. Driven by a class, not :hover -- on :hover alone the
+   rotation is cut dead the moment the pointer leaves, snapping the ring back
+   mid-turn. app.js adds the class and drops it on animationend instead. */
+.hero__mark-link.is-spinning::after{animation:flo-mark-spin .6s linear;}
 @keyframes flo-mark-spin{to{transform:rotate(1turn);}}
 
 /* The mark is the full-colour Flo AI app icon, so no currentColor here. */
@@ -397,6 +399,5 @@ input::placeholder{color:var(--muted);}
 @media (prefers-reduced-motion:reduce){
   *{transition:none!important;}
   .cat-block:hover{transform:none;}
-  .hero__mark-link:hover::after,
-  .hero__mark-link:focus-visible::after{animation:none!important;}
+  .hero__mark-link.is-spinning::after{animation:none!important;}
 }

@@ -226,8 +226,10 @@ input::placeholder{color:var(--muted);}
   -webkit-mask:radial-gradient(closest-side,transparent 83%,#000 86%);
           mask:radial-gradient(closest-side,transparent 83%,#000 86%);
 }
-.hero__mark-link:hover::after,
-.hero__mark-link:focus-visible::after{animation:flo-mark-spin 2.2s linear infinite;}
+/* One fast turn per hover. Driven by a class, not :hover -- on :hover alone the
+   rotation is cut dead the moment the pointer leaves, snapping the ring back
+   mid-turn. app.js adds the class and drops it on animationend instead. */
+.hero__mark-link.is-spinning::after{animation:flo-mark-spin .6s linear;}
 @keyframes flo-mark-spin{to{transform:rotate(1turn);}}
 
 /* The mark is the full-colour Flo AI app icon, so no currentColor here. */
@@ -422,8 +424,7 @@ input::placeholder{color:var(--muted);}
 @media (prefers-reduced-motion:reduce){
   *{transition:none!important;}
   .cat-block:hover{transform:none;}
-  .hero__mark-link:hover::after,
-  .hero__mark-link:focus-visible::after{animation:none!important;}
+  .hero__mark-link.is-spinning::after{animation:none!important;}
 }
 </style>
 </head>
@@ -2709,6 +2710,17 @@ window.addEventListener("scroll", () => {
 searchInput.addEventListener("input", e => { state.q = e.target.value; render(); });
 clearQueryBtn.addEventListener("click", () => { state.q = ""; searchInput.value = ""; render(); });
 collapseBtn.addEventListener("click", () => { state.collapsed = !state.collapsed; render(); });
+
+/* One full turn of the mark's gradient ring per hover, however long you stay.
+ * The class outlives :hover so leaving mid-turn does not snap the ring back,
+ * and re-adding it while it runs is a no-op, so the turn never restarts. */
+const markLink = document.querySelector(".hero__mark-link");
+if (markLink && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  const spin = () => markLink.classList.add("is-spinning");
+  markLink.addEventListener("pointerenter", spin);
+  markLink.addEventListener("focus", spin);
+  markLink.addEventListener("animationend", () => markLink.classList.remove("is-spinning"));
+}
 
 /* ------------------------------------------------------------------ *
  * Boot
