@@ -768,7 +768,7 @@ def wire_entry3l(data: dict) -> None:
             "Class": "Class of 2027",
             "3L Position": row["position"] or "—",
             "3L Job Listing": "Not yet open",           # upcoming — no live listing/apply link yet
-            "Offices": "—",
+            "Offices": row.get("office") or "—",         # survey-entered 3L Offices field; "—" when blank
             "Practices, If Specified": "",
             "Bar Admission, If Required": "",
             "Last Updated": "—",
@@ -845,10 +845,12 @@ def _summer_record(r: dict, lvl: str, upcoming: bool) -> dict:
 # drop it (Metabase row wins). An Airtable row with no live twin shows as UPCOMING (no apply link).
 DA_TABLE = "tblteCi8SMhBaFnnc"
 DA_STATUS, DA_EMP, DA_JOBID, DA_GY = "fldkUebV5Eeg8RlTB", "fldji3ZGYNArg0Gt3", "fldjULSzW3EXrUwoe", "fld4fnczgORVHmkE2"
-DA_LEVELS = {  # level -> (position, open_date, close_date, listing_url) field ids
-    "1L": ("fld2gjhVYgn06N0Hi", "fldPQFHcIN6v19uTm", "fldRQgaKF31OocHrH", "fldumQF7HBjz7B1Xk"),
-    "2L": ("fldfY6QtdpZJvxCYV", "fldBCZmyVCB7dFPo6", "fldWWrX7x6KqkIIjT", "fldOl58U673B7Wx0K"),
-    "3L": ("fldf1l8fMRlqR5oBm", None, None, "fldc0zZ5CIGCBYOqa"),
+DA_LEVELS = {  # level -> (position, open_date, close_date, listing_url, offices) field ids
+    # Offices: 1L/2L share the "City" field (fldvLJzvH3NfOdcmW); 3L has its own "3L Offices"
+    # (fldzlkkTJXZ4sz8mD). NOT "3L Practices" (practice group) or the separate "State" field.
+    "1L": ("fld2gjhVYgn06N0Hi", "fldPQFHcIN6v19uTm", "fldRQgaKF31OocHrH", "fldumQF7HBjz7B1Xk", "fldvLJzvH3NfOdcmW"),
+    "2L": ("fldfY6QtdpZJvxCYV", "fldBCZmyVCB7dFPo6", "fldWWrX7x6KqkIIjT", "fldOl58U673B7Wx0K", "fldvLJzvH3NfOdcmW"),
+    "3L": ("fldf1l8fMRlqR5oBm", None, None, "fldc0zZ5CIGCBYOqa", "fldzlkkTJXZ4sz8mD"),
 }
 
 
@@ -880,7 +882,7 @@ def direct_apply_rows() -> list[dict]:
         gy = [g for g in (f.get(DA_GY) or []) if isinstance(g, str)]
         years = sorted(int(g.split()[-1]) for g in gy if g.split()[-1].isdigit())
         jobid = str(f.get(DA_JOBID) or "").strip()
-        for lvl, (pos_f, open_f, close_f, list_f) in DA_LEVELS.items():
+        for lvl, (pos_f, open_f, close_f, list_f, off_f) in DA_LEVELS.items():
             pos = f.get(pos_f)
             if not pos:
                 continue
@@ -893,6 +895,7 @@ def direct_apply_rows() -> list[dict]:
                 "open_iso": open_iso,
                 "close_iso": f.get(close_f) if close_f else None,
                 "jobid": jobid,
+                "office": (str(f.get(off_f)).strip() if off_f and f.get(off_f) else ""),  # survey-entered location(s)
             })
     return out
 
@@ -905,7 +908,7 @@ def _da_summer_record(row: dict, lvl: str) -> dict:
         f"{lvl} Job Listing": "Not yet open",
         "Firm Profile": firm_profile_cell(row["firm"]),
         f"{lvl} Position": row["position"] or "—",
-        "Office Location": "—",
+        "Office Location": row.get("office") or "—",   # survey-entered City field; "—" when blank
         "Scholarship": "—",
         "Application Close Date": fmt_mdy(row["close_iso"]) or "—",
         "_srcUpdated": "—",   # survey upcoming rows have no source timestamp → seed to today when new
@@ -1080,6 +1083,8 @@ def wire_summer_split(data: dict) -> None:
     # ── merge Airtable Direct-Apply survey jobs (Approved), deduped against Metabase ──
     live_ids = {str(r.get("job_id")) for r in rows if r.get("job_id") is not None}
     seen = {(str(r.get("firm") or "").strip().lower(), str(r.get("position") or "").strip().lower()) for r in rows}
+    seen_at = set()  # Airtable rows already added, keyed firm+title+open+offices so a firm's office-split
+                     # / multi-date survey rows (same generic title) aren't collapsed into one
     da_added = {"1L": 0, "2L": 0}
     # Firms already LIVE this cycle (Class of 2029): any open 1L row or any Class-2029 2L row carrying a
     # real listing. A firm's Airtable "upcoming" survey row is then a stale placeholder — its live
@@ -1129,11 +1134,17 @@ def wire_summer_split(data: dict) -> None:
         # "not yet open" placeholder; drop it.
         if _firm_live_this_cycle(row["firm"]):
             continue
-        # (4) Exact firm+title already present.
-        k2 = (row["firm"].strip().lower(), row["position"].strip().lower())
-        if k2 in seen:
+        # (4) Exact duplicate already present. The Metabase guard stays firm+title (`seen`); among
+        # Airtable survey rows, include the open date + offices (`seen_at`) so a firm that opens
+        # different office groups on different dates under the SAME generic title (e.g. Winston &
+        # Strawn's "1L Summer Associate 2027" — Dallas/Houston on 10/15, other offices on 11/1) keeps a
+        # row per date/office instead of collapsing to the first one.
+        ft = (row["firm"].strip().lower(), row["position"].strip().lower())
+        k2 = ft + (str(row.get("open_iso") or "").strip(),
+                   str(at_rec.get("Office Location") or "").strip().lower())
+        if ft in seen or k2 in seen_at:
             continue
-        out[lv]["upcoming"].append(at_rec); seen.add(k2); da_added[lv] += 1
+        out[lv]["upcoming"].append(at_rec); seen_at.add(k2); da_added[lv] += 1
 
     # Close rule: drop any live row an Airtable record marked closed (deadline passed), so either source
     # closing the job hides it from the Tracker ("closed on Flo Forward OR in Airtable" -> closed).
